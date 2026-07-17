@@ -103,7 +103,7 @@ export default function SendOfferModal({
                             <div className="mb-4 flex items-start gap-3 rounded-xl border border-blue-500/20 bg-blue-500/10 p-4 text-blue-300">
                                 <AlertCircle className="h-5 w-5 shrink-0" />
                                 <p className="text-sm leading-relaxed">
-                                    Please upload the signed offer letter as a PDF. Once uploaded, an email will be automatically sent to the candidate with the attachment, and the offer status will be updated to "Sent".
+                                    Please upload the signed offer letter as a PDF. Once uploaded, an email will be automatically sent to the candidate with the attachment, and the offer status will be updated to &quot;Sent&quot;.
                                 </p>
                             </div>
 

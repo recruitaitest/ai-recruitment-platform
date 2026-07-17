@@ -314,7 +314,7 @@ export default function DashboardPage() {
           >
             <div>
               <h1 className="text-3xl font-bold text-white">Welcome back!</h1>
-              <p className="text-white/60 mt-1">Here's what's happening with your recruitment</p>
+              <p className="text-white/60 mt-1">Here&apos;s what&apos;s happening with your recruitment</p>
             </div>
 
           </motion.div>

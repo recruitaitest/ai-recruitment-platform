@@ -304,7 +304,7 @@ export default function AddRoleModal({
 
                         {adminPermissions.length === 0 ? (
                             <div className="text-center py-4 border border-dashed border-slate-800/80 rounded-xl text-xs text-slate-500">
-                                No Admin Portal permissions added. Click "Add Permission" to define access.
+                                No Admin Portal permissions added. Click &quot;Add Permission&quot; to define access.
                             </div>
                         ) : (
                             <div className="space-y-3">
@@ -415,7 +415,7 @@ export default function AddRoleModal({
 
                         {recruiterPermissions.length === 0 ? (
                             <div className="text-center py-4 border border-dashed border-slate-800/80 rounded-xl text-xs text-slate-500">
-                                No Recruiter Portal permissions added. Click "Add Permission" to define access.
+                                No Recruiter Portal permissions added. Click &quot;Add Permission&quot; to define access.
                             </div>
                         ) : (
                             <div className="space-y-3">
