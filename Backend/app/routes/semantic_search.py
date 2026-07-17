@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 
 from qdrant_client import QdrantClient
-from sentence_transformers import SentenceTransformer
+from app.services.embedding_service import generate_embedding
 
 load_dotenv()
 
@@ -16,10 +16,6 @@ client = QdrantClient(
     api_key=os.getenv("QDRANT_API_KEY")
 )
 
-model = SentenceTransformer(
-    "sentence-transformers/all-MiniLM-L6-v2"
-)
-
 
 class SemanticSearchRequest(BaseModel):
     query: str
@@ -28,9 +24,7 @@ class SemanticSearchRequest(BaseModel):
 @router.post("/")
 def semantic_search(request: SemanticSearchRequest):
 
-    query_vector = model.encode(
-        request.query
-    ).tolist()
+    query_vector = generate_embedding(request.query)
 
     results = client.search(
         collection_name="candidates",

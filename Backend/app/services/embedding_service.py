@@ -1,11 +1,12 @@
-from sentence_transformers import SentenceTransformer
+import os
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
-# Shared model — must match ai_ranking.py so embeddings are comparable
-model = SentenceTransformer(
-    "sentence-transformers/all-mpnet-base-v2"
+# Initialize Gemini Embeddings
+model = GoogleGenerativeAIEmbeddings(
+    model="models/text-embedding-004",
+    google_api_key=os.getenv("GOOGLE_API_KEY")
 )
 
 def generate_embedding(text: str):
-    # normalize_embeddings=True ensures unit-length vectors,
-    # making cosine similarity equivalent to dot-product in Qdrant
-    return model.encode(text, normalize_embeddings=True).tolist()
+    # Gemini API expects text, returns list of floats
+    return model.embed_query(text)

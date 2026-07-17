@@ -2,20 +2,13 @@ import os
 from dotenv import load_dotenv
 
 from qdrant_client import QdrantClient
-from sentence_transformers import SentenceTransformer
+from app.services.embedding_service import generate_embedding
 
 load_dotenv()
 
 client = QdrantClient(
     url=os.getenv("QDRANT_URL"),
     api_key=os.getenv("QDRANT_API_KEY")
-)
-
-# all-mpnet-base-v2: 768-dim, significantly stronger semantic understanding
-# than all-MiniLM-L6-v2 (384-dim). Better cosine similarity quality,
-# especially for domain-specific resume/JD matching.
-model = SentenceTransformer(
-    "sentence-transformers/all-mpnet-base-v2"
 )
 
 
@@ -38,10 +31,7 @@ def _calibrate_score(raw_cosine: float) -> float:
 
 def get_semantic_score(position_text: str, candidate_id: int):
 
-    vector = model.encode(
-        position_text,
-        normalize_embeddings=True
-    ).tolist()
+    vector = generate_embedding(position_text)
 
     results = client.search(
         collection_name="candidates",
