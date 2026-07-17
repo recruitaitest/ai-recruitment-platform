@@ -1,0 +1,872 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Light theme (inverted slate variables so that dark designs become light) */
+  --slate-50: 15 23 42;    /* text-slate-50 */
+  --slate-100: 15 23 42;   /* text-slate-100 */
+  --slate-200: 30 41 59;   /* text-slate-200 */
+  --slate-300: 51 65 85;   /* text-slate-300 */
+  --slate-400: 71 85 105;   /* text-slate-400 */
+  --slate-500: 100 116 139;   /* text-slate-500 */
+  --slate-600: 148 163 184;   /* text-slate-600 */
+  --slate-700: 203 213 225;   /* border-slate-700 / lines */
+  --slate-800: 203 213 225;   /* border-slate-800 */
+  --slate-900: 248 250 252;   /* bg-slate-900 */
+  --slate-950: 255 255 255;   /* bg-slate-950 */
+}
+
+.dark {
+  /* Dark theme (standard slate colors) */
+  --slate-50: 248 250 252;
+  --slate-100: 241 245 249;
+  --slate-200: 226 232 240;
+  --slate-300: 203 213 225;
+  --slate-400: 148 163 184;
+  --slate-500: 100 116 139;
+  --slate-600: 71 85 105;
+  --slate-700: 51 65 85;
+  --slate-800: 30 41 59;
+  --slate-900: 15 23 42;
+  --slate-950: 2 6 23;
+}
+
+/* Light mode adjustments for text-white and other specific elements */
+html.light .text-white:not(.keep-white):not([class*="bg-blue-"]):not([class*="bg-purple-"]):not([class*="bg-red-"]):not([class*="bg-green-"]):not([class*="bg-indigo-"]):not([class*="from-"]):not([class*="to-"]):not(.fc-event-title) {
+  color: #0f172a !important;
+}
+
+html.light .text-white\/95 { color: rgba(15, 23, 42, 0.95) !important; }
+html.light .text-white\/90 { color: rgba(15, 23, 42, 0.9) !important; }
+html.light .text-white\/80 { color: rgba(15, 23, 42, 0.8) !important; }
+html.light .text-white\/70 { color: rgba(15, 23, 42, 0.7) !important; }
+html.light .text-white\/60 { color: rgba(15, 23, 42, 0.6) !important; }
+html.light .text-white\/50 { color: rgba(15, 23, 42, 0.5) !important; }
+html.light .text-white\/45 { color: rgba(15, 23, 42, 0.45) !important; }
+html.light .text-white\/40 { color: rgba(15, 23, 42, 0.4) !important; }
+html.light .text-white\/30 { color: rgba(15, 23, 42, 0.3) !important; }
+html.light .text-white\/20 { color: rgba(15, 23, 42, 0.2) !important; }
+html.light .text-white\/10 { color: rgba(15, 23, 42, 0.1) !important; }
+html.light .text-white\/5 { color: rgba(15, 23, 42, 0.05) !important; }
+
+/* Hover states for text-white in light mode */
+html.light .hover\:text-white:hover { color: #0f172a !important; }
+html.light .hover\:text-white\/90:hover { color: rgba(15, 23, 42, 0.9) !important; }
+html.light .hover\:text-white\/80:hover { color: rgba(15, 23, 42, 0.8) !important; }
+html.light .hover\:text-white\/70:hover { color: rgba(15, 23, 42, 0.7) !important; }
+html.light .hover\:text-white\/60:hover { color: rgba(15, 23, 42, 0.6) !important; }
+html.light .hover\:text-white\/50:hover { color: rgba(15, 23, 42, 0.5) !important; }
+
+/* Keep elements transparent white in light mode instead of changing them to transparent dark */
+html.light .border-white\/10 {
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
+html.light .border-white\/20 {
+  border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+html.light .bg-white\/5 {
+  background-color: rgba(255, 255, 255, 0.3) !important;
+}
+html.light .bg-white\/10 {
+  background-color: rgba(255, 255, 255, 0.45) !important;
+}
+html.light .bg-white\/20 {
+  background-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+html.light .bg-slate-900\/30,
+html.light .bg-slate-900\/40,
+html.light .bg-slate-900\/50 {
+  background-color: rgba(15, 23, 42, 0.02) !important;
+}
+
+html.light .hover\:bg-slate-900\/40:hover {
+  background-color: rgba(15, 23, 42, 0.04) !important;
+}
+
+html.light .focus-ring {
+  @apply ring-offset-white ring-blue-500/50;
+}
+
+/* Glassmorphism overrides for light mode */
+html.light .glass-bg {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.05) !important;
+}
+html.light .glass-bg-dark {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.05) !important;
+}
+
+/* Gradient background for light/dark mode */
+.gradient-bg {
+  transition: background 0.3s ease;
+}
+html.light .gradient-bg {
+  background: linear-gradient(135deg, #f8fafc 0%, #cbd5e1 100%) !important;
+  color: #0f172a !important;
+}
+
+/* Scrollbar override */
+html.light ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+html.light ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Calendar styling for light mode */
+html.light .interview-calendar .fc {
+  color: #0f172a !important;
+}
+html.light .interview-calendar .fc-toolbar-title {
+  color: #0f172a !important;
+}
+html.light .interview-calendar .fc-daygrid-day {
+  background: rgba(255, 255, 255, 0.08) !important;
+  transition: background 0.2s ease;
+}
+html.light .interview-calendar .fc-daygrid-day:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+html.light .interview-calendar .fc-col-header-cell {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+html.light .interview-calendar .fc-daygrid-day-number,
+html.light .interview-calendar .fc-col-header-cell-cushion {
+  color: #1e293b !important;
+}
+html.light .interview-calendar .fc-theme-standard td,
+html.light .interview-calendar .fc-theme-standard th,
+html.light .interview-calendar .fc-theme-standard .fc-scrollgrid {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+html.light input[type="date"]::-webkit-calendar-picker-indicator,
+html.light input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: none !important;
+}
+
+/* Ensure white text remains white on dark action buttons/badges in light mode */
+html.light .bg-blue-600 .text-white,
+html.light .bg-blue-500 .text-white,
+html.light .bg-purple-600 .text-white,
+html.light .bg-purple-500 .text-white,
+html.light .bg-red-600 .text-white,
+html.light .bg-red-500 .text-white,
+html.light .bg-green-600 .text-white,
+html.light .bg-green-500 .text-white,
+html.light .bg-indigo-600 .text-white,
+html.light .bg-indigo-500 .text-white,
+html.light .rounded-full.bg-blue-600,
+html.light button.bg-blue-600,
+html.light button.bg-indigo-600,
+html.light button.bg-purple-600,
+html.light button.bg-red-600,
+html.light button.bg-green-600,
+html.light button.bg-blue-500,
+html.light button.bg-indigo-500,
+html.light button.bg-purple-500,
+html.light button.bg-red-500,
+html.light button.bg-green-500,
+html.light button.bg-violet-600,
+html.light button.bg-violet-500,
+html.light button.keep-white,
+html.light .keep-white {
+  color: #ffffff !important;
+}
+
+/* Placeholder style overrides for light mode */
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: rgba(15, 23, 42, 0.45) !important;
+}
+
+html.light .placeholder\:text-white\/40::placeholder {
+  color: rgba(15, 23, 42, 0.4) !important;
+}
+
+html.light .placeholder\:text-white\/50::placeholder {
+  color: rgba(15, 23, 42, 0.5) !important;
+}
+
+html.light .placeholder\:text-white\/60::placeholder {
+  color: rgba(15, 23, 42, 0.6) !important;
+}
+
+html.light .placeholder\:text-white\/30::placeholder {
+  color: rgba(15, 23, 42, 0.3) !important;
+}
+
+/* Solid background for main pages/layouts in light mode (matches the user's provided color) */
+html.light,
+html.light body,
+html.light .bg-gradient-to-br.from-slate-900,
+html.light .bg-gradient-to-b.from-slate-900,
+html.light .bg-gradient-to-r.from-slate-900,
+html.light .bg-gradient-to-r.from-slate-900\/95,
+html.light .sticky.top-0,
+html.light .min-h-screen,
+html.light main.min-h-screen {
+  background: linear-gradient(135deg, #9bb0c1 0%, #b2c3d2 100%) !important;
+  background-attachment: fixed !important;
+}
+
+/* Make recruiter portal components, glass classes, and topNavbar even more transparent in light mode */
+html.light .bg-\[\#0a0f1d\],
+html.light .bg-\[\#0B1120\],
+html.light .bg-\[\#030712\],
+html.light .bg-\[\#050816\],
+html.light .bg-\[\#111827\],
+html.light .bg-\[\#0f172a\],
+html.light .bg-\[\#0F172A\],
+html.light .bg-\[\#07142b\]\/90,
+html.light .bg-\[\#07142b\],
+html.light .bg-slate-900,
+html.light .bg-slate-950,
+html.light .bg-slate-900\/95,
+html.light .bg-slate-800\/95,
+html.light .bg-slate-900\/50,
+html.light .bg-slate-950\/20,
+html.light .bg-slate-950\/40,
+html.light .bg-slate-900\/30,
+html.light .bg-\[\#111827\]\/95,
+html.light .bg-\[\#111827\]\/90,
+html.light .bg-\[\#0f172a\]\/95,
+html.light .bg-\[\#0f172a\]\/90,
+html.light .bg-\[\#0f172a\]\/70,
+html.light .bg-\[\#0F172A\]\/95,
+html.light .bg-\[\#0F172A\]\/90,
+html.light .glass-bg,
+html.light .glass-bg-dark {
+  background-color: rgba(255, 255, 255, 0.08) !important; /* increased transparency from 0.12 */
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: none !important;
+  transition: all 0.3s ease !important;
+}
+
+/* On hover or active state in light mode, turn them into gorgeous glassmorphism panels (decreased brightness by 20% to 0.28) */
+html.light .bg-\[\#0a0f1d\]:hover,
+html.light .bg-\[\#0B1120\]:hover,
+html.light .bg-\[\#030712\]:hover,
+html.light .bg-\[\#050816\]:hover,
+html.light .bg-\[\#111827\]:hover,
+html.light .bg-\[\#0f172a\]:hover,
+html.light .bg-\[\#0F172A\]:hover,
+html.light .bg-\[\#07142b\]\/90:hover,
+html.light .bg-\[\#07142b\]:hover,
+html.light .bg-slate-900:hover,
+html.light .bg-slate-950:hover,
+html.light .glass-bg:hover,
+html.light .glass-bg-dark:hover,
+html.light .sidebar-item-active,
+html.light .active-tab,
+html.light [class*="hover\:bg-"]:hover,
+html.light button:hover,
+html.light a:hover {
+  background-color: rgba(255, 255, 255, 0.28) !important; /* decreased brightness/opacity by 20% (0.4 * 0.8 = 0.32, using 0.28 for even better look) */
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-color: rgba(255, 255, 255, 0.45) !important;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.6), 0 8px 25px rgba(15, 23, 42, 0.06) !important;
+}
+
+/* Nested containers/inputs differentiation in light mode */
+html.light .bg-slate-950,
+html.light .bg-\[\#0a0f1d\],
+html.light .bg-white\/5 {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Translucent borders to give a beautiful glass effect */
+html.light .border-slate-800,
+html.light .border-slate-700,
+html.light .border-white\/10,
+html.light .border-white\/20,
+html.light [class*="border-\[\#"] {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Hovered borders get brighter border highlight */
+html.light .border-slate-800:hover,
+html.light .border-slate-700:hover,
+html.light .border-white\/10:hover,
+html.light .border-white\/20:hover {
+  border-color: rgba(255, 255, 255, 0.45) !important;
+}
+
+/* Active sidebar items styling in light mode (decreased brightness to 0.28) */
+html.light .bg-blue-500\/30 {
+  background-color: rgba(255, 255, 255, 0.28) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  color: #1e3a8a !important;
+  border-color: rgba(255, 255, 255, 0.45) !important;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.6), 0 8px 25px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.light .text-blue-300 {
+  color: #1e3a8a !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────────── */
+/* Dark Mode Glassmorphism Overrides                                       */
+/* ──────────────────────────────────────────────────────────────────────── */
+
+/* Default components in dark mode - add glassmorphism effect with transparency */
+html.dark .bg-\[\#0a0f1d\],
+html.dark .bg-\[\#0B1120\],
+html.dark .bg-\[\#030712\],
+html.dark .bg-\[\#050816\],
+html.dark .bg-\[\#111827\],
+html.dark .bg-\[\#0f172a\],
+html.dark .bg-\[\#0F172A\],
+html.dark .bg-\[\#07142b\]\/90,
+html.dark .bg-\[\#07142b\],
+html.dark .bg-slate-900,
+html.dark .bg-slate-950,
+html.dark .bg-slate-900\/95,
+html.dark .bg-slate-800\/95,
+html.dark .bg-slate-900\/50,
+html.dark .bg-slate-950\/20,
+html.dark .bg-slate-950\/40,
+html.dark .bg-slate-900\/30,
+html.dark .bg-\[\#111827\]\/95,
+html.dark .bg-\[\#111827\]\/90,
+html.dark .bg-\[\#0f172a\]\/95,
+html.dark .bg-\[\#0f172a\]\/90,
+html.dark .bg-\[\#0f172a\]\/70,
+html.dark .bg-\[\#0F172A\]\/95,
+html.dark .bg-\[\#0F172A\]\/90,
+html.dark .glass-bg,
+html.dark .glass-bg-dark {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.75) 100%) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.35), inset 0 1px 0 0 rgba(255, 255, 255, 0.05) !important;
+  transition: all 0.3s ease !important;
+}
+
+/* On hover or active state in dark mode, decrease brightness by 20% (use 0.24 opacity instead of brighter colors) */
+html.dark .bg-\[\#0a0f1d\]:hover,
+html.dark .bg-\[\#0B1120\]:hover,
+html.dark .bg-\[\#030712\]:hover,
+html.dark .bg-\[\#050816\]:hover,
+html.dark .bg-\[\#111827\]:hover,
+html.dark .bg-\[\#0f172a\]:hover,
+html.dark .bg-\[\#0F172A\]:hover,
+html.dark .bg-\[\#07142b\]\/90:hover,
+html.dark .bg-\[\#07142b\]:hover,
+html.dark .bg-slate-900:hover,
+html.dark .bg-slate-950:hover,
+html.dark [class*="hover\:bg-"]:hover,
+html.dark button:hover,
+html.dark a:hover {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.85) 100%) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 16px 48px 0 rgba(0, 0, 0, 0.45), inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Active sidebar item in dark mode (decreased brightness to 0.24) */
+html.dark .bg-blue-500\/30 {
+  background-color: rgba(59, 130, 246, 0.2) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-color: rgba(59, 130, 246, 0.35) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08), 0 8px 32px 0 rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Text color contrast enhancements in light mode */
+html.light .text-slate-400,
+html.light .text-gray-400 {
+  color: #334155 !important;
+}
+html.light .text-slate-500,
+html.light .text-gray-500 {
+  color: #475569 !important;
+}
+html.light .text-slate-300,
+html.light .text-gray-300 {
+  color: #1e293b !important;
+}
+html.light .text-slate-200,
+html.light .text-gray-200 {
+  color: #1e293b !important;
+}
+html.light .text-slate-100,
+html.light .text-gray-100 {
+  color: #0f172a !important;
+}
+
+/* Status text visibility enhancements in light mode */
+html.light .text-emerald-400,
+html.light .text-emerald-300,
+html.light .text-green-400,
+html.light .text-green-300 {
+  color: #047857 !important; /* Rich emerald-700 green */
+  font-weight: 600 !important;
+}
+
+html.light .text-red-400,
+html.light .text-red-300,
+html.light .text-rose-400,
+html.light .text-rose-300 {
+  color: #b91c1c !important; /* Rich red-700 red */
+  font-weight: 600 !important;
+}
+
+html.light .text-amber-400,
+html.light .text-amber-300,
+html.light .text-yellow-400,
+html.light .text-yellow-300 {
+  color: #b45309 !important; /* Rich amber-700 yellow */
+  font-weight: 600 !important;
+}
+
+/* Highcharts global styling overrides for theme responsive text fill */
+html.light .highcharts-title {
+  fill: #0f172a !important;
+}
+html.light .highcharts-subtitle {
+  fill: #475569 !important;
+}
+html.light .highcharts-axis-labels text {
+  fill: #475569 !important;
+}
+html.light .highcharts-axis-title {
+  fill: #475569 !important;
+}
+html.light .highcharts-legend-item text {
+  fill: #0f172a !important;
+}
+
+html.dark .highcharts-title {
+  fill: #ffffff !important;
+}
+html.dark .highcharts-subtitle {
+  fill: #94a3b8 !important;
+}
+html.dark .highcharts-axis-labels text {
+  fill: #94a3b8 !important;
+}
+html.dark .highcharts-axis-title {
+  fill: #94a3b8 !important;
+}
+html.dark .highcharts-legend-item text {
+  fill: #ffffff !important;
+}
+
+
+
+* {
+  @apply m-0 p-0 box-border;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply antialiased;
+}
+
+/* Glassmorphism background effect */
+.glass-bg {
+  @apply backdrop-blur-xl bg-white/10 border border-white/20 rounded-lg shadow-glass;
+}
+
+.glass-bg-dark {
+  @apply backdrop-blur-xl bg-slate-950/40 border border-white/10 rounded-lg shadow-glass;
+}
+
+/* Smooth gradient background */
+.gradient-bg {
+  @apply bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900;
+}
+
+/* Animation utilities */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
+.animate-float {
+  @apply animate-bounce;
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  background-size: 1000px 100%;
+}
+
+.interview-calendar .fc-toolbar-chunk {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.interview-calendar .fc-button-group {
+  display: flex;
+  gap: 14px !important;
+}
+/* Smooth focus states */
+.focus-ring {
+  @apply outline-none ring-2 ring-blue-500/50 ring-offset-2 ring-offset-slate-900;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  @apply w-2 h-2;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-slate-900;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-600 rounded-full hover:bg-slate-500;
+}
+.interview-calendar .fc {
+  color: white;
+}
+
+.interview-calendar .fc-toolbar-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: white;
+}
+
+.interview-calendar .fc-button {
+  background: #7c3aed !important;
+  border: none !important;
+  color: white !important;
+  border-radius: 12px !important;
+  padding: 6px 14px !important;
+}
+
+.interview-calendar .fc-button:hover {
+  background: #6d28d9 !important;
+}
+
+.interview-calendar .fc-theme-standard td,
+.interview-calendar .fc-theme-standard th,
+.interview-calendar .fc-theme-standard .fc-scrollgrid {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.interview-calendar .fc-daygrid-day {
+  background: rgba(15, 23, 42, 0.55) !important;
+}
+
+.interview-calendar .fc-daygrid-day:hover {
+  background: rgba(30, 41, 59, 0.4) !important;
+}
+
+.interview-calendar .fc-day-today {
+  background: rgba(124, 58, 237, 0.45) !important;
+}
+.interview-calendar .fc-day-today .fc-col-header-cell-cushion,
+.interview-calendar .fc-day-today .fc-daygrid-day-number,
+.interview-calendar .fc-day-today {
+  color: white !important;
+  font-weight: 700;
+}
+
+.interview-calendar .fc-col-header-cell {
+  background: rgba(30, 41, 59, 0.6) !important;
+  padding: 10px 0;
+}
+
+.interview-calendar .fc-event {
+  background: #7c3aed !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 4px;
+}
+
+.interview-calendar .fc-daygrid-day-number {
+  color: #cbd5e1;
+}
+
+.interview-calendar .fc-toolbar {
+  margin-bottom: 1.5rem !important;
+}
+
+.interview-calendar .fc-view-harness {
+  min-height: 700px;
+}
+
+/* Ambient glowing background for dark theme matching the user's reference image */
+html.dark .bg-gradient-to-br.from-slate-900.via-slate-800.to-slate-900,
+html.dark .bg-gradient-to-br.from-\[\#0B1120\].via-\[\#111827\].to-\[\#172554\],
+html.dark .bg-\[\#050816\],
+html.dark .bg-\[\#0B1120\],
+html.dark .bg-\[\#030712\],
+html.dark .bg-\[\#0d1117\] {
+  background: radial-gradient(circle at 12% 12%, #0d225c 0%, #040814 65%, #010206 100%) !important;
+}
+
+/* Sidebar glassmorphism override in dark mode to let ambient glow show through */
+html.dark .bg-gradient-to-b.from-slate-900.via-slate-800.to-slate-900 {
+  background: rgba(3, 7, 18, 0.4) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+/* TopNavbar glassmorphism override in dark mode to let ambient glow show through */
+html.dark .sticky.top-0,
+html.dark .bg-gradient-to-r.from-slate-900\/95.to-slate-800\/95 {
+  background: rgba(3, 7, 18, 0.4) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+/* ========================================== */
+/* Modal Popup & Form Control Theme Overrides */
+/* ========================================== */
+
+/* 1. Modal Backgrounds & Borders */
+html.light .fixed.z-50 .bg-slate-950,
+html.light .fixed.z-50 .bg-\[\#0F172A\],
+html.light .fixed.z-50 .bg-\[\#0a0f1d\],
+html.light .fixed.z-50 .bg-\[\#0B1120\],
+html.light .fixed.z-50 .bg-\[\#030712\],
+html.light .fixed.z-50 .bg-\[\#050816\],
+html.light .fixed.z-50 .bg-\[\#111827\],
+html.light .fixed.z-50 .bg-\[\#0f172a\],
+html.light .fixed.z-50 .bg-\[\#07142b\],
+html.light .fixed.z-50 .bg-slate-900,
+html.light [role="dialog"] .bg-slate-950,
+html.light [role="dialog"] .bg-\[\#0F172A\],
+html.light [role="dialog"] .bg-\[\#0a0f1d\],
+html.light [role="dialog"] .bg-slate-900 {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}
+
+html.dark .fixed.z-50 .bg-slate-950,
+html.dark .fixed.z-50 .bg-\[\#0F172A\],
+html.dark .fixed.z-50 .bg-\[\#0a0f1d\],
+html.dark .fixed.z-50 .bg-\[\#0B1120\],
+html.dark .fixed.z-50 .bg-\[\#030712\],
+html.dark .fixed.z-50 .bg-\[\#050816\],
+html.dark .fixed.z-50 .bg-\[\#111827\],
+html.dark .fixed.z-50 .bg-\[\#0f172a\],
+html.dark .fixed.z-50 .bg-\[\#07142b\],
+html.dark .fixed.z-50 .bg-slate-900,
+html.dark [role="dialog"] .bg-slate-950,
+html.dark [role="dialog"] .bg-\[\#0F172A\],
+html.dark [role="dialog"] .bg-\[\#0a0f1d\],
+html.dark [role="dialog"] .bg-slate-900 {
+  background-color: #0b0f19 !important;
+  background-image: none !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-color: #1e293b !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* 2. Modal Form Controls (Inputs, Textareas, Selects) */
+html.light .fixed.z-50 input:not([type="checkbox"]):not([type="radio"]),
+html.light .fixed.z-50 textarea,
+html.light .fixed.z-50 select,
+html.light [role="dialog"] input:not([type="checkbox"]):not([type="radio"]),
+html.light [role="dialog"] textarea,
+html.light [role="dialog"] select {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light .fixed.z-50 input:not([type="checkbox"]):not([type="radio"]):focus,
+html.light .fixed.z-50 textarea:focus,
+html.light .fixed.z-50 select:focus,
+html.light [role="dialog"] input:not([type="checkbox"]):not([type="radio"]):focus,
+html.light [role="dialog"] textarea:focus,
+html.light [role="dialog"] select:focus {
+  border-color: #3b82f6 !important;
+  background-color: #ffffff !important;
+}
+
+html.dark .fixed.z-50 input:not([type="checkbox"]):not([type="radio"]),
+html.dark .fixed.z-50 textarea,
+html.dark .fixed.z-50 select,
+html.dark [role="dialog"] input:not([type="checkbox"]):not([type="radio"]),
+html.dark [role="dialog"] textarea,
+html.dark [role="dialog"] select {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+html.dark .fixed.z-50 input:not([type="checkbox"]):not([type="radio"]):focus,
+html.dark .fixed.z-50 textarea:focus,
+html.dark .fixed.z-50 select:focus,
+html.dark [role="dialog"] input:not([type="checkbox"]):not([type="radio"]):focus,
+html.dark [role="dialog"] textarea:focus,
+html.dark [role="dialog"] select:focus {
+  border-color: #3b82f6 !important;
+  background-color: #111827 !important;
+}
+
+/* Modal Inner Container Elements styling (like rows or cards inside a modal) */
+html.light .fixed.z-50 .bg-slate-900\/40,
+html.light [role="dialog"] .bg-slate-900\/40 {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+html.dark .fixed.z-50 .bg-slate-900\/40,
+html.dark [role="dialog"] .bg-slate-900\/40 {
+  background-color: rgba(15, 23, 42, 0.6) !important;
+  border-color: #1e293b !important;
+}
+
+/* 3. Dropdowns (Select / Option) - Critical Native Styling Fix */
+select {
+  color-scheme: light dark !important;
+}
+
+/* Dark Theme Native Dropdown & Options Override */
+html.dark select,
+html.dark select option,
+html.dark select.bg-slate-900,
+html.dark select.bg-slate-950 {
+  background-color: #1e293b !important;
+  background-image: none !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+html.dark select option {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+/* Light Theme Native Dropdown & Options Override */
+html.light select,
+html.light select option,
+html.light select.bg-slate-900,
+html.light select.bg-slate-950 {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+/* ================================================ */
+/* Quick Actions Dropdown Portal Theme Overrides    */
+/* ================================================ */
+
+/* The CandidateQuickActions dropdown portals to document.body at z-[9999] */
+html.light .fixed.z-\[9999\].bg-\[\#0f172a\] {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}
+
+html.dark .fixed.z-\[9999\].bg-\[\#0f172a\] {
+  background-color: #0b0f19 !important;
+  background-image: none !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-color: #1e293b !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Quick actions dropdown button hover in light mode - prevent glassmorphism overrides */
+html.light .fixed.z-\[9999\] button:hover {
+  background-color: #f1f5f9 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+html.dark .fixed.z-\[9999\] button:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Quick actions divider line */
+html.light .fixed.z-\[9999\] .border-t.border-white\/5 {
+  border-color: #e2e8f0 !important;
+}
+
+
+

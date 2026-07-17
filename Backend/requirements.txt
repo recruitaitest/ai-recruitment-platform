@@ -1,0 +1,14 @@
+opensearch-py==2.4.2
+qdrant-client==1.7.3
+sentence-transformers==2.7.0  # For generating skill vector embeddings locally
+boto3==1.34.0
+python-docx==1.1.2
+unstructured[pdf]==0.18.32
+spacy
+google-api-python-client==2.115.0
+google-auth==2.27.0
+langchain
+langchain-core
+langgraph
+langchain-google-genai
+prometheus-fastapi-instrumentator==7.0.0

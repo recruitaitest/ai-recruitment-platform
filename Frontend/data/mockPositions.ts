@@ -1,0 +1,51 @@
+import { Position } from "@/types/positon";
+
+export const positions: Position[] = [
+  {
+    id: 1,
+    title: "Senior Frontend Developer",
+    department: "Engineering",
+    location: "Bangalore",
+    type: "Full Time",
+    experience: "4-6 Years",
+    salary: "₹18L - ₹28L",
+    openings: 3,
+    applicants: 124,
+    status: "Open",
+    recruiter: "Sarah Johnson",
+    postedDate: "2026-05-15",
+    skills: ["React", "Next.js", "TypeScript", "Tailwind"],
+  },
+
+  {
+    id: 2,
+    title: "Backend Engineer",
+    department: "Engineering",
+    location: "Hyderabad",
+    type: "Full Time",
+    experience: "3-5 Years",
+    salary: "₹15L - ₹22L",
+    openings: 2,
+    applicants: 87,
+    status: "Open",
+    recruiter: "Michael Lee",
+    postedDate: "2026-05-12",
+    skills: ["Node.js", "PostgreSQL", "Docker"],
+  },
+
+  {
+    id: 3,
+    title: "UI/UX Designer",
+    department: "Design",
+    location: "Remote",
+    type: "Contract",
+    experience: "2-4 Years",
+    salary: "₹10L - ₹16L",
+    openings: 1,
+    applicants: 54,
+    status: "Closed",
+    recruiter: "Emma Wilson",
+    postedDate: "2026-05-10",
+    skills: ["Figma", "UI Design", "Research"],
+  },
+];

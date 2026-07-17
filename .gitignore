@@ -1,0 +1,44 @@
+# IDE & OS
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+.DS_Store
+Thumbs.db
+
+# Executables & Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+minio.windows-amd64*.exe
+
+# Python / Backend
+Backend/venv/
+Backend/__pycache__/
+Backend/*.pyc
+Backend/*.pyo
+Backend/*.pyd
+Backend/.pytest_cache/
+Backend/resume_management.db
+Backend/uploads/
+Backend/.env
+
+# Node.js / Frontend
+Frontend/node_modules/
+Frontend/.next/
+Frontend/out/
+Frontend/build/
+Frontend/.env.local
+Frontend/.env.development.local
+Frontend/.env.test.local
+Frontend/.env.production.local
+Frontend/npm-debug.log*
+Frontend/yarn-debug.log*
+Frontend/yarn-error.log*
+
+# Other specific ignores
+query
