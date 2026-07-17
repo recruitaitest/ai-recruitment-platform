@@ -27,17 +27,21 @@ export default function CopilotPage() {
 
     const [input, setInput] = useState("");
     const [isTyping, setIsTyping] = useState(false);
-    
+
     const ws = useRef<WebSocket | null>(null);
 
     useEffect(() => {
         // Connect to WebSocket
-        const socket = new WebSocket(process.env.NEXT_PUBLIC_API_URL?.replace("http", "ws") || "ws://localhost:8000"/copilot/ws");
+        const wsBase =
+            process.env.NEXT_PUBLIC_API_URL?.replace("http", "ws") ||
+            "ws://localhost:8000";
+
+        const socket = new WebSocket(`${wsBase}/copilot/ws`);
         ws.current = socket;
 
         socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            
+
             if (data.type === "stream") {
                 setMessages((prev) => {
                     const newMessages = [...prev];
@@ -83,15 +87,15 @@ export default function CopilotPage() {
             console.error("WebSocket is not connected.");
             return;
         }
-        
+
         setIsTyping(true);
-        
+
         // Add a placeholder message for the assistant that will be populated by the stream
         setMessages((prev) => [
             ...prev,
             { id: crypto.randomUUID(), role: "assistant", content: "" }
         ]);
-        
+
         ws.current.send(JSON.stringify({ message }));
     };
 
