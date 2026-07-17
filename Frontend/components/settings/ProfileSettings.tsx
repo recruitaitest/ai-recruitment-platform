@@ -78,7 +78,7 @@ export default function ProfileSettings() {
 
             if (profile.profile_photo) {
                 setPhoto(
-                    `http://localhost:8000/${profile.profile_photo}`
+                    `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/${profile.profile_photo}`
                 );
             }
 
@@ -147,7 +147,7 @@ export default function ProfileSettings() {
                 );
 
             setPhoto(
-                `http://localhost:8000/${result.profile_photo}`
+                `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/${result.profile_photo}`
             );
 
             const updatedUser = {

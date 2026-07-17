@@ -16,7 +16,7 @@ export default function CandidateProfileRoute({
             try {
                 const token = localStorage.getItem("token");
                 const response = await fetch(
-                    `http://localhost:8000/candidates/${params.id}`,
+                    `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/candidates/${params.id}`,
                     {
                         headers: { Authorization: `Bearer ${token}` },
                     }
@@ -56,7 +56,7 @@ export default function CandidateProfileRoute({
                     // Resume
                     resume_path: data.resume_path || "",
                     resumeUrl: data.resume_path
-                        ? `http://localhost:8000/${data.resume_path}`
+                        ? `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/${data.resume_path}`
                         : null,
 
                     // Status / stage

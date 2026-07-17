@@ -54,7 +54,7 @@ type SortKey = "name" | "experience" | "company" | "status" | "updatedAt" | "";
 type SortDir = "asc" | "desc";
 
 const PER_PAGE = 8;
-const API = "http://127.0.0.1:8000";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const STATUS_STYLES: Record<Status, string> = {
     Applied: "bg-slate-700/60 text-slate-200 border-slate-600/40",

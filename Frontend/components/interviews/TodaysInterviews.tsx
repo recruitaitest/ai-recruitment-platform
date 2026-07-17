@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Interview } from "@/types/interview";
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function TodaysInterviews() {
     const [interviews, setInterviews] = useState<Interview[]>([]);

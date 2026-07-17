@@ -486,7 +486,7 @@ export function TopNavbar({
               <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-blue-500 to-purple-600">
                 {user?.profile_photo ? (
                   <img
-                    src={`http://localhost:8000/${user.profile_photo}`}
+                    src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/${user.profile_photo}`}
                     alt="Profile"
                     className="h-8 w-8 rounded-full object-cover"
                   />

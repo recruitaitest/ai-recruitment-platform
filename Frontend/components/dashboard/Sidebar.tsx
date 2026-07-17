@@ -403,7 +403,7 @@ export function Sidebar({
                         <div className="flex w-10 flex-shrink-0 items-center justify-center">
                             {user?.profile_photo ? (
                                 <img
-                                    src={`http://localhost:8000/${user.profile_photo}`}
+                                    src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/${user.profile_photo}`}
                                     alt="Profile"
                                     className="h-8 w-8 rounded-full object-cover"
                                 />

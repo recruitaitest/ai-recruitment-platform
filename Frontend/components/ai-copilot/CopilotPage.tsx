@@ -32,7 +32,7 @@ export default function CopilotPage() {
 
     useEffect(() => {
         // Connect to WebSocket
-        const socket = new WebSocket("ws://localhost:8000/copilot/ws");
+        const socket = new WebSocket(process.env.NEXT_PUBLIC_API_URL?.replace("http", "ws") || "ws://localhost:8000"/copilot/ws");
         ws.current = socket;
 
         socket.onmessage = (event) => {
