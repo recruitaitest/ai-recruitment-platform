@@ -7,6 +7,8 @@ unstructured[pdf]==0.18.32
 spacy
 google-api-python-client
 google-auth
+google-auth-oauthlib
+google-auth-httplib2
 langchain
 langchain-core
 langgraph
