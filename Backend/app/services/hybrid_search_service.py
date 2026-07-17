@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func, text
 from app.models.candidate import Candidate
-from app.services.ai_ranking import model, client, _calibrate_score
+from app.services.ai_ranking import client, _calibrate_score
+from app.services.embedding_service import generate_embedding
 
 def hybrid_search(db: Session, query: str, limit: int = 50):
     """
@@ -10,7 +11,7 @@ def hybrid_search(db: Session, query: str, limit: int = 50):
     """
     
     # 1. Semantic Search (Qdrant)
-    vector = model.encode(query, normalize_embeddings=True).tolist()
+    vector = generate_embedding(query)
     qdrant_results = client.search(
         collection_name="candidates",
         query_vector=vector,
