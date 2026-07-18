@@ -55,7 +55,7 @@ export default function PositionLayout() {
             const [positionsResponse, pipelinesResponse] =
                 await Promise.all([
                     fetch(
-                        (process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')) + "/positions/",
+                        (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + "/positions/",
                         {
                             headers: {
 
@@ -65,7 +65,7 @@ export default function PositionLayout() {
                         }
                     ),
                     fetch(
-                        (process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')) + "/pipelines/"
+                        (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + "/pipelines/"
                     ),
                 ]);
 
@@ -305,7 +305,7 @@ export default function PositionLayout() {
                     try {
 
                         const response = await fetch(
-                            `${process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')}/positions/${selectedPosition.id}`,
+                            `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/positions/${selectedPosition.id}`,
                             {
                                 method: "DELETE",
                             }

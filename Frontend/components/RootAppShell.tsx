@@ -28,7 +28,7 @@ export function RootAppShell({ children }: RootAppShellProps) {
     applyTheme(currentTheme);
 
     // Fetch platform name and set title
-    fetch((process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')) + '/admin/settings/public')
+    fetch((process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + '/admin/settings/public')
       .then(res => res.json())
       .then(data => {
         if (data && data.platform_name) {

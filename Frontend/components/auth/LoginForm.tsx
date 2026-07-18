@@ -107,7 +107,7 @@ export function LoginForm() {
       setGeneralError('')
       setLoginMethod('form')
 
-      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')) + '/auth/login', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + '/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -153,7 +153,7 @@ export function LoginForm() {
       setGeneralError('')
       setLoginMethod('form')
 
-      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')) + '/auth/mfa/verify', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + '/auth/mfa/verify', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -329,7 +329,7 @@ export function LoginForm() {
                 return;
               }
 
-              const response = await fetch((process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')) + "/auth/google", {
+              const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + "/auth/google", {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",

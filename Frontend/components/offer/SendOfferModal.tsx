@@ -48,7 +48,7 @@ export default function SendOfferModal({
         formData.append("file", file);
 
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')}/offers/${offerId}/upload-letter`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/offers/${offerId}/upload-letter`, {
                 method: "POST",
                 body: formData,
             });

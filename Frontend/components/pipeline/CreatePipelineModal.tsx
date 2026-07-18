@@ -22,11 +22,11 @@ export default function CreatePipelineModal({
     const [saving, setSaving] = useState(false);
     useEffect(() => {
 
-        fetch((process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')) + "/candidates/")
+        fetch((process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + "/candidates/")
             .then((res) => res.json())
             .then((data) => setCandidates(data));
 
-        fetch((process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')) + "/positions/")
+        fetch((process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + "/positions/")
             .then((res) => res.json())
             .then((data) => setPositions(data));
 
@@ -46,7 +46,7 @@ export default function CreatePipelineModal({
         try {
 
             const response = await fetch(
-                (process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')) + "/pipelines/",
+                (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + "/pipelines/",
                 {
                     method: "POST",
 

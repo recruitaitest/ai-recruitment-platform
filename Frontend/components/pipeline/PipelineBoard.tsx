@@ -114,7 +114,7 @@ export default function PipelineBoard() {
         try {
 
             const response = await fetch(
-                (process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')) + "/pipelines/"
+                (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + "/pipelines/"
             );
 
             if (!response.ok) {
@@ -225,7 +225,7 @@ export default function PipelineBoard() {
 
         try {
             const response = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')}/pipelines/${candidateId}`,
+                `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/pipelines/${candidateId}`,
                 {
                     method: "PUT",
                     headers: {
@@ -324,7 +324,7 @@ export default function PipelineBoard() {
 
         try {
             const response = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')}/pipelines/${candidateId}`,
+                `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/pipelines/${candidateId}`,
                 {
                     method: "DELETE",
                 }
@@ -355,7 +355,7 @@ export default function PipelineBoard() {
             setLoading(true);
             for (const candidate of stageCandidates) {
                 const response = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')}/pipelines/${candidate.id}`,
+                    `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/pipelines/${candidate.id}`,
                     {
                         method: "DELETE",
                     }
@@ -545,7 +545,7 @@ export default function PipelineBoard() {
     const submitNote = async (note: string) => {
         if (!noteCandidate) return;
         try {
-            await fetch(`${process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')}/pipelines/${noteCandidate.id}`, {
+            await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/pipelines/${noteCandidate.id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
