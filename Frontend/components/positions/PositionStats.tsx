@@ -24,10 +24,10 @@ export default function PositionStats() {
             const [positionsResponse, pipelinesResponse] =
                 await Promise.all([
                     fetch(
-                        "http://127.0.0.1:8000/positions/stats"
+                        (process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')) + "/positions/stats"
                     ),
                     fetch(
-                        "http://127.0.0.1:8000/pipelines/"
+                        (process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')) + "/pipelines/"
                     ),
                 ]);
 

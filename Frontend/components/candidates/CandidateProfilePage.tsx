@@ -203,7 +203,7 @@ function isStage(v: unknown): v is Stage {
 }
 
 function resolveResume(c: Candidate): string | null {
-    if (c.id && c.resume_path) return `http://127.0.0.1:8000/candidates/${c.id}/resume`;
+    if (c.id && c.resume_path) return `${process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')}/candidates/${c.id}/resume`;
     if (c.resumeUrl) return c.resumeUrl;
     return null;
 }

@@ -71,7 +71,7 @@ export default function DashboardPage() {
   const fetchTopSkills = async () => {
     try {
       const response = await fetch(
-        'http://127.0.0.1:8000/analytics/top-skills'
+        (process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')) + '/analytics/top-skills'
       )
       if (!response.ok) throw new Error('Failed to fetch top skills')
       const data = await response.json()
@@ -116,7 +116,7 @@ export default function DashboardPage() {
 
   const fetchUpcomingInterviews = async (candidatesList?: any[], positionsList?: any[], pipelineList?: any[]) => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/interviews/')
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')) + '/interviews/')
       if (!response.ok) throw new Error('Failed to fetch interviews')
       const interviews = await response.json()
 
@@ -162,11 +162,11 @@ export default function DashboardPage() {
 
     try {
       const [dashResponse, pipelineResponse, candidatesResponse, positionsResponse, pipelineRecordsResponse] = await Promise.all([
-        fetch('http://127.0.0.1:8000/analytics/dashboard'),
-        fetch('http://127.0.0.1:8000/analytics/pipeline-stats'),
-        fetch('http://127.0.0.1:8000/candidates/'),
-        fetch('http://127.0.0.1:8000/positions/'),
-        fetch('http://127.0.0.1:8000/pipelines/'),
+        fetch((process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')) + '/analytics/dashboard'),
+        fetch((process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')) + '/analytics/pipeline-stats'),
+        fetch((process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')) + '/candidates/'),
+        fetch((process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')) + '/positions/'),
+        fetch((process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')) + '/pipelines/'),
       ])
 
       if (!dashResponse.ok || !pipelineResponse.ok) {

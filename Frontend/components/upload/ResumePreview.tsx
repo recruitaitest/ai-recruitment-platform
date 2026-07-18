@@ -22,7 +22,7 @@ export default function ResumePreview({
                 </div>
 
                 <a
-                    href={`http://127.0.0.1:8000/candidates/${candidate?.id}/resume`}
+                    href={`${process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')}/candidates/${candidate?.id}/resume`}
                     download
                     className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-2 text-sm hover:bg-slate-800 transition"
                 >
@@ -35,7 +35,7 @@ export default function ResumePreview({
 
                 {candidate?.resume_path ? (
                     <iframe
-                        src={`http://127.0.0.1:8000/candidates/${candidate.id}/resume`}
+                        src={`${process.env.NEXT_PUBLIC_API_URL || (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')}/candidates/${candidate.id}/resume`}
                         className="h-full w-full rounded-xl"
                     />
                 ) : (
