@@ -45,7 +45,7 @@ export function CandidateDrawer({
 
                 {/* Skills */}
                 <div className="flex flex-wrap gap-2">
-                    {(candidate.skills?.split(",") || []).map(
+                    {(candidate.skills || []).map(
                         (s: string) => (
                             <span
                                 key={s.trim()}
