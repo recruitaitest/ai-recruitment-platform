@@ -618,13 +618,13 @@ export default function InterviewLayout() {
                     setSelectedInterview(null);
                 }}
                 interviewId={selectedInterview?.id}
-                candidateName={selectedInterview?.candidate_name ?? ""}
-                positionTitle={selectedInterview?.position_title ?? ""}
-                interviewType={selectedInterview?.interview_type ?? ""}
+                candidateName={(selectedInterview as any)?.candidate_name ?? ""}
+                positionTitle={(selectedInterview as any)?.position_title ?? ""}
+                interviewType={(selectedInterview as any)?.interview_type ?? ""}
                 onFeedbackSubmitted={async (recommendation: string) => {
-                    const interviewType = (selectedInterview?.interview_type || "").toLowerCase();
+                    const interviewType = ((selectedInterview as any)?.interview_type || "").toLowerCase();
                     const candidateForSchedule = candidates.find(
-                        (c: any) => Number(c.id) === Number(selectedInterview?.candidate_id)
+                        (c: any) => Number(c.id) === Number((selectedInterview as any)?.candidate_id)
                     );
 
                     setOpenFeedbackModal(false);
@@ -650,8 +650,8 @@ export default function InterviewLayout() {
                         setOfferCandidate({
                             candidate_id: candidateForSchedule.id,
                             name: candidateForSchedule.full_name,
-                            position_id: pipelineForCandidate?.position_id || selectedInterview?.position_id,
-                            role: pipelineForCandidate?.position_title || selectedInterview?.position_title,
+                            position_id: pipelineForCandidate?.position_id || (selectedInterview as any)?.position_id,
+                            role: pipelineForCandidate?.position_title || (selectedInterview as any)?.position_title,
                             id: pipelineForCandidate?.id
                         });
                         setOfferModalOpen(true);

@@ -17,7 +17,7 @@ export async function connectMailbox() {
     return handleResponse(response);
 }
 
-export async function disconnectMailbox() {
+export async function disconnectMailbox(accountId?: number) {
     const response = await fetch(`${API_BASE_URL}/mailbox/disconnect`, {
         method: "POST",
     });
@@ -25,7 +25,7 @@ export async function disconnectMailbox() {
     return handleResponse(response);
 }
 
-export async function syncMailbox() {
+export async function syncMailbox(accountId?: number) {
     const response = await fetch(`${API_BASE_URL}/mailbox/sync`, {
         method: "POST",
     });

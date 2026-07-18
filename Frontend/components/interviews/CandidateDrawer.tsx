@@ -182,10 +182,10 @@ export default function CandidateDrawer({
                         </h3>
 
                         <div className="mt-5 space-y-4">
-                            {(interview?.mode === 'Online' || interview?.interview_mode === 'Online' || interview?.type === 'video' || interview?.interview_type === 'video') ? (
+                            {((interview as any)?.mode === 'Online' || (interview as any)?.interview_mode === 'Online' || (interview as any)?.type === 'video' || (interview as any)?.interview_type === 'video') ? (
                                 <button
                                     onClick={() => {
-                                        const link = interview.meeting_link || interview.location || 'https://meet.google.com/new';
+                                        const link = (interview as any).meeting_link || (interview as any).location || 'https://meet.google.com/new';
                                         window.open(link.startsWith('http') ? link : `https://${link}`, '_blank');
                                     }}
                                     className="w-full rounded-2xl bg-blue-600 px-5 py-3 text-sm font-medium text-white hover:bg-blue-500 transition"

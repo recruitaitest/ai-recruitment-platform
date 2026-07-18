@@ -1,6 +1,6 @@
 import { Candidate } from "@/types/Candidate";
 
-export const mockCandidates: Candidate[] = [
+export const mockCandidates: any[] = [
 {
 id: 1,
 name: "Sophia Johnson",

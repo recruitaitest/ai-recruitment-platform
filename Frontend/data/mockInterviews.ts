@@ -35,7 +35,7 @@ export const candidates: Candidate[] = [
   },
 ];
 
-export const interviews: Interview[] = [
+export const interviews: any[] = [
   {
     id: 1,
     candidateId: 1,

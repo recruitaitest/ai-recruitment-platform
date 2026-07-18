@@ -208,7 +208,7 @@ function resolveResume(c: Candidate): string | null {
     return null;
 }
 
-function isDocxResume(c: Candidate): boolean {
+function isDocxResume(c: any): boolean {
     const fname = (c.original_filename || c.resume_path || '').toLowerCase();
     return fname.endsWith('.docx');
 }
@@ -677,7 +677,7 @@ export default function CandidateProfilePage({ candidate: raw }: { candidate?: C
     };
 
 
-    const c = useMemo<Required<Candidate>>(() => ({
+    const c = useMemo<any>(() => ({
         name: "Unknown Candidate",
         title: "No title available",
         initials: "NA",
@@ -825,7 +825,7 @@ export default function CandidateProfilePage({ candidate: raw }: { candidate?: C
                         <div style={S.sideCard}>
                             <div style={S.sideLabel}>Top Skills</div>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                                {c.skills.slice(0, 8).map((s, i) => (
+                                {c.skills.slice(0, 8).map((s: any, i: number) => (
                                     <span key={i} style={{ fontSize: "0.72rem", padding: "4px 10px", borderRadius: 999, background: "var(--bg-icon)", border: "1px solid rgba(255,255,255,0.07)" }}>{s}</span>
                                 ))}
                             </div>
