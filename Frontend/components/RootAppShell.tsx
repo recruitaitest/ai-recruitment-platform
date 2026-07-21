@@ -21,8 +21,14 @@ const PUBLIC_ROUTES = new Set([
 
 export function RootAppShell({ children }: RootAppShellProps) {
   const pathname = usePathname()
+  const router = useRouter()
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      console.log("🚀 [DEBUG] NEXT_PUBLIC_API_URL is:", process.env.NEXT_PUBLIC_API_URL);
+      console.log("🚀 [DEBUG] Evaluated URL:", (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'));
+    }
+
     // Initialize theme on mount
     const currentTheme = getTheme();
     applyTheme(currentTheme);
