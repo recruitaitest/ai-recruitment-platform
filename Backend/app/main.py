@@ -70,11 +70,17 @@ Instrumentator().instrument(app).expose(app)
 import os
 from fastapi.middleware.cors import CORSMiddleware
 
+env_origins = os.getenv("CORS_ORIGINS", "")
 origins = [
-    origin.strip()
-    for origin in os.getenv("CORS_ORIGINS", "").split(",")
-    if origin.strip()
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://ai-recruitment-platform-pi.vercel.app",
+    "https://ai-recruitment-platform.vercel.app"
 ]
+if env_origins:
+    origins.extend([origin.strip() for origin in env_origins.split(",") if origin.strip()])
+
+origins = list(set(origins))
 
 app.add_middleware(
     CORSMiddleware,
