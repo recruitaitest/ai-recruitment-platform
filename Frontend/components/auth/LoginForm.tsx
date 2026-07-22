@@ -22,6 +22,11 @@ import { loginSchema } from '@/lib/validation'
 import type { LoginFormData } from '@/lib/validation'
 import { AuthService } from '@/lib/auth'
 
+console.log(
+  "API URL:",
+  process.env.NEXT_PUBLIC_API_URL
+);
+
 export function LoginForm() {
   const router = useRouter()
 
