@@ -1,7 +1,7 @@
 'use client'
 
 import { ReactNode, useEffect } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname,useRouter } from 'next/navigation'
 import { AppLayout } from './AppLayout'
 import { getTheme, applyTheme } from '@/utils/theme'
 import { Toaster } from 'sonner'
