@@ -32,7 +32,7 @@ from app.models.email_attachment import EmailAttachment
 from app.models.mailbox_sync_history import MailboxSyncHistory
 
 # ── Create all tables ───────────────────────────────────────────────────────
-# Base.metadata.create_all(bind=engine) # Removed for Alembic migrations
+Base.metadata.create_all(bind=engine)
 
 # ── Routers ─────────────────────────────────────────────────────────────────
 from app.routes.semantic_search import router as semantic_search_router
