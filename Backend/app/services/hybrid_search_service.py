@@ -12,12 +12,12 @@ def hybrid_search(db: Session, query: str, limit: int = 50):
     
     # 1. Semantic Search (Qdrant)
     vector = generate_embedding(query)
-    qdrant_results = client.search(
+    qdrant_results = client.query_points(
         collection_name="candidates",
-        query_vector=vector,
+        query=vector,
         limit=limit,
         with_payload=True
-    )
+    ).points
     
     # Map candidate_id -> Semantic Rank
     semantic_ranks = {}

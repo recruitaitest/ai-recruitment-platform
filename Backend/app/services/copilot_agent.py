@@ -58,13 +58,13 @@ def get_candidate_details_tool(candidate_id: int) -> str:
         db.close()
 
 # 2. Configure the LLM
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 import os
 
-llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
+llm = ChatGroq(
+    model="llama-3.3-70b-versatile",
     temperature=0.2,
-    api_key=os.getenv("GOOGLE_API_KEY", "dummy_key_to_prevent_crash")
+    api_key=os.getenv("GROQ_API_KEY", "dummy_key_to_prevent_crash")
 )
 
 # 3. Create the LangGraph Agent

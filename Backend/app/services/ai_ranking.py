@@ -33,12 +33,12 @@ def get_semantic_score(position_text: str, candidate_id: int):
 
     vector = generate_embedding(position_text)
 
-    results = client.search(
+    results = client.query_points(
         collection_name="candidates",
-        query_vector=vector,
+        query=vector,
         limit=200,
         with_payload=True
-    )
+    ).points
 
     for result in results:
         if result.payload.get("candidate_id") == candidate_id:

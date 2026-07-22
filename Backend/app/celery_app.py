@@ -1,4 +1,9 @@
 import os
+from dotenv import load_dotenv
+
+# Load environment variables for local celery worker
+load_dotenv()
+
 from celery import Celery
 
 # Assuming Redis is running on localhost

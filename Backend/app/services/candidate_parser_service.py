@@ -8,7 +8,8 @@ from pathlib import Path
 def create_candidate_from_resume(
     file_path: str,
     db: Session,
-    original_filename: str = None
+    original_filename: str = None,
+    commit: bool = True
 ):
     # We will create a temporary "Processing" candidate.
     # The actual data will be populated by the Celery worker.
@@ -23,9 +24,11 @@ def create_candidate_from_resume(
     )
 
     db.add(candidate)
-    db.commit()
-    db.refresh(candidate)
-    
-    process_resume_task.apply_async(kwargs={"candidate_id": candidate.id, "file_path": file_path}, countdown=1)
+    if commit:
+        db.commit()
+        db.refresh(candidate)
+        process_resume_task.apply_async(kwargs={"candidate_id": candidate.id, "file_path": file_path}, countdown=1)
+    else:
+        db.flush()
 
     return candidate

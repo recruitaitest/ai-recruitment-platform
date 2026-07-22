@@ -8,11 +8,14 @@ host = os.getenv("OPENSEARCH_HOST", "localhost")
 port = int(os.getenv("OPENSEARCH_PORT", 9200))
 auth = (os.getenv("OPENSEARCH_USER", "admin"), os.getenv("OPENSEARCH_PASS", "admin"))
 
+# Determine if we should use SSL. Localhost typically doesn't use SSL for OpenSearch.
+is_local = host == "localhost" or host == "127.0.0.1"
+
 opensearch_client = OpenSearch(
     hosts=[{'host': host, 'port': port}],
     http_auth=auth,
-    use_ssl=True,
-    verify_certs=True,
+    use_ssl=not is_local,
+    verify_certs=not is_local,
     ssl_show_warn=False
 )
 

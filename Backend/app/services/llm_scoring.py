@@ -3,7 +3,7 @@ import json
 import logging
 from typing import Optional
 from pydantic import BaseModel, Field
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from app.models.candidate import Candidate
 from app.models.position import Position
 
@@ -13,17 +13,17 @@ class CandidateScore(BaseModel):
 
 def score_candidate_with_llm(candidate: Candidate, position: Position) -> CandidateScore:
     """
-    Scores a candidate against a position using Gemini AI.
+    Scores a candidate against a position using Groq AI.
     Returns a structured score (0-100) and reasoning.
     """
-    api_key = os.getenv("GOOGLE_API_KEY")
+    api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
-        logging.warning("GOOGLE_API_KEY not found. Skipping LLM scoring.")
+        logging.warning("GROQ_API_KEY not found. Skipping LLM scoring.")
         return CandidateScore(score=0.0, reasoning="API Key not found.")
         
     try:
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
+        llm = ChatGroq(
+            model="llama-3.3-70b-versatile",
             temperature=0.0,
             api_key=api_key
         )
@@ -52,20 +52,20 @@ Calculate a fair score out of 100. Provide clear reasoning.
         result = structured_llm.invoke(prompt)
         return result
     except Exception as e:
-        logging.error(f"Error during Gemini scoring: {e}")
+        logging.error(f"Error during Groq scoring: {e}")
         return CandidateScore(score=0.0, reasoning=f"Scoring failed due to an error: {str(e)}")
 
 def score_candidate_advanced_search_with_llm(candidate: Candidate, job_title: str, skills: list[str], exp_hint: str, location: str) -> CandidateScore:
     """
-    Scores a candidate against a generic search query using Gemini AI.
+    Scores a candidate against a generic search query using Groq AI.
     """
-    api_key = os.getenv("GOOGLE_API_KEY")
+    api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         return CandidateScore(score=0.0, reasoning="API Key not found.")
         
     try:
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
+        llm = ChatGroq(
+            model="llama-3.3-70b-versatile",
             temperature=0.0,
             api_key=api_key
         )
@@ -95,5 +95,5 @@ Calculate a fair score out of 100. Provide clear reasoning.
 """
         return structured_llm.invoke(prompt)
     except Exception as e:
-        logging.error(f"Error during Gemini search scoring: {e}")
+        logging.error(f"Error during Groq search scoring: {e}")
         return CandidateScore(score=0.0, reasoning=f"Scoring failed due to an error: {str(e)}")

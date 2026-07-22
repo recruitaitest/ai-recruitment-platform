@@ -15,51 +15,53 @@ client = QdrantClient(
 
 
 def index_candidate(candidate):
+    try:
+        skills_text = candidate.skills or ""
+        
+        # Repeat skills 3x to amplify their embedding weight.
+        # Resume text carries a lot of noise; repeating skills explicitly
+        # ensures the model encodes them as primary signal.
+        repeated_skills = " ".join([skills_text] * 3)
 
-    skills_text = candidate.skills or ""
-    
-    # Repeat skills 3x to amplify their embedding weight.
-    # Resume text carries a lot of noise; repeating skills explicitly
-    # ensures the model encodes them as primary signal.
-    repeated_skills = " ".join([skills_text] * 3)
+        candidate_text = f"""
+        Professional Profile:
+        Name: {candidate.full_name or ""}
 
-    candidate_text = f"""
-    Professional Profile:
-    Name: {candidate.full_name or ""}
+        Technical Skills: {repeated_skills}
 
-    Technical Skills: {repeated_skills}
+        Education Background: {candidate.education or ""}
 
-    Education Background: {candidate.education or ""}
+        Work Experience: {candidate.experience or 0} years of professional experience.
 
-    Work Experience: {candidate.experience or 0} years of professional experience.
+        Location: {candidate.location or ""}
 
-    Location: {candidate.location or ""}
+        Resume Summary:
+        {candidate.resume_text or ""}
+        """
 
-    Resume Summary:
-    {candidate.resume_text or ""}
-    """
+        embedding = generate_embedding(candidate_text)
 
-
-    embedding = generate_embedding(candidate_text)
-
-    client.upsert(
-        collection_name="candidates",
-        points=[
-            PointStruct(
-                id=candidate.id,
-                vector=embedding,
-                payload={
-                    "candidate_id": candidate.id,
-                    "full_name": candidate.full_name,
-                    "email": candidate.email,
-                    "skills": candidate.skills,
-                    "location": candidate.location,
-                    "experience": candidate.experience,
-                    "resume_text": candidate.resume_text,
-                }
-            )
-        ]
-    )
+        client.upsert(
+            collection_name="candidates",
+            points=[
+                PointStruct(
+                    id=candidate.id,
+                    vector=embedding,
+                    payload={
+                        "candidate_id": candidate.id,
+                        "full_name": candidate.full_name,
+                        "email": candidate.email,
+                        "skills": candidate.skills,
+                        "location": candidate.location,
+                        "experience": candidate.experience,
+                        "resume_text": candidate.resume_text,
+                    }
+                )
+            ]
+        )
+        print(f"Successfully indexed candidate {candidate.id} to Qdrant.")
+    except Exception as e:
+        print(f"Warning: Failed to index to Qdrant: {e}")
 
 def delete_candidate_index(candidate_id: int):
     try:

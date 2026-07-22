@@ -4,7 +4,7 @@ import spacy
 from unstructured.partition.auto import partition
 from pydantic import BaseModel, Field
 from typing import List, Optional
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 import logging
 
 # Load spaCy model lazily
@@ -41,7 +41,7 @@ def extract_text_from_resume(file_path: str) -> str:
         return ""
 
 # ---------------------------------------------------------------------------
-# LLM Extraction using Gemini
+# LLM Extraction using Groq
 # ---------------------------------------------------------------------------
 
 class CandidateDetails(BaseModel):
@@ -55,17 +55,17 @@ class CandidateDetails(BaseModel):
 
 def extract_details_with_gemini(text: str) -> CandidateDetails | None:
     """
-    Extracts all candidate details in one pass using Gemini with structured output.
+    Extracts all candidate details in one pass using Groq with structured output.
     Returns None if the LLM call fails.
     """
-    api_key = os.getenv("GOOGLE_API_KEY")
+    api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
-        logging.warning("GOOGLE_API_KEY not found. Skipping Gemini extraction.")
+        logging.warning("GROQ_API_KEY not found. Skipping Groq extraction.")
         return None
         
     try:
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
+        llm = ChatGroq(
+            model="llama-3.3-70b-versatile",
             temperature=0.0,
             api_key=api_key
         )
@@ -74,11 +74,11 @@ def extract_details_with_gemini(text: str) -> CandidateDetails | None:
         
         prompt = (
             "You are an expert ATS resume parser. Extract the following details from the resume text provided below.\n\n"
-            f"--- RESUME TEXT ---\n{text[:15000]}" # Limiting to avoid massive context issues, though flash handles 1M+
+            f"--- RESUME TEXT ---\n{text[:15000]}" # Limiting to avoid massive context issues
         )
         
         result = structured_llm.invoke(prompt)
         return result
     except Exception as e:
-        logging.error(f"Error during Gemini extraction: {e}")
+        logging.error(f"Error during Groq extraction: {e}")
         return None

@@ -3,6 +3,7 @@
 import MessageBubble from "./MessageBubble";
 import CandidateCard from "./CandidateCard";
 import TypingIndicator from "./TypingIndicator";
+import ThinkingIndicator from "./ThinkingIndicator";
 import { useEffect, useRef } from "react";
 
 interface Candidate {
@@ -23,11 +24,13 @@ interface Message {
 interface ChatSectionProps {
     messages: Message[];
     isTyping: boolean;
+    isThinking?: boolean;
 }
 
 export default function ChatSection({
     messages,
     isTyping,
+    isThinking,
 }: ChatSectionProps) {
     const bottomRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
@@ -37,7 +40,7 @@ export default function ChatSection({
                 block: "end",
             });
         }, 100);
-    }, [messages, isTyping]);
+    }, [messages, isTyping, isThinking]);
     return (
         <div className="h-full overflow-y-auto px-6 py-6">
             <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-8">
@@ -45,11 +48,13 @@ export default function ChatSection({
                 {messages.map((message) => (
                     <div key={message.id}>
 
-                        {/* Reusable Message Bubble */}
-                        <MessageBubble
-                            role={message.role as "user" | "assistant"}
-                            content={message.content}
-                        />
+                        {/* Only show message bubble if there's content */}
+                        {message.content && (
+                            <MessageBubble
+                                role={message.role as "user" | "assistant"}
+                                content={message.content}
+                            />
+                        )}
 
                         {/* Candidate Card */}
                         {message.candidates && (
@@ -72,7 +77,8 @@ export default function ChatSection({
 
                     </div>
                 ))}
-                {isTyping && <TypingIndicator />}
+                {isThinking && <ThinkingIndicator />}
+                {isTyping && !isThinking && <TypingIndicator />}
                 <div ref={bottomRef} />
             </div>
         </div>

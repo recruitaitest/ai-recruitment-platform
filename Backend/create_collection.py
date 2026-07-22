@@ -19,7 +19,7 @@ if "candidates" in collections:
 client.create_collection(
     collection_name="candidates",
     vectors_config=VectorParams(
-        size=768,          # all-mpnet-base-v2 produces 768-dim vectors
+        size=3072,          # gemini-embedding-2 produces 3072-dim vectors
         distance=Distance.COSINE
     )
 )

@@ -26,11 +26,12 @@ def semantic_search(request: SemanticSearchRequest):
 
     query_vector = generate_embedding(request.query)
 
-    results = client.search(
+    results = client.query_points(
         collection_name="candidates",
-        query_vector=query_vector,
-        limit=10
-    )
+        query=query_vector,
+        limit=10,
+        with_payload=True
+    ).points
 
     candidates = []
 

@@ -242,6 +242,7 @@ class GmailProvider(BaseMailProvider):
         emails_processed = 0
         attachments_processed = 0
         candidates_created = 0
+        candidates_to_process = []
 
         for message in messages:
             try:
@@ -331,8 +332,10 @@ class GmailProvider(BaseMailProvider):
                                 candidate = create_candidate_from_resume(
                                     file_path=local_path,
                                     db=db,
+                                    commit=False
                                 )
                                 candidates_created += 1
+                                candidates_to_process.append((candidate.id, local_path))
 
                                 email.candidate_id = candidate.id
                                 email.processing_status = "Processed"
@@ -353,18 +356,7 @@ class GmailProvider(BaseMailProvider):
                 synced += 1
 
             except Exception as e:
-                # db.rollback() detaches the `history` object from the session.
-                # We must save its ID before the rollback and re-fetch it after
-                # so we can still persist the Failed status.
-                history_id = history.id
-                db.rollback()
                 print(f"Failed to process {message['id']}: {e}")
-                # Re-fetch history after rollback so it is re-attached to the session
-                history = (
-                    db.query(MailboxSyncHistory)
-                    .filter(MailboxSyncHistory.id == history_id)
-                    .first()
-                )
                 if history:
                     history.completed_at = datetime.now(timezone.utc)
                     history.status = "Failed"
@@ -373,6 +365,12 @@ class GmailProvider(BaseMailProvider):
                     history.attachments_processed = attachments_processed
                     history.candidates_created = candidates_created
                     db.commit()
+                    
+                    # Trigger any successfully saved candidates so far
+                    from app.tasks.resume_tasks import process_resume_task
+                    for c_id, f_path in candidates_to_process:
+                        process_resume_task.apply_async(kwargs={"candidate_id": c_id, "file_path": f_path}, countdown=1)
+                    candidates_to_process.clear()
                 continue
 
         account.last_sync = datetime.now(timezone.utc)
@@ -387,6 +385,12 @@ class GmailProvider(BaseMailProvider):
         history.candidates_created = candidates_created
 
         db.commit()
+
+        # Trigger all remaining Celery tasks now that everything is committed
+        from app.tasks.resume_tasks import process_resume_task
+        for c_id, f_path in candidates_to_process:
+            process_resume_task.apply_async(kwargs={"candidate_id": c_id, "file_path": f_path}, countdown=1)
+        candidates_to_process.clear()
 
         return {
             "synced": synced,

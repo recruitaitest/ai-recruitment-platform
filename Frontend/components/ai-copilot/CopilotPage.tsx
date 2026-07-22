@@ -27,6 +27,7 @@ export default function CopilotPage() {
 
     const [input, setInput] = useState("");
     const [isTyping, setIsTyping] = useState(false);
+    const [isThinking, setIsThinking] = useState(false);
 
     const ws = useRef<WebSocket | null>(null);
 
@@ -43,42 +44,57 @@ export default function CopilotPage() {
             const data = JSON.parse(event.data);
 
             if (data.type === "stream") {
+                setIsThinking(false);
                 setMessages((prev) => {
                     const newMessages = [...prev];
                     const lastMsg = newMessages[newMessages.length - 1];
                     if (lastMsg && lastMsg.role === "assistant") {
-                        lastMsg.content += data.content;
+                        newMessages[newMessages.length - 1] = {
+                            ...lastMsg,
+                            content: lastMsg.content + data.content
+                        };
                     }
                     return newMessages;
                 });
             } else if (data.type === "tool_start") {
+                // Show thinking animation instead of text
+                setIsThinking(true);
+                // Clear the assistant message so the final answer starts fresh
                 setMessages((prev) => {
                     const newMessages = [...prev];
                     const lastMsg = newMessages[newMessages.length - 1];
                     if (lastMsg && lastMsg.role === "assistant") {
-                        lastMsg.content = `*(Using tool: ${data.tool_name})*...\n\n`;
+                        newMessages[newMessages.length - 1] = {
+                            ...lastMsg,
+                            content: ""
+                        };
                     }
                     return newMessages;
                 });
+            } else if (data.type === "tool_end") {
+                // Tool finished, keep thinking until stream starts
             } else if (data.type === "done") {
                 setIsTyping(false);
+                setIsThinking(false);
             } else if (data.type === "error") {
                 setMessages((prev) => {
                     const newMessages = [...prev];
                     const lastMsg = newMessages[newMessages.length - 1];
                     if (lastMsg && lastMsg.role === "assistant") {
-                        lastMsg.content = "Sorry, I encountered an error: " + data.content;
+                        newMessages[newMessages.length - 1] = {
+                            ...lastMsg,
+                            content: "Sorry, I encountered an error: " + data.content
+                        };
                     }
                     return newMessages;
                 });
                 setIsTyping(false);
+                setIsThinking(false);
             }
         };
 
         return () => {
-            if (socket.readyState === WebSocket.OPEN) {
-                socket.close();
-            }
+            socket.close();
         };
     }, []);
 
@@ -194,6 +210,7 @@ export default function CopilotPage() {
                             <ChatSection
                                 messages={messages}
                                 isTyping={isTyping}
+                                isThinking={isThinking}
                             />
                         </div>
 

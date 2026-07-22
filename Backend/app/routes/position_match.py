@@ -130,6 +130,8 @@ def match_candidates(
             "candidate_id": candidate.id,
             "full_name": candidate.full_name,
             "email": candidate.email,
+            "location": candidate.location,
+            "status": candidate.status,
             "experience": candidate.experience,
             "skills": candidate.skills,
 
