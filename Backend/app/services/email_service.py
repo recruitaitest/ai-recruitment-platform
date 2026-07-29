@@ -71,8 +71,14 @@ async def send_verification_email(
 
     fm = FastMail(conf)
 
-    await fm.send_message(message)
-    
+    try:
+        import asyncio
+        await asyncio.wait_for(fm.send_message(message), timeout=5.0)
+    except asyncio.TimeoutError:
+        print(f"Timeout while sending verification email to {email}")
+    except Exception as e:
+        print(f"Error sending verification email to {email}: {e}")
+        
 async def send_password_reset_email(
     email: str,
     name: str,
@@ -133,8 +139,14 @@ async def send_password_reset_email(
 
     fm = FastMail(conf)
 
-    await fm.send_message(message)
-
+    try:
+        import asyncio
+        await asyncio.wait_for(fm.send_message(message), timeout=5.0)
+    except asyncio.TimeoutError:
+        print(f"Timeout while sending reset email to {email}")
+    except Exception as e:
+        print(f"Error sending reset email to {email}: {e}")
+        
 async def send_mfa_email(
     email: str,
     name: str,
