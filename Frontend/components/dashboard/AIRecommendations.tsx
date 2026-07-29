@@ -13,13 +13,15 @@ interface Recommendation {
 }
 
 interface AIRecommendationsProps {
- recommendations?: Recommendation[]
- itemVariants?: any
+  recommendations?: Recommendation[]
+  itemVariants?: any
+  isLoading?: boolean
 }
 
 export function AIRecommendations({
- recommendations,
- itemVariants,
+  recommendations,
+  itemVariants,
+  isLoading = false,
 }: AIRecommendationsProps) {
  const defaultRecommendations: Recommendation[] = [
  {
@@ -48,7 +50,7 @@ export function AIRecommendations({
  },
  ]
 
- const data = recommendations || defaultRecommendations
+  const data = recommendations && recommendations.length > 0 ? recommendations : defaultRecommendations
 
  const defaultItemVariants = {
  hidden: { opacity: 0, y: 20 },
@@ -102,12 +104,18 @@ export function AIRecommendations({
             transition={{ duration: 0.8, repeat: Infinity }}
             className="w-1.5 h-1.5 rounded-full bg-ai-accent"
           />
-          <span>AI Inference active</span>
+          <span>{isLoading ? 'Generating Insights...' : 'AI Inference active'}</span>
         </div>
       </div>
 
       <div className="space-y-3">
-        {data.map((rec, index) => (
+        {isLoading ? (
+          <div className="space-y-3">
+             {[1, 2, 3].map((i) => (
+                <div key={i} className="p-4 rounded-lg bg-secondary-surface border border-border animate-pulse h-28"></div>
+             ))}
+          </div>
+        ) : data.map((rec, index) => (
           <motion.div
             key={rec.id}
             initial={{ opacity: 0, x: -20 }}

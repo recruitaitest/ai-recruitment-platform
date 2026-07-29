@@ -139,8 +139,8 @@ app.include_router(
 
 app.include_router(
     notification_router,
-    prefix="/notifications",
-    tags=["Notifications"]
+    prefix="/notification-settings",
+    tags=["Notification Settings"]
 )
 
 # ── Users ────────────────────────────────────────────────────────────────────

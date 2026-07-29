@@ -4,7 +4,7 @@ export const getNotifications = async (
     userId: number
 ) => {
     const response = await api.get(
-        `/notifications/${userId}`
+        `/notification-settings/${userId}`
     );
 
     return response.data;
@@ -15,7 +15,7 @@ export const updateNotifications = async (
     data: any
 ) => {
     const response = await api.put(
-        `/notifications/${userId}`,
+        `/notification-settings/${userId}`,
         data
     );
 

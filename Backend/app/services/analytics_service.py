@@ -143,3 +143,81 @@ class AnalyticsService:
                 results.append({"role": pos.title, "days": 0})
                 
         return results
+
+    @staticmethod
+    def generate_ai_recommendations(db: Session):
+        from app.services.llm_factory import get_chat_model
+        import json
+        
+        # Gather basic stats
+        total_candidates = db.query(Candidate).count()
+        total_positions = db.query(Position).count()
+        total_interviews = db.query(Interview).count()
+        
+        pipeline_stats = AnalyticsService.pipeline_statistics(db)
+        top_skills_dict = AnalyticsService.top_skills(db)
+        top_5_skills = list(top_skills_dict.items())[:5]
+        
+        prompt = f"""
+        You are an expert technical recruiter AI. Analyze the following live system statistics from our recruitment database:
+        - Total Candidates: {total_candidates}
+        - Open Positions: {total_positions}
+        - Scheduled Interviews: {total_interviews}
+        - Pipeline Distribution: {pipeline_stats}
+        - Top Candidate Skills: {top_5_skills}
+        
+        Generate exactly 3 actionable, insightful recommendations for the HR/Recruitment team based on these exact metrics. 
+        Do not use generic recommendations; tie them strictly to the numbers provided.
+        
+        You MUST return the result strictly as a JSON array containing EXACTLY 3 objects. 
+        Each object must have exactly these keys:
+        - "id": a unique string (e.g. "1", "2", "3")
+        - "title": A short, punchy title (max 5 words)
+        - "description": A 1-2 sentence explanation of why this recommendation matters based on the provided stats.
+        - "action": A 2-3 word call to action (e.g. "Review Pipeline", "Schedule Interviews")
+        - "impact": A short estimated impact (e.g. "Save 5 hours/week", "Clear bottleneck")
+        - "priority": Must be exactly one of: "high", "medium", or "low"
+        
+        Example format:
+        [
+            {{"id": "1", "title": "Example", "description": "Example desc", "action": "Do something", "impact": "High impact", "priority": "high"}}
+        ]
+        
+        Return ONLY the JSON array, no markdown blocks, no other text.
+        """
+        
+        try:
+            model = get_chat_model(temperature=0.7, json_mode=True)
+            response = model.invoke(prompt)
+            
+            content = response.content.strip()
+            if content.startswith("```json"):
+                content = content[7:]
+            if content.endswith("```"):
+                content = content[:-3]
+            if content.startswith("```"):
+                content = content[3:]
+                
+            parsed = json.loads(content.strip())
+            
+            # Ensure it is a list
+            if isinstance(parsed, dict):
+                # If it returned {"recommendations": [...]}, extract it
+                if "recommendations" in parsed and isinstance(parsed["recommendations"], list):
+                    parsed = parsed["recommendations"]
+                else:
+                    parsed = [parsed]
+            
+            return parsed
+        except Exception as e:
+            print(f"Error generating AI recommendations: {e}")
+            return [
+                 {
+                 "id": "1",
+                 "title": "System Check Required",
+                 "description": "Failed to connect to the AI model to generate insights. Check backend logs.",
+                 "action": "View Logs",
+                 "impact": "Restore AI functionality",
+                 "priority": "high",
+                 }
+            ]

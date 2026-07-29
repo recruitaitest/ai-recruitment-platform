@@ -11,8 +11,10 @@ import {
 import SkillTags from "./SkillTags";
 
 import { useSemanticSearchStore } from "@/store/semanticSearchStore";
+import { useRouter } from "next/navigation";
 
 export default function QuickPreviewDrawer() {
+  const router = useRouter();
 
  const {
  selectedCandidate,
@@ -167,18 +169,6 @@ export default function QuickPreviewDrawer() {
  <p className="text-sm whitespace-pre-line text-muted-foreground">
  {selectedCandidate.education || "Not Available"}
  </p>
- </div>
-
- {/* Actions */}
- <div className="flex flex-wrap gap-3 pt-4">
-
- <button className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-hover active:scale-[0.97] focus-ring">
- View Full Profile
- </button>
-
- <button className="rounded-xl border px-4 py-2 text-sm font-medium transition hover:bg-muted">
- Download Resume
- </button>
  </div>
  </div>
  </div>

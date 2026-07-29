@@ -10,6 +10,11 @@ def dashboard_analytics(db: Session = Depends(get_db)):
     return AnalyticsService.dashboard_analytics(db)
 
 
+@router.get("/ai-recommendations")
+def ai_recommendations(db: Session = Depends(get_db)):
+    return AnalyticsService.generate_ai_recommendations(db)
+
+
 @router.get("/pipeline-stats")
 def pipeline_statistics(db: Session = Depends(get_db)):
     return AnalyticsService.pipeline_statistics(db)

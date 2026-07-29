@@ -31,6 +31,8 @@ export default function DashboardPage() {
     const [dashboardError, setDashboardError] = useState<string | null>(null)
     const [candidates, setCandidates] = useState<any[]>([])
     const [positions, setPositions] = useState<any[]>([])
+    const [aiRecommendations, setAiRecommendations] = useState<any[]>([])
+    const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(true)
 
     useEffect(() => {
         // Check if user is authenticated
@@ -45,6 +47,7 @@ export default function DashboardPage() {
 
             setAuthorized(true)
             fetchDashboardData()
+            fetchAIRecommendations()
         }
 
         // Get user info
@@ -153,6 +156,23 @@ export default function DashboardPage() {
             setUpcomingInterviews(upcoming || [])
         } catch (error) {
             console.error('Error fetching interviews:', error)
+        }
+    }
+
+    const fetchAIRecommendations = async () => {
+        setIsLoadingRecommendations(true)
+        try {
+            const response = await fetch(
+                (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + '/analytics/ai-recommendations'
+            )
+            if (response.ok) {
+                const data = await response.json()
+                setAiRecommendations(data)
+            }
+        } catch (error) {
+            console.error('Error fetching AI recommendations:', error)
+        } finally {
+            setIsLoadingRecommendations(false)
         }
     }
 
@@ -477,7 +497,7 @@ export default function DashboardPage() {
 
                     {/* Bottom Row */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <AIRecommendations itemVariants={itemVariants} />
+                        <AIRecommendations itemVariants={itemVariants} recommendations={aiRecommendations} isLoading={isLoadingRecommendations} />
 
                         <motion.div
                             variants={itemVariants}
