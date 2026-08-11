@@ -16,6 +16,7 @@ import {
  BarChart3,
  FileText,
  Mail,
+ Bot,
 } from "lucide-react";
 
 import { motion } from "framer-motion";
@@ -23,6 +24,7 @@ import {
  getNotifications,
  getUnreadNotifications,
  markNotificationAsRead,
+ getAISettings,
 } from "@/services/adminService";
 
 import { useState, useEffect, useRef } from "react";
@@ -98,6 +100,8 @@ export default function AdminNavbar() {
  const [showNotifications, setShowNotifications] = useState(false);
  const [notifications, setNotifications] = useState<any[]>([]);
  const [unreadCount, setUnreadCount] = useState(0);
+ const [activeAIProvider, setActiveAIProvider] = useState<string | null>(null);
+ const canManageAI = hasPermission("ai_settings.manage", true);
 
  const notificationsRef = useRef<HTMLDivElement>(null);
  const profileRef = useRef<HTMLDivElement>(null);
@@ -105,6 +109,24 @@ export default function AdminNavbar() {
 
  useEffect(() => {
  fetchNotifications();
+
+ const fetchAI = async () => {
+   try {
+     const settings = await getAISettings();
+     if (settings?.active_provider) {
+       setActiveAIProvider(settings.active_provider);
+     }
+   } catch { /* silent */ }
+ };
+ fetchAI();
+
+ // Update badge immediately when user saves from the AI settings page
+ const handleAIChange = (e: Event) => {
+   const detail = (e as CustomEvent).detail;
+   if (detail?.provider) setActiveAIProvider(detail.provider);
+ };
+ window.addEventListener('ai-provider-changed', handleAIChange);
+ return () => window.removeEventListener('ai-provider-changed', handleAIChange);
  }, []);
 
  const fetchNotifications = async () => {
@@ -227,7 +249,38 @@ export default function AdminNavbar() {
  </div>
 
         {/* Right Section: Controls Grouped Together */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+
+          {/* AI Agent Badge */}
+          {activeAIProvider && (
+          canManageAI ? (
+          <button
+          onClick={() => router.push('/admin/ai')}
+          title="Click to change AI provider"
+          className="flex items-center gap-2 rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-600 dark:text-violet-400 transition-all hover:bg-violet-500/20 hover:border-violet-400/50 hover:scale-[1.02] active:scale-95"
+          >
+          <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500" />
+          </span>
+          <Bot className="w-3.5 h-3.5" />
+          AI Agent: {activeAIProvider}
+          </button>
+          ) : (
+          <div
+          title="Active AI Agent"
+          className="flex items-center gap-2 rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-600 dark:text-violet-400"
+          >
+          <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500" />
+          </span>
+          <Bot className="w-3.5 h-3.5" />
+          AI Agent: {activeAIProvider}
+          </div>
+          )
+          )}
+
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}

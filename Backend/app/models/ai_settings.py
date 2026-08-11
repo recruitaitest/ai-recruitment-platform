@@ -2,7 +2,8 @@ from sqlalchemy import (
     Column,
     Integer,
     Boolean,
-    String
+    String,
+    JSON
 )
 
 from app.database import Base
@@ -15,6 +16,16 @@ class AISettings(Base):
     id = Column(
         Integer,
         primary_key=True
+    )
+
+    active_provider = Column(
+        String,
+        default="Ollama"
+    )
+
+    provider_config = Column(
+        JSON,
+        nullable=True
     )
 
     semantic_search = Column(

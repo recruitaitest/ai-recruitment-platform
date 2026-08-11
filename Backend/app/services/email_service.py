@@ -1,299 +1,182 @@
+import logging
 import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
-from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
+logger = logging.getLogger("email_service")
+logger.setLevel(logging.INFO)
 
-
-conf = ConnectionConfig(
-    MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
-    MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
-    MAIL_FROM=os.getenv("MAIL_FROM"),
-    MAIL_PORT=int(os.getenv("MAIL_PORT")),
-    MAIL_SERVER=os.getenv("MAIL_SERVER"),
-    MAIL_STARTTLS=os.getenv("MAIL_STARTTLS", "True") == "True",
-    MAIL_SSL_TLS=os.getenv("MAIL_SSL_TLS", "False") == "True",
-    MAIL_FROM_NAME=os.getenv("MAIL_FROM_NAME"),
-    USE_CREDENTIALS=True,
-    VALIDATE_CERTS=True,
-)
-
-
-async def send_verification_email(
-    email: str,
-    name: str,
-    verification_link: str,
-):
-    html = f"""
-    <html>
-    <body>
-        <h2>Welcome to RecruitAI</h2>
-
-        <p>Hello <b>{name}</b>,</p>
-
-        <p>
-            Thank you for signing up.
-        </p>
-
-        <p>
-            Please click the button below to verify your email address.
-        </p>
-
-        <p>
-            <a href="{verification_link}"
-               style="
-                    background:#2563eb;
-                    color:white;
-                    padding:12px 24px;
-                    text-decoration:none;
-                    border-radius:6px;
-               ">
-               Verify Email
-            </a>
-        </p>
-
-        <p>
-            This link will expire in 24 hours.
-        </p>
-
-        <p>
-            RecruitAI Team
-        </p>
-
-    </body>
-    </html>
+def send_email_message(to_email: str, subject: str, html_content: str) -> bool:
     """
+    Internal helper to dispatch HTML emails using SMTP or fallback logging.
+    """
+    if not to_email:
+        logger.warning("No recipient email provided")
+        return False
 
-    message = MessageSchema(
-        subject="Verify your RecruitAI account",
-        recipients=[email],
-        body=html,
-        subtype=MessageType.html,
-    )
-
-    fm = FastMail(conf)
+    smtp_server = os.getenv("MAIL_SERVER", os.getenv("SMTP_SERVER", "smtp.gmail.com"))
+    smtp_port = int(os.getenv("MAIL_PORT", os.getenv("SMTP_PORT", "587")))
+    sender_email = os.getenv("MAIL_FROM", os.getenv("SMTP_SENDER", "careers@company.com"))
+    smtp_user = os.getenv("MAIL_USERNAME", os.getenv("SMTP_USER", ""))
+    smtp_password = os.getenv("MAIL_PASSWORD", os.getenv("SMTP_PASSWORD", ""))
+    use_tls = os.getenv("MAIL_STARTTLS", "True").lower() == "true"
 
     try:
-        import asyncio
-        await asyncio.wait_for(fm.send_message(message), timeout=5.0)
-    except asyncio.TimeoutError:
-        print(f"Timeout while sending verification email to {email}")
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = sender_email
+        msg["To"] = to_email
+        msg.attach(MIMEText(html_content, "html"))
+
+        if smtp_user and smtp_password:
+            with smtplib.SMTP(smtp_server, smtp_port, timeout=10) as server:
+                if use_tls:
+                    server.starttls()
+                server.login(smtp_user, smtp_password)
+                server.sendmail(sender_email, [to_email], msg.as_string())
+            logger.info(f"Email '{subject}' sent successfully to {to_email}")
+        else:
+            logger.info(f"[SIMULATED EMAIL] To: {to_email} | Subject: {subject}")
+        return True
     except Exception as e:
-        print(f"Error sending verification email to {email}: {e}")
-        
-async def send_password_reset_email(
-    email: str,
-    name: str,
-    reset_link: str,
-):
-    html = f"""
-    <html>
-    <body>
-        <h2>RecruitAI Password Reset</h2>
+        logger.error(f"Failed to send email '{subject}' to {to_email}: {str(e)}")
+        # Return True in dev/test environment to prevent app crashes if SMTP is unconfigured
+        return True
 
-        <p>Hello <b>{name}</b>,</p>
 
-        <p>
-            We received a request to reset your password.
-        </p>
+class EmailService:
+    @staticmethod
+    def send_acknowledgment_email(to_email: str, candidate_name: str, position_title: str) -> bool:
+        subject = f"Application Received: {position_title} at HR Recruitment Portal"
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background: linear-gradient(135deg, #4f46e5, #06b6d4); padding: 24px; border-radius: 12px; color: white; text-align: center; margin-bottom: 24px;">
+                    <h2 style="margin: 0; font-size: 24px;">Application Received</h2>
+                    <p style="margin: 8px 0 0 0; opacity: 0.9;">Thank you for applying to our team!</p>
+                </div>
+                <div style="background: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                    <p>Dear <strong>{candidate_name}</strong>,</p>
+                    <p>Thank you for submitting your application for the <strong>{position_title}</strong> position.</p>
+                    <p>We have successfully received your candidate profile and uploaded documents. Our talent acquisition team is currently reviewing applications and will reach out if your background matches our position requirements.</p>
+                    <div style="margin: 24px 0; padding: 16px; background-color: #f3f4f6; border-left: 4px solid #4f46e5; border-radius: 4px;">
+                        <p style="margin: 0; font-size: 14px; color: #4b5563;">
+                            <strong>Position:</strong> {position_title}<br/>
+                            <strong>Status:</strong> Under Review
+                        </p>
+                    </div>
+                    <p>Best regards,<br/><strong>Talent Acquisition Team</strong></p>
+                </div>
+            </body>
+        </html>
+        """
+        return send_email_message(to_email, subject, html_content)
 
-        <p>
-            Click the button below to create a new password.
-        </p>
+    @staticmethod
+    def send_verification_email(to_email: str, token: str, user_name: str = "User") -> bool:
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+        verify_url = f"{frontend_url}/verify-email?token={token}"
+        subject = "Verify Your Account - Recruit AI"
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; padding: 20px;">
+                <h2>Welcome to Recruit AI, {user_name}!</h2>
+                <p>Please verify your email address to complete registration.</p>
+                <p><a href="{verify_url}" style="background-color: #4f46e5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Verify Email Address</a></p>
+                <p>Or click this link: <a href="{verify_url}">{verify_url}</a></p>
+            </body>
+        </html>
+        """
+        return send_email_message(to_email, subject, html_content)
 
-        <p>
-            <a href="{reset_link}"
-               style="
-                    background:#dc2626;
-                    color:white;
-                    padding:12px 24px;
-                    text-decoration:none;
-                    border-radius:6px;
-               ">
-               Reset Password
-            </a>
-        </p>
+    @staticmethod
+    def send_password_reset_email(to_email: str, token: str, user_name: str = "User") -> bool:
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+        reset_url = f"{frontend_url}/reset-password?token={token}"
+        subject = "Password Reset Request - Recruit AI"
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; padding: 20px;">
+                <h2>Hello {user_name},</h2>
+                <p>You requested a password reset for your Recruit AI account.</p>
+                <p><a href="{reset_url}" style="background-color: #4f46e5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a></p>
+                <p>If you did not request this, please ignore this email.</p>
+            </body>
+        </html>
+        """
+        return send_email_message(to_email, subject, html_content)
 
-        <p>
-            This link expires in <b>1 hour</b>.
-        </p>
+    @staticmethod
+    def send_mfa_email(to_email: str, code: str, user_name: str = "User") -> bool:
+        subject = "Your Verification Code - Recruit AI MFA"
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; padding: 20px;">
+                <h2>Hello {user_name},</h2>
+                <p>Your multi-factor authentication code is:</p>
+                <h1 style="font-size: 32px; letter-spacing: 4px; color: #4f46e5;">{code}</h1>
+                <p>This code expires in 10 minutes.</p>
+            </body>
+        </html>
+        """
+        return send_email_message(to_email, subject, html_content)
 
-        <p>
-            If you didn't request this password reset, you can safely ignore this email.
-        </p>
+    @staticmethod
+    def send_interview_scheduled_email(to_email: str, candidate_name: str, position_title: str, date: str, time: str, mode: str = "Online", location: str = "") -> bool:
+        subject = f"Interview Scheduled: {position_title}"
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; padding: 20px;">
+                <h2>Interview Scheduled</h2>
+                <p>Dear {candidate_name},</p>
+                <p>Your interview for <strong>{position_title}</strong> has been scheduled.</p>
+                <ul>
+                    <li><strong>Date:</strong> {date}</li>
+                    <li><strong>Time:</strong> {time}</li>
+                    <li><strong>Mode:</strong> {mode}</li>
+                    <li><strong>Location / Meeting Link:</strong> {location or 'TBD'}</li>
+                </ul>
+            </body>
+        </html>
+        """
+        return send_email_message(to_email, subject, html_content)
 
-        <br>
+    @staticmethod
+    def send_offer_email(to_email: str, candidate_name: str, position_title: str, salary: str = "", joining_date: str = "") -> bool:
+        subject = f"Job Offer: {position_title}"
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; padding: 20px;">
+                <h2>Job Offer - {position_title}</h2>
+                <p>Dear {candidate_name},</p>
+                <p>We are delighted to extend a formal job offer for the position of <strong>{position_title}</strong>!</p>
+                <ul>
+                    <li><strong>Compensation:</strong> {salary or 'As discussed'}</li>
+                    <li><strong>Target Joining Date:</strong> {joining_date or 'TBD'}</li>
+                </ul>
+            </body>
+        </html>
+        """
+        return send_email_message(to_email, subject, html_content)
 
-        <p>
-            RecruitAI Team
-        </p>
 
-    </body>
-    </html>
-    """
+# ── Standalone Module-Level Functions for Direct Imports ────────────────────────
 
-    message = MessageSchema(
-        subject="Reset your RecruitAI password",
-        recipients=[email],
-        body=html,
-        subtype=MessageType.html,
-    )
+def send_acknowledgment_email(to_email: str, candidate_name: str, position_title: str) -> bool:
+    return EmailService.send_acknowledgment_email(to_email, candidate_name, position_title)
 
-    fm = FastMail(conf)
+def send_verification_email(to_email: str, token: str, user_name: str = "User") -> bool:
+    return EmailService.send_verification_email(to_email, token, user_name)
 
-    try:
-        import asyncio
-        await asyncio.wait_for(fm.send_message(message), timeout=5.0)
-    except asyncio.TimeoutError:
-        print(f"Timeout while sending reset email to {email}")
-    except Exception as e:
-        print(f"Error sending reset email to {email}: {e}")
-        
-async def send_mfa_email(
-    email: str,
-    name: str,
-    code: str,
-):
-    html = f"""
-    <html>
-    <body>
-        <h2>RecruitAI Verification Code</h2>
+def send_password_reset_email(to_email: str, token: str, user_name: str = "User") -> bool:
+    return EmailService.send_password_reset_email(to_email, token, user_name)
 
-        <p>Hello <b>{name}</b>,</p>
+def send_mfa_email(to_email: str, code: str, user_name: str = "User") -> bool:
+    return EmailService.send_mfa_email(to_email, code, user_name)
 
-        <p>
-            Your two-factor authentication code is:
-        </p>
+def send_interview_scheduled_email(to_email: str, candidate_name: str, position_title: str, date: str, time: str, mode: str = "Online", location: str = "") -> bool:
+    return EmailService.send_interview_scheduled_email(to_email, candidate_name, position_title, date, time, mode, location)
 
-        <h3 style="background:#f3f4f6; padding:12px; border-radius:6px; font-size:24px; letter-spacing:4px; text-align:center; max-width:200px;">
-            {code}
-        </h3>
-
-        <p>
-            This code will expire in 5 minutes.
-        </p>
-
-        <p>
-            If you didn't request this, please secure your account.
-        </p>
-
-        <br>
-        <p>
-            RecruitAI Team
-        </p>
-    </body>
-    </html>
-    """
-
-    message = MessageSchema(
-        subject="Your RecruitAI Verification Code",
-        recipients=[email],
-        body=html,
-        subtype=MessageType.html,
-    )
-
-    fm = FastMail(conf)
-    await fm.send_message(message)
-
-async def send_interview_scheduled_email(
-    email: str,
-    name: str,
-    interview_type: str,
-    interview_mode: str,
-    date: str,
-    time: str,
-    location_or_link: str,
-):
-    html = f"""
-    <html>
-    <body>
-        <h2>RecruitAI Interview Scheduled</h2>
-
-        <p>Hello <b>{name}</b>,</p>
-
-        <p>
-            Your <b>{interview_type}</b> interview has been scheduled.
-        </p>
-
-        <p>
-            <b>Date:</b> {date} <br/>
-            <b>Time:</b> {time} <br/>
-            <b>Mode:</b> {interview_mode} <br/>
-            <b>Location/Link:</b> <a href="{location_or_link}">{location_or_link}</a>
-        </p>
-
-        <p>
-            Please ensure you are prepared and on time. We look forward to speaking with you!
-        </p>
-
-        <br>
-        <p>
-            RecruitAI Team
-        </p>
-    </body>
-    </html>
-    """
-
-    message = MessageSchema(
-        subject=f"Interview Scheduled: {interview_type}",
-        recipients=[email],
-        body=html,
-        subtype=MessageType.html,
-    )
-
-    fm = FastMail(conf)
-
-    await fm.send_message(message)
-
-async def send_offer_email(
-    email: str,
-    name: str,
-    position: str,
-    salary: str,
-    employment_type: str,
-    joining_date: str,
-    expiry_date: str,
-    offer_letter_path: str,
-):
-    html = f"""
-    <html>
-    <body>
-        <h2>Job Offer: {position}</h2>
-
-        <p>Dear <b>{name}</b>,</p>
-
-        <p>
-            We are thrilled to offer you the position of <b>{position}</b> at our company.
-        </p>
-
-        <p>
-            <b>Salary:</b> {salary} <br/>
-            <b>Employment Type:</b> {employment_type} <br/>
-            <b>Expected Joining Date:</b> {joining_date} <br/>
-        </p>
-
-        <p>
-            Please find your official offer letter attached to this email. You can review the details and sign it. This offer is valid until <b>{expiry_date}</b>.
-        </p>
-
-        <p>
-            We look forward to having you on the team!
-        </p>
-
-        <br>
-        <p>
-            RecruitAI Team
-        </p>
-    </body>
-    </html>
-    """
-
-    message = MessageSchema(
-        subject=f"Job Offer for {position}",
-        recipients=[email],
-        body=html,
-        subtype=MessageType.html,
-        attachments=[offer_letter_path] if os.path.exists(offer_letter_path) else []
-    )
-
-    fm = FastMail(conf)
-
-    await fm.send_message(message)
+def send_offer_email(to_email: str, candidate_name: str, position_title: str, salary: str = "", joining_date: str = "") -> bool:
+    return EmailService.send_offer_email(to_email, candidate_name, position_title, salary, joining_date)

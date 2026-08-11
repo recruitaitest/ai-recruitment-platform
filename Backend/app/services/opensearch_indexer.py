@@ -21,36 +21,42 @@ opensearch_client = OpenSearch(
 
 INDEX_NAME = "candidates"
 
-def init_opensearch():
-    if not opensearch_client.indices.exists(index=INDEX_NAME):
-        index_body = {
-            "settings": {
-                "index": {
-                    "number_of_shards": 1,
-                    "number_of_replicas": 0
-                }
-            },
-            "mappings": {
-                "properties": {
-                    "id": {"type": "integer"},
-                    "full_name": {"type": "text"},
-                    "email": {"type": "keyword"},
-                    "phone": {"type": "keyword"},
-                    "skills": {"type": "text"},
-                    "education": {"type": "text"},
-                    "company": {"type": "text"},
-                    "location": {"type": "text"},
-                    "experience": {"type": "integer"},
-                    "status": {"type": "keyword"},
-                    "resume_text": {"type": "text"}
+def init_opensearch() -> bool:
+    try:
+        if not opensearch_client.indices.exists(index=INDEX_NAME):
+            index_body = {
+                "settings": {
+                    "index": {
+                        "number_of_shards": 1,
+                        "number_of_replicas": 0
+                    }
+                },
+                "mappings": {
+                    "properties": {
+                        "id": {"type": "integer"},
+                        "full_name": {"type": "text"},
+                        "email": {"type": "keyword"},
+                        "phone": {"type": "keyword"},
+                        "skills": {"type": "text"},
+                        "education": {"type": "text"},
+                        "company": {"type": "text"},
+                        "location": {"type": "text"},
+                        "experience": {"type": "integer"},
+                        "status": {"type": "keyword"},
+                        "resume_text": {"type": "text"}
+                    }
                 }
             }
-        }
-        opensearch_client.indices.create(index=INDEX_NAME, body=index_body)
+            opensearch_client.indices.create(index=INDEX_NAME, body=index_body)
+        return True
+    except Exception as e:
+        print(f"Warning: OpenSearch cluster not reachable at port {port}: {e}")
+        return False
 
 def index_candidate_to_opensearch(candidate: Candidate):
     try:
-        init_opensearch()
+        if not init_opensearch():
+            return
         
         document = {
             "id": candidate.id,

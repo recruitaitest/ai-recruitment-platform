@@ -68,7 +68,19 @@ export function RootAppShell({ children }: RootAppShellProps) {
     };
   }, []);
 
-  if (PUBLIC_ROUTES.has(pathname) || pathname.startsWith('/admin')) {
+  const isPortalOrCareer = pathname.startsWith('/careers') || pathname.startsWith('/portal')
+  const isPublicAuthRoute = PUBLIC_ROUTES.has(pathname)
+
+  if (isPortalOrCareer) {
+    return (
+      <>
+        {children}
+        <Toaster richColors position="top-right" theme="dark" />
+      </>
+    )
+  }
+
+  if (isPublicAuthRoute || pathname.startsWith('/admin')) {
     return (
       <>
         {children}

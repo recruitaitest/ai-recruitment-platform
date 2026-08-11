@@ -9,6 +9,7 @@ import { X } from "lucide-react";
 import { toast } from "sonner";
 
 import { createOffer } from "@/services/offerService";
+import AIOfferRiskGauge from "@/components/ai/AIOfferRiskGauge";
 
 interface Props {
  open: boolean;
@@ -298,6 +299,10 @@ export default function CreateOfferModal({
 
  )}
 
+ <div className="mt-4">
+   <AIOfferRiskGauge offeredCtc={parseFloat(salary) || 1200000} />
+ </div>
+
  </div>
 
  {/* Employment Type */}
@@ -413,53 +418,53 @@ export default function CreateOfferModal({
  </div>
  </div>
 
- {/* Footer */}
+  <div className="flex items-center justify-between border-t border-border px-6 py-5">
+    <button
+      type="button"
+      onClick={async () => {
+        if (!candidateId || !joiningDate || !salary) {
+          toast.error("Please fill Salary and Joining Date first to auto-generate offer letter.");
+          return;
+        }
+        try {
+          const { generateOfferLetterApi } = await import("@/services/automationService");
+          const res = await generateOfferLetterApi({
+            candidate_id: candidateId,
+            position_title: positionTitle || "Software Engineer",
+            offered_ctc: parseFloat(salary.replace(/[^0-9.]/g, "")) || 1200000,
+            joining_date: joiningDate
+          });
+          setNotes(res.offer_letter_markdown);
+          toast.success("✨ Offer Letter generated and attached to notes!");
+        } catch (e) {
+          toast.error("Failed to auto-generate offer letter.");
+        }
+      }}
+      className="inline-flex items-center gap-1.5 px-4 py-3 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 text-indigo-400 font-semibold text-xs hover:bg-indigo-500/20 transition cursor-pointer"
+    >
+      📄 Auto-Generate Offer Letter
+    </button>
 
- <div className="flex items-center justify-end gap-4 border-t border-border px-6 py-5">
+    <div className="flex items-center gap-3">
+      <button
+        onClick={() => {
+          resetForm();
+          onClose();
+        }}
+        className="rounded-2xl border border-border px-5 py-3 text-secondary hover:bg-secondary-surface transition"
+      >
+        Cancel
+      </button>
 
- <button
- onClick={() => {
-
- resetForm();
-
- onClose();
-
- }}
- className="
- rounded-2xl
- border
- border-border
- px-5
- py-3
- text-secondary
- hover:bg-secondary-surface
- transition
- "
- >
- Cancel
- </button>
-
- <button
- onClick={handleCreate}
- disabled={loading}
- className="
- rounded-2xl
- bg-violet-600
- px-6
- py-3
- text-white
- transition
- hover:bg-violet-500
- disabled:cursor-not-allowed
- disabled:opacity-60
- "
- >
- {loading
- ? "Creating..."
- : "Create Draft"}
- </button>
-
- </div>
+      <button
+        onClick={handleCreate}
+        disabled={loading}
+        className="rounded-2xl bg-violet-600 px-6 py-3 text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60 font-semibold text-sm shadow-md"
+      >
+        {loading ? "Creating..." : "Create Draft"}
+      </button>
+    </div>
+  </div>
 
  </motion.div>
 

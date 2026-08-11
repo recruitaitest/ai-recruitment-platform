@@ -17,6 +17,7 @@ import EditOfferModal from "../offer/EditOfferModal";
 import AddNoteModal from "./AddNoteModal";
 import CalendarModal from "./CalendarModal";
 import ConfirmScreeningModal from "./ConfirmScreeningModal";
+import { BulkStageModal } from "../candidates/BulkStageModal";
 import { getInterviews } from "@/services/interviewService"; // ✅ Fix casing
 import { getOffers, updateOfferStatus } from "@/services/offerService";
 import {
@@ -94,6 +95,81 @@ export default function PipelineBoard() {
  const [noteModalOpen, setNoteModalOpen] = useState(false);
  const [noteCandidate, setNoteCandidate] = useState<any>(null);
 
+ const [bulkStageOpen, setBulkStageOpen] = useState(false);
+ const [bulkLoading, setBulkLoading] = useState(false);
+ const [selectedCardIds, setSelectedCardIds] = useState<Set<string>>(new Set());
+
+ const handleToggleSelectCandidate = (id: string) => {
+   setSelectedCardIds((prev) => {
+     const next = new Set(prev);
+     if (next.has(id)) next.delete(id);
+     else next.add(id);
+     return next;
+   });
+ };
+
+  const handleSelectAllInStage = (candidateIds: string[]) => {
+    setSelectedCardIds((prev) => {
+      const next = new Set(prev);
+      const allSelected = candidateIds.length > 0 && candidateIds.every((id) => next.has(id));
+      if (allSelected) {
+        candidateIds.forEach((id) => next.delete(id));
+      } else {
+        candidateIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const handleConfirmBulkStage = async (targetStage: string) => {
+    const targetCandidates = candidates.filter((c) => selectedCardIds.has(c.id));
+    if (targetCandidates.length === 0) {
+      setError("Please select at least one candidate first.");
+      return;
+    }
+
+    const validCandidates: any[] = [];
+    const invalidCandidates: any[] = [];
+
+    targetCandidates.forEach((c) => {
+      const currentIdx = stages.indexOf(c.stage);
+      const targetIdx = stages.indexOf(targetStage);
+      const isRestore = c.stage === "Rejected" && targetStage === "Applied";
+      const isReject = targetStage === "Rejected";
+      const isNextStage = targetIdx === currentIdx + 1;
+
+      if (isRestore || isReject || isNextStage) {
+        validCandidates.push(c);
+      } else {
+        invalidCandidates.push(c);
+      }
+    });
+
+    if (validCandidates.length === 0) {
+      setError(`Selected candidate(s) cannot move directly to "${targetStage}". Every candidate must progress step-by-step through each stage in order.`);
+      setTimeout(() => setError(null), 4000);
+      return;
+    }
+
+    setBulkLoading(true);
+    try {
+      await Promise.all(
+        validCandidates.map((c) => updateCandidateStage(c.id, targetStage))
+      );
+      if (invalidCandidates.length > 0) {
+        setSuccessMsg(`Bulk moved ${validCandidates.length} candidate(s) to "${targetStage}". Skipped ${invalidCandidates.length} candidate(s) that were not in the preceding stage.`);
+      } else {
+        setSuccessMsg(`Bulk moved ${validCandidates.length} candidate(s) to "${targetStage}" stage`);
+      }
+      setSelectedCardIds(new Set());
+      setBulkStageOpen(false);
+    } catch {
+      setError("Failed to bulk move candidates");
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
  useEffect(() => {
  fetchPipelines();
  }, []);
@@ -114,7 +190,7 @@ export default function PipelineBoard() {
  try {
 
  const response = await fetch(
- (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + "/pipelines/"
+ (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + "/pipelines"
  );
 
  if (!response.ok) {
@@ -202,19 +278,40 @@ export default function PipelineBoard() {
  );
  }, [searchQuery, candidates]);
 
- const updateCandidateStage = async (
- candidateId: string,
- newStage: string
- ) => {
- const updatedCandidate = candidates.find(
- (candidate) => candidate.id === candidateId
- );
+  const updateCandidateStage = async (
+  candidateId: string,
+  newStage: string
+  ) => {
+  const updatedCandidate = candidates.find(
+  (candidate) => candidate.id === candidateId
+  );
 
- if (!updatedCandidate) return;
- if (updatedCandidate.stage === newStage) return;
+  if (!updatedCandidate) return;
+  if (updatedCandidate.stage === newStage) return;
 
- // Optimistic update
- const previousStage = updatedCandidate.stage;
+  // Prevent moving candidates backward or skipping stages (must be immediately next stage, Rejected, or Restore)
+  const currentIdx = stages.indexOf(updatedCandidate.stage);
+  const targetIdx = stages.indexOf(newStage);
+  const isRestore = updatedCandidate.stage === "Rejected" && newStage === "Applied";
+  const isReject = newStage === "Rejected";
+  const isNextStage = targetIdx === currentIdx + 1;
+
+  if (!isRestore && !isReject && !isNextStage) {
+    if (currentIdx !== -1 && targetIdx !== -1 && targetIdx < currentIdx) {
+      setError(
+        `Cannot move ${updatedCandidate.name} backwards from "${updatedCandidate.stage}" to "${newStage}".`
+      );
+    } else {
+      setError(
+        `Cannot skip stages for ${updatedCandidate.name}. Candidates must progress step-by-step to the next stage ("${stages[currentIdx + 1] || "N/A"}").`
+      );
+    }
+    setTimeout(() => setError(null), 4000);
+    return;
+  }
+
+  // Optimistic update
+  const previousStage = updatedCandidate.stage;
  setCandidates((prevCandidates) =>
  prevCandidates.map((candidate) =>
  candidate.id === candidateId
@@ -343,37 +440,70 @@ export default function PipelineBoard() {
  }
  };
 
- const handleClearStage = async (stage: string) => {
- const stageCandidates = candidates.filter(c => c.stage === stage);
- if (stageCandidates.length === 0) return;
- const confirmed = window.confirm(`Are you sure you want to clear all ${stageCandidates.length} candidate(s) in the ${stage} stage?`);
- if (!confirmed) return;
+  const handleClearStage = async (stage: string) => {
+  const stageCandidates = candidates.filter(c => c.stage === stage);
+  if (stageCandidates.length === 0) return;
+  const confirmed = window.confirm(`Are you sure you want to clear all ${stageCandidates.length} candidate(s) in the ${stage} stage?`);
+  if (!confirmed) return;
 
- setCandidates((prev) => prev.filter((c) => c.stage !== stage));
+  setCandidates((prev) => prev.filter((c) => c.stage !== stage));
 
- try {
- setLoading(true);
- for (const candidate of stageCandidates) {
- const response = await fetch(
- `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/pipelines/${candidate.id}`,
- {
- method: "DELETE",
- }
- );
- if (!response.ok) {
- console.error(`Failed to delete pipeline record for ${candidate.name}`);
- }
- }
- setSuccessMsg(`Cleared all candidates from the ${stage} stage`);
- await fetchPipelines();
- } catch (error) {
- console.error(error);
- setError("Unable to clear stage. Please try again.");
- await fetchPipelines();
- } finally {
- setLoading(false);
- }
- };
+  try {
+  setLoading(true);
+  for (const candidate of stageCandidates) {
+  const response = await fetch(
+  `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/pipelines/${candidate.id}`,
+  {
+  method: "DELETE",
+  }
+  );
+  if (!response.ok) {
+  throw new Error(`Failed to delete pipeline record for ${candidate.name}`);
+  }
+  }
+  setSuccessMsg(`Cleared all candidates in ${stage} stage successfully`);
+  await fetchPipelines();
+  } catch (error) {
+  console.error(error);
+  setError(`Unable to clear ${stage} stage candidates. Please try again.`);
+  await fetchPipelines();
+  } finally {
+  setLoading(false);
+  }
+  };
+
+  const handleClearSelected = async () => {
+    const targetCandidates = candidates.filter((c) => selectedCardIds.has(c.id));
+    if (targetCandidates.length === 0) {
+      setError("Please select at least one candidate to clear.");
+      return;
+    }
+    const confirmed = window.confirm(
+      `Are you sure you want to clear ${targetCandidates.length} selected candidate(s) from the pipeline?`
+    );
+    if (!confirmed) return;
+
+    setCandidates((prev) => prev.filter((c) => !selectedCardIds.has(c.id)));
+
+    try {
+      setLoading(true);
+      for (const candidate of targetCandidates) {
+        await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/pipelines/${candidate.id}`,
+          { method: "DELETE" }
+        );
+      }
+      setSuccessMsg(`Cleared ${targetCandidates.length} selected candidate(s) from the pipeline.`);
+      setSelectedCardIds(new Set());
+      await fetchPipelines();
+    } catch (error) {
+      console.error(error);
+      setError("Unable to clear selected candidates. Please try again.");
+      await fetchPipelines();
+    } finally {
+      setLoading(false);
+    }
+  };
 
  const handleSubmitFeedback = async (
  candidateId: string
@@ -696,15 +826,24 @@ export default function PipelineBoard() {
  searchQuery={searchQuery}
  setSearchQuery={setSearchQuery}
  onAddCandidate={() => setOpenCreateModal(true)}
+ onBulkMove={() => setBulkStageOpen(true)}
+ onClearSelected={handleClearSelected}
+ selectedCount={selectedCardIds.size}
  totalCandidates={totalPipelineRecords}
  activeCandidates={activePipelineRecords}
  />
 
- {error && (
- <div className="mt-6 rounded-2xl border border-red-800 bg-red-900/30 px-4 py-3 text-sm text-red-300">
- {error}
- </div>
- )}
+  {error && (
+  <div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3.5 text-sm font-semibold text-red-600 dark:text-red-400 flex items-center justify-between shadow-sm">
+    <div className="flex items-center gap-2">
+      <span className="flex h-2 w-2 rounded-full bg-red-500" />
+      <span>{error}</span>
+    </div>
+    <button onClick={() => setError(null)} className="text-xs text-red-500 hover:text-red-700 dark:hover:text-red-300 font-bold underline">
+      Dismiss
+    </button>
+  </div>
+  )}
 
  {successMsg && (
  <div className="mt-6 rounded-2xl border border-emerald-800 bg-emerald-900/30 px-4 py-3 text-sm text-emerald-300 flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -736,6 +875,9 @@ export default function PipelineBoard() {
  key={stage}
  title={stage}
  candidates={stageCandidates}
+ selectedIds={selectedCardIds}
+ onSelectAllInStage={handleSelectAllInStage}
+ onToggleSelect={handleToggleSelectCandidate}
  onMoveToStage={handleMoveToStage}
  onViewProfile={handleViewProfile}
  onReject={handleReject}
@@ -926,6 +1068,36 @@ export default function PipelineBoard() {
  setConfirmScreeningOpen(false);
  setScreeningCandidate(null);
  }}
+ />
+
+  {/* Floating Selection Action Bar for Particular Selected Candidates */}
+  {selectedCardIds.size > 0 && (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 px-5 py-3 rounded-2xl bg-slate-900/90 dark:bg-card/95 border border-blue-500/30 text-white shadow-2xl backdrop-blur-md flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4">
+      <span className="text-xs font-semibold text-slate-300">
+        <strong className="text-white font-bold">{selectedCardIds.size}</strong> candidate(s) selected
+      </span>
+      <div className="h-4 w-px bg-slate-700" />
+      <button
+        onClick={() => setBulkStageOpen(true)}
+        className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5"
+      >
+        Move Selected to Stage
+      </button>
+      <button
+        onClick={() => setSelectedCardIds(new Set())}
+        className="text-xs text-slate-400 hover:text-white transition-colors"
+      >
+        Clear Selection
+      </button>
+    </div>
+  )}
+
+ <BulkStageModal
+   isOpen={bulkStageOpen}
+   onClose={() => setBulkStageOpen(false)}
+   selectedCount={selectedCardIds.size > 0 ? selectedCardIds.size : candidates.length}
+   onConfirmStage={handleConfirmBulkStage}
+   loading={bulkLoading}
  />
  </div>
  );

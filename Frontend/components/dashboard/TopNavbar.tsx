@@ -19,11 +19,18 @@ import {
  Mail,
  Upload,
  Settings,
+ Keyboard,
+ Command,
+ HelpCircle,
+ Bot,
 } from 'lucide-react'
+import { CommandPalette } from '@/components/common/CommandPalette'
+import { KeyboardShortcutsModal } from '@/components/common/KeyboardShortcutsModal'
 import { useRouter } from 'next/navigation'
 
 import { globalSearch } from '@/services/globalSearchService'
-import { hasAdminPortalAccess, hasRecruiterPortalAccess } from '@/utils/permissions'
+import { getAISettings } from '@/services/adminService'
+import { hasAdminPortalAccess, hasRecruiterPortalAccess, hasPermission } from '@/utils/permissions'
 import { applyTheme } from '@/utils/theme'
 import { NotificationsPanel } from './NotificationsPanel'
 import {
@@ -86,6 +93,61 @@ export function TopNavbar({
  const [loading, setLoading] = useState(false)
  const [showSearchResults, setShowSearchResults] = useState(false)
  const [user, setUser] = useState<StoredUser | null>(null)
+ const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
+ const [shortcutsOpen, setShortcutsOpen] = useState(false)
+ const [activeAIProvider, setActiveAIProvider] = useState<string | null>(null)
+ const canManageAI = hasPermission("ai_settings.manage", true)
+
+ // Global Keyboard Shortcuts (Ctrl+K, ?, Sequence shortcuts g c, g p, g j, g i, g a)
+ useEffect(() => {
+   let keyBuffer = ''
+   let keyTimer: any = null
+
+   const handleGlobalKeyDown = (e: KeyboardEvent) => {
+     const activeTag = (document.activeElement?.tagName || '').toLowerCase()
+     const isInput = activeTag === 'input' || activeTag === 'textarea' || (document.activeElement as HTMLElement)?.isContentEditable
+
+     // Ctrl + K or Cmd + K
+     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+       e.preventDefault()
+       setCommandPaletteOpen((prev) => !prev)
+       return
+     }
+
+     if (isInput) return
+
+     // Shift + ?
+     if (e.key === '?') {
+       e.preventDefault()
+       setShortcutsOpen((prev) => !prev)
+       return
+     }
+
+     // Sequence navigation (g then c/p/j/i/a)
+     const key = e.key.toLowerCase()
+     if (key === 'g' || keyBuffer === 'g') {
+       if (keyBuffer === 'g') {
+         keyBuffer = ''
+         clearTimeout(keyTimer)
+         if (key === 'd') router.push('/dashboard')
+         else if (key === 'c') router.push('/candidates')
+         else if (key === 'p') router.push('/pipeline')
+         else if (key === 'j') router.push('/positions')
+         else if (key === 'i') router.push('/interviews')
+         else if (key === 'a') router.push('/admin/automation')
+       } else if (key === 'g') {
+         keyBuffer = 'g'
+         keyTimer = setTimeout(() => { keyBuffer = '' }, 1000)
+       }
+     }
+   }
+
+   window.addEventListener('keydown', handleGlobalKeyDown)
+   return () => {
+     window.removeEventListener('keydown', handleGlobalKeyDown)
+     if (keyTimer) clearTimeout(keyTimer)
+   }
+ }, [router])
 
  const defaultItemVariants = {
  hidden: { opacity: 0, y: -20 },
@@ -238,6 +300,26 @@ export function TopNavbar({
  window.addEventListener('user-updated', loadUser)
  return () => window.removeEventListener('user-updated', loadUser)
  }, [])
+
+ useEffect(() => {
+    const fetchAI = async () => {
+      try {
+        const settings = await getAISettings()
+        if (settings?.active_provider) {
+          setActiveAIProvider(settings.active_provider)
+        }
+      } catch { /* silent */ }
+    }
+    fetchAI()
+
+    // Update badge immediately when user saves from the AI settings page
+    const handleAIChange = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail?.provider) setActiveAIProvider(detail.provider)
+    }
+    window.addEventListener('ai-provider-changed', handleAIChange)
+    return () => window.removeEventListener('ai-provider-changed', handleAIChange)
+  }, [])
 
  const toggleTheme = () => {
  const nextTheme = isDark ? 'light' : 'dark'
@@ -464,7 +546,61 @@ export function TopNavbar({
  )}
  </div>
 
- <div className="flex items-center gap-4">
+ <div className="flex items-center gap-3">
+
+ {/* AI Agent Badge */}
+ {activeAIProvider && (
+ canManageAI ? (
+ <button
+ onClick={() => router.push('/admin/ai')}
+ title="Click to change AI provider"
+ className="hidden md:flex items-center gap-2 rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-600 dark:text-violet-400 transition-all hover:bg-violet-500/20 hover:border-violet-400/50 hover:scale-[1.02] active:scale-95"
+ >
+ <span className="relative flex h-2 w-2 flex-shrink-0">
+ <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
+ <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500" />
+ </span>
+ <Bot className="w-3.5 h-3.5" />
+ AI Agent: {activeAIProvider}
+ </button>
+ ) : (
+ <div
+ title="Active AI Agent"
+ className="hidden md:flex items-center gap-2 rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-600 dark:text-violet-400"
+ >
+ <span className="relative flex h-2 w-2 flex-shrink-0">
+ <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
+ <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500" />
+ </span>
+ <Bot className="w-3.5 h-3.5" />
+ AI Agent: {activeAIProvider}
+ </div>
+ )
+ )}
+
+    {/* Command Palette Trigger Button */}
+    <button
+      onClick={() => setCommandPaletteOpen(true)}
+      type="button"
+      className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border bg-white text-xs font-semibold text-text-primary hover:bg-surface-hover dark:border-border dark:bg-secondary-surface transition-all"
+    >
+      <Command className="w-3.5 h-3.5 text-blue-500" />
+      <span>Quick Actions</span>
+      <kbd className="px-1.5 py-0.5 text-[10px] bg-slate-100 dark:bg-surface border border-border rounded text-muted">
+        Ctrl+K
+      </kbd>
+    </button>
+
+    {/* Keyboard Shortcuts Help Button */}
+    <button
+      onClick={() => setShortcutsOpen(true)}
+      type="button"
+      title="Keyboard Shortcuts (?)"
+      className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-white text-muted transition-all hover:bg-surface-hover hover:scale-[1.02] active:scale-95 dark:border-border dark:bg-secondary-surface dark:text-primary"
+    >
+      <Keyboard className="h-4 w-4" />
+    </button>
+
  <button
  onClick={toggleTheme}
  type="button"
@@ -605,6 +741,16 @@ export function TopNavbar({
  </div>
  </div>
  </div>
+
+ <CommandPalette
+    isOpen={commandPaletteOpen}
+    onClose={() => setCommandPaletteOpen(false)}
+  />
+
+  <KeyboardShortcutsModal
+    isOpen={shortcutsOpen}
+    onClose={() => setShortcutsOpen(false)}
+  />
  </motion.div>
  )
 }

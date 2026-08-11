@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional
 
 
 class PositionCreate(BaseModel):
@@ -12,6 +13,8 @@ class PositionCreate(BaseModel):
     description: str
 
     required_skills: str
+
+    is_published: Optional[bool] = False
 
 
 class PositionResponse(BaseModel):
@@ -27,6 +30,8 @@ class PositionResponse(BaseModel):
     description: str
 
     required_skills: str
+
+    is_published: Optional[bool] = False
 
     class Config:
 

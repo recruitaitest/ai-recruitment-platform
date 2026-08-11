@@ -15,6 +15,7 @@ import {
     RecruiterActivityFeed,
     AIRecommendations,
 } from '@/components/dashboard'
+import CVAnalyticsWidget from '@/components/dashboard/CVAnalyticsWidget'
 
 export default function DashboardPage() {
     const router = useRouter()
@@ -354,6 +355,9 @@ export default function DashboardPage() {
                         containerVariants={containerVariants}
                         itemVariants={itemVariants}
                     />
+
+                    {/* CV Ingestion & Folder Routing Analytics */}
+                    <CVAnalyticsWidget itemVariants={itemVariants} />
 
                     {/* Dashboard Layout */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

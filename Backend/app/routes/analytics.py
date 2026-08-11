@@ -53,3 +53,29 @@ def hiring_trends(db: Session = Depends(get_db)):
 @router.get("/time-to-hire")
 def time_to_hire(db: Session = Depends(get_db)):
     return AnalyticsService.time_to_hire(db)
+
+
+@router.get("/offer-decline")
+def offer_decline_analytics(db: Session = Depends(get_db)):
+    return AnalyticsService.offer_decline_analytics(db)
+
+
+@router.post("/bias-detection")
+def bias_detection_scan(body: dict):
+    text = body.get("note", "")
+    return AnalyticsService.bias_detection_scan(text)
+
+
+@router.get("/interview-predictor")
+def interview_success_predictor(db: Session = Depends(get_db)):
+    return AnalyticsService.interview_success_predictor(db)
+
+
+@router.get("/quality-score")
+def candidate_quality_score(db: Session = Depends(get_db)):
+    return AnalyticsService.candidate_quality_score(db)
+
+
+@router.get("/rejection-reasons")
+def rejection_reason_analytics(db: Session = Depends(get_db)):
+    return AnalyticsService.rejection_reason_analytics(db)

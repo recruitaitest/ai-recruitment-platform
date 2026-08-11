@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text
+from sqlalchemy import Column, Integer, String, Text, Boolean
 
 from app.database import Base
 
@@ -22,3 +22,5 @@ class Position(Base):
     description = Column(Text)
 
     required_skills = Column(String)
+
+    is_published = Column(Boolean, default=False, nullable=True)

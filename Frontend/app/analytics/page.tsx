@@ -11,6 +11,11 @@ import { HiringTrends } from "@/components/analytics/HiringTrends";
 import { SourceAnalytics } from "@/components/analytics/SourceAnalytics";
 import { TimeToHire } from "@/components/analytics/TimeToHire";
 import { RecruiterProductivity } from "@/components/analytics/RecruiterProductivity";
+import { OfferDeclineAnalytics } from "@/components/analytics/OfferDeclineAnalytics";
+import { AIBiasDetectionWidget } from "@/components/analytics/AIBiasDetectionWidget";
+import { InterviewSuccessPredictor } from "@/components/analytics/InterviewSuccessPredictor";
+import { CandidateQualityScore } from "@/components/analytics/CandidateQualityScore";
+import { RejectionReasonAnalytics } from "@/components/analytics/RejectionReasonAnalytics";
 import { AnalyticsMotion } from "@/components/analytics/AnalyticsMotion";
 import { AppLayout } from "@/components/AppLayout";
 
@@ -40,32 +45,44 @@ export default function AnalyticsPage() {
                         <KPISection />
                     </AnalyticsMotion>
 
+                    {/* Section 5: Decision-Support Features Grid */}
                     <AnalyticsMotion delay={0.3}>
-                        <div className="h-full">
-                            <RecruitmentFunnel />
+                        <div className="space-y-6">
+                            <h2 className="text-xl font-bold text-text-primary flex items-center gap-2 border-b border-border pb-3">
+                                🧠 Decision-Support & Predictive Analytics Workspace
+                            </h2>
+
+                            {/* 5.1 & 5.2 Funnel & Time-to-Hire */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <RecruitmentFunnel />
+                                <TimeToHire />
+                            </div>
+
+                            {/* 5.5 Predictive Success Engine */}
+                            <InterviewSuccessPredictor />
+
+                            {/* 5.3 & 5.7 Offer Decline & Rejection Analytics */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <OfferDeclineAnalytics />
+                                <RejectionReasonAnalytics />
+                            </div>
+
+                            {/* 5.4 Bias Detection & 5.6 Candidate Quality Score */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <AIBiasDetectionWidget />
+                                <CandidateQualityScore />
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <HiringTrends />
+                                <SourceAnalytics />
+                            </div>
+
+                            <RecruiterProductivity />
                         </div>
-                    </AnalyticsMotion>
-
-                    <AnalyticsMotion delay={0.4}>
-                        <div className="h-full">
-                            <HiringTrends />
-                        </div>
-                    </AnalyticsMotion>
-
-                    <AnalyticsMotion delay={0.5}>
-                        <SourceAnalytics />
-                    </AnalyticsMotion>
-
-                    <AnalyticsMotion delay={0.6}>
-                        <TimeToHire />
-                    </AnalyticsMotion>
-
-                    <AnalyticsMotion delay={0.7}>
-                        <RecruiterProductivity />
                     </AnalyticsMotion>
 
                 </div>
-
             </div>
         </AppLayout>
     );

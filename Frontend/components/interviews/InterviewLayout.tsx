@@ -14,6 +14,8 @@ import CandidateDrawer from "./CandidateDrawer";
 import EditInterviewModal from "./EditInterviewModal";
 import InterviewFeedbackModal from "./InterviewFeedbackModal";
 import CreateOfferModal from "@/components/offer/CreateOfferModal";
+import AIQuestionGeneratorModal from "@/components/ai/AIQuestionGeneratorModal";
+import { Sparkles } from "lucide-react";
 
 import type { Candidate, Interview } from "@/types/interview";
 
@@ -47,6 +49,7 @@ export default function InterviewLayout() {
 
  const [showAllUpcoming, setShowAllUpcoming] = useState(false);
  const [showAllCompleted, setShowAllCompleted] = useState(false);
+ const [aiQuestionOpen, setAiQuestionOpen] = useState(false);
 
  const fetchCandidates = async () => {
  try {
@@ -231,24 +234,34 @@ export default function InterviewLayout() {
  const visibleUpcoming = showAllUpcoming ? upcomingInterviews : upcomingInterviews.slice(0, 3);
  const visibleCompleted = showAllCompleted ? completedInterviews : completedInterviews.slice(0, 3);
 
- const handleCandidateClick = (candidateId: number, interview?: any) => {
- const candidate = candidates.find((c) => c.id === candidateId);
+  const handleCandidateClick = (candidateId: number, interview?: any) => {
+    const candidate = candidates.find((c) => c.id === candidateId);
+    const resolvedRole = interview?.position_title || interview?.role || candidate?.role || "Software Engineer";
 
- setSelectedCandidate(
- candidate
- ? {
- ...candidate,
- skills:
- typeof candidate.skills === "string"
- ? candidate.skills.split(",").map((s: string) => s.trim())
- : candidate.skills,
- }
- : null
- );
+    setSelectedCandidate(
+      candidate
+        ? {
+            ...candidate,
+            role: resolvedRole,
+            skills:
+              typeof candidate.skills === "string"
+                ? candidate.skills.split(",").map((s: string) => s.trim())
+                : candidate.skills || [],
+          }
+        : {
+            id: candidateId,
+            name: interview?.candidate_name || "Candidate",
+            role: resolvedRole,
+            email: interview?.email || "",
+            phone: "",
+            location: "",
+            skills: [],
+          } as any
+    );
 
- setSelectedInterview(interview || null);
- setOpenDrawer(true);
- };
+    setSelectedInterview(interview || null);
+    setOpenDrawer(true);
+  };
 
  return (
  <motion.div
@@ -315,6 +328,7 @@ export default function InterviewLayout() {
  Manage scheduled interviews efficiently
  </p>
  </div>
+ <div className="flex items-center gap-2">
  {hasPermission("interviews.create") && (
  <button
  onClick={() => setOpenModal(true)}
@@ -323,6 +337,7 @@ export default function InterviewLayout() {
  Schedule Interview
  </button>
  )}
+ </div>
  </div>
 
  <InterviewCalendar
@@ -421,6 +436,7 @@ export default function InterviewLayout() {
  <span>{sortIcon("status")}</span>
  </button>
  </th>
+ <th className="pb-4 font-medium text-right pr-4">Actions</th>
  </tr>
  </thead>
  <tbody>
@@ -465,11 +481,46 @@ export default function InterviewLayout() {
  {item.status}
  </span>
  </td>
+ <td className="py-5 text-right pr-2" onClick={(e) => e.stopPropagation()}>
+ <div className="flex items-center justify-end gap-1.5">
+ <a
+ href={item.meeting_link || "https://meet.google.com"}
+ target="_blank"
+ rel="noreferrer"
+ className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition"
+ title="Join Video Meeting"
+ >
+ Join
+ </a>
+ <button
+ type="button"
+ onClick={() => {
+ setSelectedInterview(item);
+ setOpenEditModal(true);
+ }}
+ className="px-2.5 py-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-semibold transition"
+ title="Reschedule Interview"
+ >
+ Reschedule
+ </button>
+ <button
+ type="button"
+ onClick={() => {
+ setSelectedInterview(item);
+ setOpenFeedbackModal(true);
+ }}
+ className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition"
+ title="Submit Feedback"
+ >
+ Feedback
+ </button>
+ </div>
+ </td>
  </tr>
  ))
  ) : (
  <tr>
- <td colSpan={6} className="py-8 text-center text-muted">
+ <td colSpan={7} className="py-8 text-center text-muted">
  No upcoming interviews found
  </td>
  </tr>
@@ -685,6 +736,11 @@ export default function InterviewLayout() {
  setOfferCandidate(null);
  await loadAll();
  }}
+ />
+
+ <AIQuestionGeneratorModal
+    isOpen={aiQuestionOpen}
+    onClose={() => setAiQuestionOpen(false)}
  />
 
  </motion.div>

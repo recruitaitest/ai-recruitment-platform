@@ -5,6 +5,22 @@ import { useRouter, useSearchParams } from "next/navigation";
 import ShortlistModal from "@/components/semantic-search/ShortlistModal";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import AICandidateSummaryCard from "@/components/ai/AICandidateSummaryCard";
+import AIRedFlagsWidget from "@/components/ai/AIRedFlagsWidget";
+import AIDuplicateCandidateAlert from "@/components/ai/AIDuplicateCandidateAlert";
+import AIOutreachEmailModal from "@/components/ai/AIOutreachEmailModal";
+import AISkillsGapChart from "@/components/ai/AISkillsGapChart";
+import AIScreeningReasoningModal from "@/components/ai/AIScreeningReasoningModal";
+
+// Collaboration Features
+import MentionNoteInput from "@/components/collaboration/MentionNoteInput";
+import PanelFeedbackAggregator from "@/components/collaboration/PanelFeedbackAggregator";
+import CandidateApprovalWorkflow from "@/components/collaboration/CandidateApprovalWorkflow";
+import TeamScorecardVoting from "@/components/collaboration/TeamScorecardVoting";
+import CandidateActivityFeed from "@/components/collaboration/CandidateActivityFeed";
+import SharedCandidatePoolModal from "@/components/collaboration/SharedCandidatePoolModal";
+import SlackTeamsIntegrationModal from "@/components/collaboration/SlackTeamsIntegrationModal";
+import { CandidateCommunicationHub } from "@/components/engagement/CandidateCommunicationHub";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -83,9 +99,9 @@ const TABS = [
     { label: "Education", icon: "ti-school" },
     { label: "Resume", icon: "ti-file-text" },
     { label: "Notes", icon: "ti-notes" },
-    { label: "Activity", icon: "ti-activity" },
-    { label: "Interviews", icon: "ti-microphone-2" },
-    { label: "Versions", icon: "ti-versions" },
+    { label: "Interviews", icon: "ti-calendar" },
+    { label: "Versions", icon: "ti-history" },
+    { label: "Collaboration", icon: "ti-users" },
 ] as const;
 
 const STAGE_CONFIG: Record<Stage, { color: string; bg: string; border: string }> = {
@@ -241,17 +257,6 @@ function EmptyState({ icon, message }: { icon: string; message: string }) {
 function OverviewTab({ c }: { c: Required<Candidate> }) {
     return (
         <>
-            {/* AI Summary */}
-            <div style={S.aiCard}>
-                <div style={{ ...S.cardTitle, color: "var(--primary)" }}>
-                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--primary)", display: "inline-block" }} />
-                    ✦ AI Summary
-                </div>
-                <p style={{ margin: 0, color: "var(--text-muted)", lineHeight: 1.8 }}>
-                    {c.aiSummary}
-                </p>
-            </div>
-
             {/* Contact */}
             <div style={S.card}>
                 <div style={S.cardTitle}>
@@ -481,39 +486,7 @@ function NotesTab({
     );
 }
 
-// Tab 6 — Activity
-function ActivityTab({ activity }: { activity: ActivityItem[] }) {
-    if (!activity.length) return (
-        <div style={S.card}><EmptyState icon="ti-activity" message="No activity recorded yet." /></div>
-    );
-    return (
-        <div style={S.card}>
-            <div style={S.cardTitle}><i className="ti ti-activity" style={{ fontSize: 16 }} />Activity Timeline</div>
-            {activity.map((act, i) => (
-                <div key={i} style={{ display: "flex", gap: 14, paddingBottom: 20, position: "relative" }}>
-                    {i < activity.length - 1 && (
-                        <div style={{
-                            position: "absolute", left: 19, top: 38, width: 1,
-                            height: "calc(100% - 18px)", background: "var(--border-light)",
-                        }} />
-                    )}
-                    <div style={{
-                        width: 38, height: 38, borderRadius: 10, background: "var(--bg-icon)",
-                        border: "1px solid rgba(255,255,255,0.07)",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 16, flexShrink: 0, zIndex: 1,
-                    }}>
-                        {act.emoji || "•"}
-                    </div>
-                    <div style={{ paddingTop: 6 }}>
-                        <div style={{ fontWeight: 600, fontSize: "0.88rem", marginBottom: 3 }}>{act.type}</div>
-                        <div style={{ fontSize: "0.78rem", color: "var(--text-muted-dark)" }}>{act.detail} · {act.date}</div>
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
-}
+
 
 // Tab 7 — Interviews
 function InterviewsTab({ interviews, scheduled }: { interviews: InterviewItem[]; scheduled: ScheduledInterviewItem[] }) {
@@ -594,28 +567,32 @@ function NoteModal({
     onClose: () => void;
     onSave: (text: string) => void;
 }) {
-    const [text, setText] = useState("");
     return (
         <div
             onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
             style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}
         >
-            <div style={{ background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 20, padding: 28, width: 460, maxWidth: "calc(100vw - 32px)" }}>
-                <div style={{ fontFamily: "Georgia, serif", fontSize: "1.15rem", marginBottom: 16 }}>Add Recruiter Note</div>
-                <textarea
-                    autoFocus
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder="Write your observation…"
-                    style={{ width: "100%", minHeight: 110, background: "var(--bg-icon)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "12px 14px", color: "var(--text-root)", fontSize: "0.88rem", fontFamily: "inherit", resize: "vertical", outline: "none", boxSizing: "border-box" }}
-                />
-                <div style={{ fontSize: "0.76rem", color: "var(--text-muted-dark)", margin: "6px 0 16px" }}>
+            <div className="bg-surface border border-border rounded-2xl p-7 w-full max-w-[500px] shadow-2xl relative">
+                <button 
+                    onClick={onClose} 
+                    style={{ position: "absolute", right: 16, top: 16, background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer" }}
+                >
+                    <i className="ti ti-x" style={{ fontSize: 20 }} />
+                </button>
+                <div style={{ fontFamily: "Georgia, serif", fontSize: "1.15rem", marginBottom: 16, color: "var(--text-root)" }}>
+                    Add Recruiter Note
+                </div>
+                <div style={{ fontSize: "0.76rem", color: "var(--text-muted-dark)", marginBottom: 12 }}>
                     Adding as <strong style={{ color: "var(--text-root)" }}>{recruiter}</strong>
                 </div>
-                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                    <button type="button" style={btn("ghost")} onClick={onClose}>Cancel</button>
-                    <button type="button" style={btn("primary")} onClick={() => { if (text.trim()) { onSave(text.trim()); onClose(); } }}>Add Note</button>
-                </div>
+                
+                <MentionNoteInput 
+                    onAddNote={(text, mentions) => {
+                        console.log("Mentions tagged:", mentions);
+                        onSave(text);
+                        onClose();
+                    }}
+                />
             </div>
         </div>
     );
@@ -725,6 +702,9 @@ export default function CandidateProfilePage({ candidate: raw }: { candidate?: C
         }
     };
 
+    const [emailModalOpen, setEmailModalOpen] = useState(false);
+    const [screeningModalOpen, setScreeningModalOpen] = useState(false);
+
     return (
         <div className="candidate-profile-page" style={S.root}>
             <ThemeStyles />
@@ -736,12 +716,25 @@ export default function CandidateProfilePage({ candidate: raw }: { candidate?: C
                     <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#4e7fff" }} />
                     Candidate Info
                 </div>
-                <nav style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <button type="button" style={btn("ghost")} onClick={() => router.push("/candidates")}>← All Candidates</button>
-                    <button type="button" style={btn("ghost")} onClick={() => setShortlistModalOpen(true)}>Shortlist</button>
-                    <button type="button" style={btn("outline")} onClick={() => setNoteModal(true)}>＋ Note</button>
-                    <a href={resumeUrl || "#"} target="_blank" rel="noreferrer" style={{ ...btn("primary"), textDecoration: "none", pointerEvents: resumeUrl ? "auto" : "none", opacity: resumeUrl ? 1 : 0.5 }}>↓ Resume</a>
-                    <button type="button" style={{ ...btn("ghost"), color: "#f87171", border: "1px solid rgba(248,113,113,0.2)" }} onClick={handleDelete}>Delete</button>
+                <nav style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                    <button type="button" className="px-3.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium text-xs shadow-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition" onClick={() => router.push("/candidates")}>
+                        ← All Candidates
+                    </button>
+                    <button type="button" className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-md transition" onClick={() => setEmailModalOpen(true)}>
+                        ✨ Email Candidate
+                    </button>
+                    <button type="button" className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md transition" onClick={() => setShortlistModalOpen(true)}>
+                        ⭐ Shortlist
+                    </button>
+                    <button type="button" className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-md transition" onClick={() => setNoteModal(true)}>
+                        ＋ Add Note
+                    </button>
+                    <a href={resumeUrl || "#"} target="_blank" rel="noreferrer" className="px-3.5 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs shadow-md transition inline-flex items-center gap-1" style={{ textDecoration: "none", pointerEvents: resumeUrl ? "auto" : "none", opacity: resumeUrl ? 1 : 0.5 }}>
+                        ↓ Resume
+                    </a>
+                    <button type="button" className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs shadow-md transition" onClick={handleDelete}>
+                        🗑️ Delete
+                    </button>
                 </nav>
             </header>
 
@@ -761,24 +754,38 @@ export default function CandidateProfilePage({ candidate: raw }: { candidate?: C
                         <h1 style={{ fontFamily: "Georgia, serif", fontSize: "2.4rem", margin: "0 0 6px", lineHeight: 1.1 }}>{c.name}</h1>
                         <p style={{ margin: "0 0 14px", color: "var(--text-muted)", fontSize: "1.05rem" }}>{c.title}</p>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
-                            {[c.contact?.location].filter(Boolean).map((m, i) => (
+                            {[c.contact?.location].filter(Boolean).map((m: any, i: number) => (
                                 <span key={i} style={{ fontSize: "0.74rem", padding: "4px 10px", borderRadius: 999, background: "var(--bg-icon)", border: "1px solid rgba(255,255,255,0.07)", color: "var(--text-muted)" }}>{m}</span>
                             ))}
                             <StageBadge stage={stage} />
                         </div>
-                        <div style={{ display: "flex", gap: 8 }}>
-                            <button type="button" style={btn("primary")} onClick={() => setShortlistModalOpen(true)}>Shortlist</button>
-                            <button type="button" style={btn("ghost")} onClick={() => setNoteModal(true)}>Add Note</button>
+                        <div style={{ display: "flex", gap: 10 }}>
+                            <button type="button" className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm shadow-lg transition flex items-center gap-1.5" onClick={() => setEmailModalOpen(true)}>
+                                ✨ Draft Email with AI
+                            </button>
+                            <button type="button" className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm shadow-lg transition flex items-center gap-1.5" onClick={() => setShortlistModalOpen(true)}>
+                                ⭐ Shortlist
+                            </button>
+                            <button type="button" className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm shadow-lg transition flex items-center gap-1.5" onClick={() => setNoteModal(true)}>
+                                📝 Add Note
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
 
+            {/* ── AI Executive Summary & Duplicate Warnings ── */}
+            <div style={{ padding: "20px 36px 0" }}>
+                {c.id && <AIDuplicateCandidateAlert candidateId={c.id} />}
+                {c.id && <AICandidateSummaryCard candidateId={c.id} />}
+                {c.id && <AIRedFlagsWidget candidateId={c.id} />}
+            </div>
+
             {/* ── Body ── */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 20, padding: "20px 36px 48px" }}>
+            <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-5 px-9 pb-12 pt-5">
 
                 {/* Left — tabs */}
-                <div>
+                <div className="min-w-0 overflow-hidden">
                     {/* Tab bar */}
                     <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", overflowX: "auto", marginBottom: 18 }}>
                         {TABS.map((t, i) => (
@@ -801,9 +808,25 @@ export default function CandidateProfilePage({ candidate: raw }: { candidate?: C
                     {tab === 3 && <EducationTab education={c.education} />}
                     {tab === 4 && <ResumeTab candidate={c} />}
                     {tab === 5 && <NotesTab notes={notes} recruiter={c.recruiter} onAdd={() => setNoteModal(true)} />}
-                    {tab === 6 && <ActivityTab activity={c.activity} />}
-                    {tab === 7 && <InterviewsTab interviews={c.interviews} scheduled={c.scheduledInterviews} />}
-                    {tab === 8 && <VersionsTab versions={c.resumeVersions} />}
+                    {tab === 6 && <InterviewsTab interviews={c.interviews} scheduled={c.scheduledInterviews} />}
+                    {tab === 7 && <VersionsTab versions={c.resumeVersions} />}
+                    {tab === 8 && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                            <CandidateCommunicationHub candidateId={Number(c.id) || 145} />
+                            <div style={{ padding: "16px", borderRadius: "12px", background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.09)" }}>
+                                <PanelFeedbackAggregator candidateId={c.id || 1} candidateName={c.name} />
+                            </div>
+                            <div style={{ padding: "16px", borderRadius: "12px", background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.09)" }}>
+                                <CandidateApprovalWorkflow candidateId={c.id || 1} candidateName={c.name} />
+                            </div>
+                            <div style={{ padding: "16px", borderRadius: "12px", background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.09)" }}>
+                                <TeamScorecardVoting candidateId={c.id || 1} />
+                            </div>
+                            <div style={{ padding: "16px", borderRadius: "12px", background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.09)" }}>
+                                <CandidateActivityFeed candidateId={c.id || 1} />
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Right — sidebar */}
@@ -822,15 +845,6 @@ export default function CandidateProfilePage({ candidate: raw }: { candidate?: C
                                 {val}
                             </div>
                         ))}
-                    </div>
-
-                    {/* AI summary sidebar */}
-                    <div style={{ ...S.sideCard, background: "linear-gradient(135deg,rgba(78,127,255,0.05),rgba(139,92,246,0.05))", border: "1px solid rgba(78,127,255,0.12)" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4e7fff", display: "inline-block" }} />
-                            <span style={{ fontSize: "0.64rem", fontFamily: "monospace", color: "#4e7fff", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700 }}>✦ AI Summary</span>
-                        </div>
-                        <p style={{ margin: 0, fontSize: "0.78rem", color: "var(--text-muted)", lineHeight: 1.75 }}>{c.aiSummary}</p>
                     </div>
 
                     {/* Top skills */}
@@ -854,6 +868,13 @@ export default function CandidateProfilePage({ candidate: raw }: { candidate?: C
                 candidateId={c.id} 
                 candidateName={c.name} 
             />
+            {c.id && (
+                <AIOutreachEmailModal
+                    isOpen={emailModalOpen}
+                    onClose={() => setEmailModalOpen(false)}
+                    candidateId={c.id}
+                />
+            )}
         </div>
     );
 }

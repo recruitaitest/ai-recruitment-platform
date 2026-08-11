@@ -1,16 +1,19 @@
-"use client";
-
+import { Globe, Users } from "lucide-react";
 import { motion } from "framer-motion";
 import { Position } from "@/types/positon";
 
 interface Props {
   positions: Position[];
   onSelect: (position: Position) => void;
+  onViewApplicants?: (position: Position) => void;
+  onTogglePublish?: (positionId: number, currentStatus: boolean) => void;
 }
 
 export default function PositionTable({
   positions,
   onSelect,
+  onViewApplicants,
+  onTogglePublish,
 }: Props) {
   return (
     <div className="overflow-x-auto rounded-2xl border border-border bg-surface shadow-md">
@@ -22,8 +25,8 @@ export default function PositionTable({
             <th className="px-6 py-5 font-medium">Location</th>
             <th className="px-6 py-5 font-medium">Experience</th>
             <th className="px-6 py-5 font-medium">Applicants</th>
-            <th className="px-6 py-5 font-medium">Recruiter</th>
             <th className="px-6 py-5 font-medium">Status</th>
+            <th className="px-6 py-5 font-medium">Career Portal</th>
             <th className="px-6 py-5 font-medium">Skills</th>
           </tr>
         </thead>
@@ -64,16 +67,16 @@ export default function PositionTable({
                 {position.experience}
               </td>
 
-              {/* Applicants */}
-              <td className="px-6 py-5">
-                <div className="inline-flex rounded-full bg-primary-soft px-3 py-1 text-sm font-medium text-primary">
+              {/* Applicants - Clicking opens PositionApplicantsModal */}
+              <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
+                <button
+                  onClick={() => onViewApplicants?.(position)}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 px-3.5 py-1 text-xs font-bold text-blue-500 transition-all"
+                  title="View and Compare Applicants for this Role"
+                >
+                  <Users className="w-3.5 h-3.5" />
                   {position.applicants} Applicants
-                </div>
-              </td>
-
-              {/* Recruiter */}
-              <td className="px-6 py-5 text-secondary">
-                {position.recruiter}
+                </button>
               </td>
 
               {/* Status */}
@@ -89,17 +92,38 @@ export default function PositionTable({
                 </span>
               </td>
 
+              {/* Career Portal Visibility Toggle */}
+              <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  onClick={() => onTogglePublish?.(position.id, !!position.is_published)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                    position.is_published
+                      ? "bg-indigo-500/15 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/25"
+                      : "bg-slate-500/15 text-slate-400 border-slate-500/30 hover:bg-slate-500/25"
+                  }`}
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                  {position.is_published ? "Visible on Portal" : "Hidden from Portal"}
+                </button>
+              </td>
+
               {/* Skills */}
               <td className="px-6 py-5">
-                <div className="flex flex-wrap gap-2">
-                  {position.skills.map((skill, index) => (
+                <div className="flex flex-wrap gap-1.5">
+                  {position.skills?.slice(0, 3).map((skill, index) => (
                     <span
                       key={index}
-                      className="rounded-full bg-violet-100 dark:bg-violet-600/20 px-3 py-1 text-xs font-medium text-violet-700 dark:text-violet-300"
+                      className="rounded bg-secondary-surface px-2 py-1 text-xs font-medium text-text-primary border border-border"
                     >
                       {skill}
                     </span>
                   ))}
+                  {(position.skills?.length || 0) > 3 && (
+                    <span className="text-xs text-muted font-medium self-center">
+                      +{(position.skills?.length || 0) - 3} more
+                    </span>
+                  )}
                 </div>
               </td>
             </motion.tr>

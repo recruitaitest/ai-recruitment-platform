@@ -28,6 +28,7 @@ const PATH_PERMISSIONS: { [key: string]: string } = {
   '/resume-upload': 'candidates.create',
   '/semantic-search': 'ai_search.view',
   '/ai-copilot': 'ai_search.view',
+  '/copilot': 'ai_search.view',
   '/pipeline': 'pipelines.view',
   '/interviews': 'interviews.view',
   '/positions': 'positions.view',

@@ -23,6 +23,7 @@ from app.schemas.offer_schema import (
 
 router = APIRouter()
 
+@router.post("")
 @router.post(
     "/",
     response_model=OfferResponse
@@ -63,6 +64,7 @@ def create_offer(
 
     return new_offer
 
+@router.get("")
 @router.get(
     "/",
     response_model=list[OfferResponse]

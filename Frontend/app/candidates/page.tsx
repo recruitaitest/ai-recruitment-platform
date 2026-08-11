@@ -19,6 +19,8 @@ import {
  ArrowUpDown,
  ChevronUp,
  ChevronDown,
+ ChevronLeft,
+ ChevronRight,
  Trash2,
  Pencil,
  X,
@@ -26,14 +28,28 @@ import {
  AlertTriangle,
  RefreshCw,
  Loader2,
+ Sparkles,
+ Bookmark,
+ BookmarkPlus,
+ Save,
+ Eye,
+ Share2,
+ Layers,
+ Tag,
+ MessageSquare,
 } from "lucide-react";
 import { isAuthenticated } from "@/lib/auth";
 import { AppLayout } from "@/components/AppLayout";
 import { hasPermission } from "@/utils/permissions";
+import { CandidateComparisonModal } from "@/components/candidates/CandidateComparisonModal";
+import { QuickResumePreviewModal } from "@/components/candidates/QuickResumePreviewModal";
+import { WhatsAppSMSNudgeModal } from "@/components/engagement/WhatsAppSMSNudgeModal";
+import { ShareCandidateModal } from "@/components/candidates/ShareCandidateModal";
+import { BulkStageModal } from "@/components/candidates/BulkStageModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Status = "Applied" | "Screening" | "Interview" | "Offer" | "Hired" | "Rejected";
+type Status = "Applied" | "Screening" | "Interview" | "Offer" | "Hired" | "Rejected" | "Needs Pipeline";
 
 interface Candidate {
  id: string;
@@ -43,14 +59,20 @@ interface Candidate {
  role: string;
  experience: number;
  location: string;
- status: Status;
- owner: string;
  skills: string[];
+ status: Status;
+ matchScore: number;
+ owner: string;
+ currentCtc: string;
+ expectedCtc: string;
+ noticePeriod: string;
+ folderPath: string;
+ appliedPositionId?: number;
  updatedAt: string;
  avatar: string;
 }
 
-type SortKey = "name" | "experience" | "company" | "status" | "updatedAt" | "";
+type SortKey = "name" | "skills" | "experience" | "ctc" | "status" | "owner" | "updatedAt" | "";
 type SortDir = "asc" | "desc";
 
 const PER_PAGE = 8;
@@ -63,9 +85,10 @@ const STATUS_STYLES: Record<Status, string> = {
  Offer: "bg-violet-500/15 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300",
  Hired: "bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300",
  Rejected: "bg-red-500/15 text-red-700 dark:bg-red-500/20 dark:text-red-300",
+ "Needs Pipeline": "bg-rose-500/20 text-rose-700 dark:bg-rose-500/30 dark:text-rose-300 border border-rose-500/30 font-semibold",
 };
 
-const ALL_STATUSES: Status[] = ["Applied", "Screening", "Interview", "Offer", "Hired", "Rejected"];
+const ALL_STATUSES: Status[] = ["Applied", "Screening", "Interview", "Offer", "Hired", "Rejected", "Needs Pipeline"];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -75,6 +98,18 @@ function expInRange(exp: number, range: string): boolean {
  if (range === "6-10") return exp >= 6 && exp <= 10;
  if (range === "10+") return exp >= 10;
  return true;
+}
+
+function getPipelineCategory(rawStatus: string): string {
+ if (!rawStatus) return "Applied";
+ const s = String(rawStatus).toLowerCase().trim();
+ if (s.includes("needs pipeline") || s.includes("unassigned") || s.includes("none")) return "Needs Pipeline";
+ if (s.includes("interview")) return "Interview";
+ if (s.includes("offer")) return "Offer";
+ if (s.includes("hired") || s.includes("joined")) return "Hired";
+ if (s.includes("reject")) return "Rejected";
+ if (s.includes("screen") || s.includes("shortlist")) return "Screening";
+ return "Applied";
 }
 
 function getToken() {
@@ -268,24 +303,30 @@ function EditModal({
 // ─── Candidate Row ─────────────────────────────────────────────────────────────
 
 function CandidateRow({
- candidate,
- selected,
- onSelect,
- index,
- onEdit,
- onDelete,
- onClickRow,
+  candidate,
+  selected,
+  onSelect,
+  index,
+  onEdit,
+  onDelete,
+  onPreviewResume,
+  onNudge,
+  onShare,
+  onClickRow,
 }: {
- candidate: Candidate;
- selected: boolean;
- onSelect: (id: string) => void;
- index: number;
- onEdit: (c: Candidate) => void;
- onDelete: (c: Candidate) => void;
- onClickRow: () => void;
+  candidate: Candidate;
+  selected: boolean;
+  onSelect: (id: string) => void;
+  index: number;
+  onEdit: (c: Candidate) => void;
+  onDelete: (c: Candidate) => void;
+  onPreviewResume: (c: Candidate) => void;
+  onNudge: (c: Candidate) => void;
+  onShare: (c: Candidate) => void;
+  onClickRow: () => void;
 }) {
- return (
- <motion.tr
+  return (
+    <motion.tr
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -2, scale: 1.005 }}
@@ -295,89 +336,118 @@ function CandidateRow({
         ${selected ? "bg-blue-500/[0.07]" : "hover:bg-secondary-surface"}
       `}
     >
- {/* Selection stripe */}
- {selected && (
- <td className="absolute left-0 top-0 bottom-0 w-0.5 bg-blue-500 rounded-r" />
- )}
+      {/* Selection stripe */}
+      {selected && (
+        <td className="absolute left-0 top-0 bottom-0 w-0.5 bg-blue-500 rounded-r" />
+      )}
 
- {/* Checkbox */}
- <td className="w-10 px-3 py-3" onClick={(e) => e.stopPropagation()}>
- <input
- type="checkbox"
- checked={selected}
- onChange={() => onSelect(candidate.id)}
- className="accent-blue-500 w-3.5 h-3.5 cursor-pointer"
- />
- </td>
+      {/* Checkbox */}
+      <td className="w-10 px-3 py-3" onClick={(e) => e.stopPropagation()}>
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onSelect(candidate.id)}
+          className="accent-blue-500 w-4 h-4 cursor-pointer"
+        />
+      </td>
 
- {/* Candidate */}
- <td className="px-3 py-3 min-w-[180px]">
- <button
- onClick={onClickRow}
- className="flex items-center gap-2.5 text-left w-full group/name"
- >
- <div className="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 border border-blue-500/30 text-xs font-semibold flex items-center justify-center shrink-0">
- {candidate.name?.charAt(0)?.toUpperCase() || "C"}
- </div>
- <div>
- <p className="text-sm text-text-primary font-medium group-hover/name:text-blue-300 transition-colors leading-tight">
- {candidate.name}
- </p>
- <p className="text-[11px] text-muted leading-tight">{candidate.email}</p>
- </div>
- </button>
- </td>
+      {/* Candidate */}
+      <td className="px-3 py-3 min-w-[180px]">
+        <button
+          onClick={onClickRow}
+          className="flex items-center gap-2.5 text-left w-full group/name"
+        >
+          <div className="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 border border-blue-500/30 text-xs font-semibold flex items-center justify-center shrink-0">
+            {candidate.name?.charAt(0)?.toUpperCase() || "C"}
+          </div>
+          <div>
+            <p className="text-sm text-text-primary font-medium group-hover/name:text-blue-300 transition-colors leading-tight">
+              {candidate.name}
+            </p>
+            <p className="text-[11px] text-muted leading-tight">{candidate.email}</p>
+          </div>
+        </button>
+      </td>
 
- {/* Skills */}
- <td className="px-3 py-3">
- <div className="flex flex-wrap gap-1.5 max-w-[200px]">
- {candidate.skills.slice(0, 3).map((s) => <SkillTag key={s} skill={s} />)}
- {candidate.skills.length > 3 && (
- <span className="inline-flex items-center px-3 py-1 rounded-full bg-slate-500/20 text-slate-700 dark:bg-slate-500/30 dark:text-slate-300 text-[11px] font-medium">
- +{candidate.skills.length - 3}
- </span>
- )}
- </div>
- </td>
+      {/* Skills */}
+      <td className="px-3 py-3">
+        <div className="flex flex-wrap gap-1.5 max-w-[200px]">
+          {candidate.skills.slice(0, 3).map((s) => <SkillTag key={s} skill={s} />)}
+          {candidate.skills.length > 3 && (
+            <span className="inline-flex items-center px-3 py-1 rounded-full bg-slate-500/20 text-slate-700 dark:bg-slate-500/30 dark:text-slate-300 text-[11px] font-medium">
+              +{candidate.skills.length - 3}
+            </span>
+          )}
+        </div>
+      </td>
 
- {/* Experience */}
- <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap">
- {candidate.experience > 0 ? `${candidate.experience} yrs` : "—"}
- </td>
+      {/* Experience */}
+      <td className="px-3 py-3 text-xs text-text-secondary whitespace-nowrap">
+        {candidate.experience > 0 ? `${candidate.experience} Yrs` : "—"}
+      </td>
 
- {/* Company */}
- <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap">
- {candidate.company !== "Not Assigned" ? candidate.company : <span className="text-muted">—</span>}
- </td>
+      {/* CTC & Notice */}
+      <td className="px-3 py-3 text-xs text-text-secondary whitespace-nowrap">
+        <div className="flex flex-col text-[11px]">
+          <span className="text-emerald-400 font-medium">{candidate.currentCtc !== "N/A" ? `Current: ${candidate.currentCtc}` : "CTC: N/A"}</span>
+          <span className="text-cyan-400 font-medium">{candidate.expectedCtc !== "N/A" ? `Exp: ${candidate.expectedCtc}` : ""}</span>
+          {candidate.noticePeriod !== "N/A" && <span className="text-slate-400">NP: {candidate.noticePeriod}</span>}
+        </div>
+      </td>
 
- {/* Status */}
- <td className="px-3 py-3">
- <StatusBadge status={candidate.status} />
- </td>
+      {/* Status */}
+      <td className="px-3 py-3">
+        <StatusBadge status={candidate.status} />
+      </td>
 
- {/* Recruiter */}
- <td className="px-3 py-3 text-[12px] text-text-secondary">{candidate.owner}</td>
+      {/* Recruiter Owner */}
+      <td className="px-3 py-3 text-[12px] text-text-secondary">{candidate.owner}</td>
 
- {/* Updated */}
- <td className="px-3 py-3 text-[12px] text-muted whitespace-nowrap">{candidate.updatedAt}</td>
+      {/* Updated */}
+      <td className="px-3 py-3 text-[12px] text-muted whitespace-nowrap">{candidate.updatedAt}</td>
 
- {/* Actions */}
- <td className="px-3 py-3 w-[72px]">
- <div className="flex items-center gap-1">
- <button
- onClick={(e) => {
- e.stopPropagation();
- onEdit(candidate);
- }}
- className="p-1.5 rounded-md text-muted hover:text-blue-300 hover:bg-blue-500/10 transition-all"
- title="Edit"
- >
- <Pencil className="w-3.5 h-3.5" />
- </button>
- </div>
- </td>
- </motion.tr>
- );
+      {/* 3.9 Quick Row Action Bar */}
+      <td className="px-3 py-3 w-[110px]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={() => onPreviewResume(candidate)}
+            className="p-1.5 rounded-md text-muted hover:text-purple-400 hover:bg-purple-500/10 transition-all"
+            title="Quick Resume Preview"
+          >
+            <Eye className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => onNudge(candidate)}
+            className="p-1.5 rounded-md text-muted hover:text-emerald-400 hover:bg-emerald-500/10 transition-all"
+            title="Send WhatsApp / SMS Nudge"
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
+          </button>
+          <button
+            onClick={() => onShare(candidate)}
+            className="p-1.5 rounded-md text-muted hover:text-indigo-400 hover:bg-indigo-500/10 transition-all"
+            title="Share Candidate Summary"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => onEdit(candidate)}
+            className="p-1.5 rounded-md text-muted hover:text-blue-400 hover:bg-blue-500/10 transition-all"
+            title="Edit Candidate"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => onDelete(candidate)}
+            className="p-1.5 rounded-md text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all"
+            title="Delete Candidate"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </td>
+    </motion.tr>
+  );
 }
 
 // ─── Toast ─────────────────────────────────────────────────────────────────────
@@ -417,11 +487,165 @@ export default function CandidatesPage() {
  const [sortDir, setSortDir] = useState<SortDir>("asc");
  const [showFilters, setShowFilters] = useState(false);
 
- // Modal state
- const [editTarget, setEditTarget] = useState<Candidate | null>(null);
- const [deleteTarget, setDeleteTarget] = useState<Candidate | null>(null);
- const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
- const [modalLoading, setModalLoading] = useState(false);
+ // Section 3 Productivity States (Comparison & Saved Filters)
+ const [comparisonOpen, setComparisonOpen] = useState(false);
+ const [savePresetOpen, setSavePresetOpen] = useState(false);
+ const [nudgeCandidate, setNudgeCandidate] = useState<any>(null);
+ const [activePreset, setActivePreset] = useState<string>("All");
+ const [customPresets, setCustomPresets] = useState<Array<{ name: string; search: string; statusFilter: string; expFilter: string }>>([]);
+
+ // Ref to guarantee up-to-date selected set inside keydown listener
+ const selectedRef = useRef(selected);
+ useEffect(() => {
+   selectedRef.current = selected;
+ }, [selected]);
+
+ // Load saved presets from localStorage
+ useEffect(() => {
+   try {
+     const saved = localStorage.getItem("candidate_filter_presets");
+     if (saved) setCustomPresets(JSON.parse(saved));
+   } catch {}
+ }, []);
+
+ const handleSaveCurrentPreset = (presetName: string) => {
+   if (!presetName.trim()) return;
+   const newPreset = { name: presetName.trim(), search, statusFilter: String(statusFilter), expFilter };
+   const updated = [...customPresets.filter((p) => p.name !== newPreset.name), newPreset];
+   setCustomPresets(updated);
+   setActivePreset(newPreset.name);
+   try {
+     localStorage.setItem("candidate_filter_presets", JSON.stringify(updated));
+     showToast(`Filter preset "${newPreset.name}" saved!`, "success");
+   } catch {}
+ };
+
+ const handleDeletePreset = (presetName: string, e: React.MouseEvent) => {
+   e.stopPropagation();
+   const updated = customPresets.filter((p) => p.name !== presetName);
+   setCustomPresets(updated);
+   try {
+     localStorage.setItem("candidate_filter_presets", JSON.stringify(updated));
+     showToast(`Preset "${presetName}" deleted`, "success");
+   } catch {}
+   if (activePreset === presetName) setActivePreset("All");
+ };
+
+ const handleApplyPreset = (presetName: string) => {
+   setActivePreset(presetName);
+   setPage(1);
+   if (presetName === "All") {
+     setSearch("");
+     setStatusFilter("");
+     setExpFilter("");
+   } else if (presetName === "High AI Fit (≥80%)") {
+     setSearch("80");
+     setStatusFilter("");
+     setExpFilter("");
+   } else if (presetName === "Interview Stage") {
+     setSearch("");
+     setStatusFilter("Interview");
+     setExpFilter("");
+   } else if (presetName === "Needs Pipeline") {
+     setSearch("");
+     setStatusFilter("Needs Pipeline");
+     setExpFilter("");
+   } else {
+     const custom = customPresets.find((p) => p.name === presetName);
+     if (custom) {
+       setSearch(custom.search);
+       setStatusFilter((custom.statusFilter as Status) || "");
+       setExpFilter(custom.expFilter);
+     }
+   }
+ };
+
+ // Section 3 Keyboard Shortcuts ('c' for compare, 'r' for resume upload)
+ useEffect(() => {
+   const handleCandidatesKeyDown = (e: KeyboardEvent) => {
+     const activeTag = (document.activeElement?.tagName || "").toLowerCase();
+     const isInput = activeTag === "input" || activeTag === "textarea" || (document.activeElement as HTMLElement)?.isContentEditable;
+     if (isInput) return;
+
+     if (e.key.toLowerCase() === "c" && selected.size >= 2) {
+       e.preventDefault();
+       setComparisonOpen(true);
+     } else if (e.key.toLowerCase() === "r") {
+       e.preventDefault();
+       router.push("/resume-upload");
+     }
+   };
+
+   window.addEventListener("keydown", handleCandidatesKeyDown);
+   return () => window.removeEventListener("keydown", handleCandidatesKeyDown);
+ }, [selected.size, router]);
+
+  // Modal state (Section 3 Productivity Enhancements)
+  const [editTarget, setEditTarget] = useState<Candidate | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Candidate | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [previewCandidate, setPreviewCandidate] = useState<Candidate | null>(null);
+  const [shareCandidate, setShareCandidate] = useState<Candidate | null>(null);
+  const [bulkStageOpen, setBulkStageOpen] = useState(false);
+
+  // Bulk Stage Movement Handler (Feature 3.6)
+  const handleConfirmBulkStage = useCallback(async (targetStage: string) => {
+    setModalLoading(true);
+    const STAGE_ORDER = ["Applied", "Screening", "Interview", "Offer", "Hired", "Rejected"];
+    const targetIdx = STAGE_ORDER.indexOf(targetStage);
+
+    const validCandidates: Candidate[] = [];
+    const invalidCandidates: Candidate[] = [];
+
+    candidates.forEach((c) => {
+      if (!selected.has(c.id)) return;
+      const category = getPipelineCategory(c.status);
+      const currentIdx = STAGE_ORDER.indexOf(category);
+      const isRestore = c.status === "Rejected" && targetStage === "Applied";
+      const isReject = targetStage === "Rejected";
+      const isNextStage = targetIdx === currentIdx + 1;
+
+      if (isRestore || isReject || isNextStage) {
+        validCandidates.push(c);
+      } else {
+        invalidCandidates.push(c);
+      }
+    });
+
+    if (validCandidates.length === 0) {
+      showToast(`Selected candidate(s) cannot move directly to "${targetStage}". Candidates must progress step-by-step to the next stage.`, "error");
+      setModalLoading(false);
+      return;
+    }
+
+    try {
+      await Promise.all(
+        validCandidates.map((c) =>
+          fetch(`${API}/candidates/${c.id}`, {
+            method: "PUT",
+            headers: authHeaders(),
+            body: JSON.stringify({ status: targetStage }),
+          })
+        )
+      );
+      const validIds = new Set(validCandidates.map((c) => c.id));
+      setCandidates((prev) =>
+        prev.map((c) => (validIds.has(c.id) ? { ...c, status: targetStage as Status } : c))
+      );
+      setSelected(new Set());
+      setBulkStageOpen(false);
+      if (invalidCandidates.length > 0) {
+        showToast(`Moved ${validCandidates.length} candidate(s) to "${targetStage}". Skipped ${invalidCandidates.length} candidate(s) not in the preceding stage.`, "success");
+      } else {
+        showToast(`Moved ${validCandidates.length} candidate(s) to "${targetStage}"`, "success");
+      }
+    } catch {
+      showToast("Failed to move candidates stage.", "error");
+    } finally {
+      setModalLoading(false);
+    }
+  }, [selected, candidates]);
 
  // Toast
  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -567,7 +791,7 @@ export default function CandidatesPage() {
  // ── FIX 2: Use skillFilteredCandidates as the base, not raw candidates ───
  const filtered = useMemo(() => {
  let data = skillFilteredCandidates;
- const q = search.toLowerCase().trim();
+const q = search.toLowerCase().trim();
  if (q) data = data.filter((c) =>
  c.name.toLowerCase().includes(q) ||
  c.email.toLowerCase().includes(q) ||
@@ -576,7 +800,7 @@ export default function CandidatesPage() {
  c.location.toLowerCase().includes(q)
  );
  if (expFilter) data = data.filter((c) => expInRange(c.experience, expFilter));
- if (statusFilter) data = data.filter((c) => c.status === statusFilter);
+ if (statusFilter) data = data.filter((c) => getPipelineCategory(c.status) === statusFilter);
  return data;
  }, [skillFilteredCandidates, search, expFilter, statusFilter]);
  // ─────────────────────────────────────────────────────────────────────────
@@ -584,12 +808,22 @@ export default function CandidatesPage() {
  const sorted = useMemo(() => {
  if (!sortKey) return filtered;
  return [...filtered].sort((a, b) => {
- const av = (a as any)[sortKey];
- const bv = (b as any)[sortKey];
+ let av = (a as any)[sortKey];
+ let bv = (b as any)[sortKey];
+ if (sortKey === "skills") {
+ av = (a.skills || []).join(", ");
+ bv = (b.skills || []).join(", ");
+ } else if (sortKey === "ctc") {
+ av = a.currentCtc || a.expectedCtc || "";
+ bv = b.currentCtc || b.expectedCtc || "";
+ } else if (sortKey === "owner") {
+ av = a.owner || "";
+ bv = b.owner || "";
+ }
  if (typeof av === "number" && typeof bv === "number")
  return sortDir === "asc" ? av - bv : bv - av;
- const as = String(av).toLowerCase();
- const bs = String(bv).toLowerCase();
+ const as = String(av || "").toLowerCase();
+ const bs = String(bv || "").toLowerCase();
  return sortDir === "asc" ? as.localeCompare(bs) : bs.localeCompare(as);
  });
  }, [filtered, sortKey, sortDir]);
@@ -650,13 +884,16 @@ export default function CandidatesPage() {
  );
  }
 
- // ─── Stats ─────────────────────────────────────────────────────────────────
- const stats = useMemo(() => ({
- total: candidates.length,
- hired: candidates.filter((c) => c.status === "Hired").length,
- interview: candidates.filter((c) => c.status === "Interview").length,
- offer: candidates.filter((c) => c.status === "Offer").length,
- }), [candidates]);
+ // ─── Dynamic Pipeline Stats ─────────────────────────────────────────
+  const stats = useMemo(() => ({
+    total: candidates.length,
+    needsPipeline: candidates.filter((c) => getPipelineCategory(c.status) === "Needs Pipeline").length,
+    applied: candidates.filter((c) => getPipelineCategory(c.status) === "Applied").length,
+    screening: candidates.filter((c) => getPipelineCategory(c.status) === "Screening").length,
+    interview: candidates.filter((c) => getPipelineCategory(c.status) === "Interview").length,
+    offer: candidates.filter((c) => getPipelineCategory(c.status) === "Offer").length,
+    hired: candidates.filter((c) => getPipelineCategory(c.status) === "Hired").length,
+  }), [candidates]);
 
  return (
  <AppLayout>
@@ -765,8 +1002,58 @@ export default function CandidatesPage() {
  Filters
  </button>
 
- <span className="ml-auto text-[12px] text-muted">{sorted.length} candidates</span>
+ <span className="ml-auto text-[12px] text-muted">
+   {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, sorted.length)} of {sorted.length}
+ </span>
  </div>
+
+  {/* ── SAVED CUSTOM FILTERS & QUICK PRESETS BAR (Section 3) ────────────────── */}
+  <div className="px-4 py-2 border-b border-border/[0.06] bg-secondary-surface/20 flex items-center gap-2 overflow-x-auto text-xs">
+    <span className="text-muted font-bold flex items-center gap-1 shrink-0">
+      <Bookmark className="w-3.5 h-3.5 text-blue-500" /> Presets:
+    </span>
+    {["All", "High AI Fit (≥80%)", "Interview Stage", "Needs Pipeline"].map((preset) => (
+      <button
+        key={preset}
+        onClick={() => handleApplyPreset(preset)}
+        className={`px-2.5 py-1 rounded-lg border transition-all shrink-0 font-medium ${
+          activePreset === preset
+            ? "bg-blue-600 text-white border-blue-600 font-bold shadow-sm"
+            : "bg-surface text-text-secondary border-border hover:bg-secondary-surface"
+        }`}
+      >
+        {preset}
+      </button>
+    ))}
+    {customPresets.map((preset) => (
+      <div
+        key={preset.name}
+        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all shrink-0 font-medium ${
+          activePreset === preset.name
+            ? "bg-blue-600 text-white border-blue-600 font-bold shadow-sm"
+            : "bg-surface text-text-secondary border-border hover:bg-secondary-surface"
+        }`}
+      >
+        <button onClick={() => handleApplyPreset(preset.name)} className="outline-none">
+          {preset.name}
+        </button>
+        <button
+          onClick={(e) => handleDeletePreset(preset.name, e)}
+          className="opacity-60 hover:opacity-100 hover:text-red-400 p-0.5 rounded transition-all"
+          title={`Delete preset "${preset.name}"`}
+        >
+          <X className="w-3 h-3" />
+        </button>
+      </div>
+    ))}
+    <button
+      onClick={() => setSavePresetOpen(true)}
+      className="ml-auto px-2.5 py-1 rounded-lg border border-dashed border-blue-500/40 text-blue-500 hover:bg-blue-500/10 font-semibold transition-all shrink-0 flex items-center gap-1"
+      title="Save current search & filter state"
+    >
+      <Save className="w-3.5 h-3.5" /> Save Preset
+    </button>
+  </div>
 
  {/* Filters */}
  <AnimatePresence>
@@ -863,19 +1150,19 @@ export default function CandidatesPage() {
  <thead className="bg-background/40 border-b border-border/[0.06]">
  <tr>
  <th className="w-10 px-3 py-3">
- <input
- type="checkbox"
- checked={allPageSelected}
- onChange={handleSelectAll}
- className="accent-blue-500 w-3.5 h-3.5 cursor-pointer"
- />
- </th>
+  <input
+  type="checkbox"
+  checked={allPageSelected}
+  onChange={handleSelectAll}
+  className="accent-blue-500 w-4 h-4 cursor-pointer"
+  />
+  </th>
  <ThBtn col="name" label="Candidate" className="min-w-[180px]" />
- <th className="px-3 py-3 text-left text-[11px] text-text-secondary uppercase tracking-widest">Skills</th>
+ <ThBtn col="skills" label="Skills" />
  <ThBtn col="experience" label="Exp" />
- <ThBtn col="company" label="Company" />
+ <ThBtn col="ctc" label="CTC & Notice" />
  <ThBtn col="status" label="Status" />
- <th className="px-3 py-3 text-left text-[11px] text-text-secondary uppercase tracking-widest">Recruiter</th>
+ <ThBtn col="owner" label="Recruiter" />
  <ThBtn col="updatedAt" label="Updated" />
  <th className="px-3 py-3 w-[72px]" />
  </tr>
@@ -903,6 +1190,9 @@ export default function CandidatesPage() {
  index={i}
  onEdit={setEditTarget}
  onDelete={setDeleteTarget}
+ onPreviewResume={(cand) => setPreviewCandidate(cand)}
+ onNudge={(cand) => setNudgeCandidate(cand)}
+ onShare={(cand) => setShareCandidate(cand)}
  onClickRow={() => router.push(`/candidates/${c.id}`)}
  />
  ))
@@ -912,52 +1202,51 @@ export default function CandidatesPage() {
  </div>
  </div>
 
- {/* ── PAGINATION ──────────────────────────────────────────────── */}
- {totalPages > 1 && (
- <div className="flex items-center justify-between text-[13px]">
- <span className="text-muted">
- {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, sorted.length)} of {sorted.length}
- </span>
- <div className="flex items-center gap-1">
- <button
- onClick={() => { setPage((p) => Math.max(1, p - 1)); setSelected(new Set()); }}
- disabled={page === 1}
- className="px-3 py-1.5 rounded-lg border border-border/[0.08] text-secondary hover:bg-secondary-surface hover:text-text-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-all"
- >
- Prev
- </button>
- {Array.from({ length: totalPages }, (_, i) => i + 1)
- .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
- .reduce<(number | "…")[]>((acc, p, idx, arr) => {
- if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("…");
- acc.push(p); return acc;
- }, [])
- .map((p, i) =>
- p === "…" ? (
- <span key={`e${i}`} className="px-2 text-muted">…</span>
- ) : (
- <button
- key={p}
- onClick={() => { setPage(p as number); setSelected(new Set()); }}
- className={`w-8 h-8 rounded-lg text-[13px] font-medium transition-all ${page === p
- ? "bg-blue-600 text-white"
- : "text-text-secondary hover:bg-secondary-surface hover:text-text-secondary"
- }`}
- >
- {p}
- </button>
- )
- )}
- <button
- onClick={() => { setPage((p) => Math.min(totalPages, p + 1)); setSelected(new Set()); }}
- disabled={page === totalPages}
- className="px-3 py-1.5 rounded-lg border border-border/[0.08] text-secondary hover:bg-secondary-surface hover:text-text-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-all"
- >
- Next
- </button>
- </div>
- </div>
- )}
+   {/* ── PAGINATION ──────────────────────────────────────────────── */}
+   {totalPages > 1 && (
+     <div className="flex items-center justify-between text-[13px]">
+       <div className="flex items-center gap-1">
+         <button
+           onClick={() => setPage((p) => Math.max(1, p - 1))}
+           disabled={page === 1}
+           title="Previous page"
+           className="w-8 h-8 rounded-lg flex items-center justify-center border border-border/[0.08] text-text-secondary hover:bg-secondary-surface disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+         >
+           <ChevronLeft className="w-4 h-4" />
+         </button>
+         {Array.from({ length: totalPages }, (_, i) => i + 1)
+           .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+           .reduce<(number | "…")[]>((acc, p, idx, arr) => {
+             if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("…");
+             acc.push(p); return acc;
+           }, [])
+           .map((p, i) =>
+             p === "…" ? (
+               <span key={`e${i}`} className="px-1.5 text-muted">…</span>
+             ) : (
+               <button
+                 key={p}
+                 onClick={() => setPage(p as number)}
+                 className={`w-8 h-8 rounded-lg text-[13px] font-bold transition-all ${page === p
+                   ? "bg-blue-600 text-white"
+                   : "text-text-secondary hover:bg-secondary-surface"
+                 }`}
+               >
+                 {p}
+               </button>
+             )
+           )}
+         <button
+           onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+           disabled={page === totalPages}
+           title="Next page"
+           className="w-8 h-8 rounded-lg flex items-center justify-center border border-border/[0.08] text-text-secondary hover:bg-secondary-surface disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+         >
+           <ChevronRight className="w-4 h-4" />
+         </button>
+       </div>
+     </div>
+   )}
  </main>
 
  {/* ── MODALS ──────────────────────────────────────────────────────── */}
@@ -986,9 +1275,122 @@ export default function CandidatesPage() {
  loading={modalLoading}
  />
  )}
- {toast && <Toast key={toast.message} message={toast.message} type={toast.type} />}
- </AnimatePresence>
+
+  <SavePresetModal
+    isOpen={savePresetOpen}
+    onClose={() => setSavePresetOpen(false)}
+    onSave={handleSaveCurrentPreset}
+  />
+
+  <QuickResumePreviewModal
+    isOpen={!!previewCandidate}
+    onClose={() => setPreviewCandidate(null)}
+    candidate={previewCandidate}
+  />
+
+  <WhatsAppSMSNudgeModal
+    isOpen={!!nudgeCandidate}
+    onClose={() => setNudgeCandidate(null)}
+    candidateId={Number(nudgeCandidate?.id) || 1}
+    candidateName={nudgeCandidate?.name || "Candidate"}
+    candidatePhone={nudgeCandidate?.phone}
+  />
+
+  <ShareCandidateModal
+    isOpen={!!shareCandidate}
+    onClose={() => setShareCandidate(null)}
+    candidate={shareCandidate}
+  />
+  {toast && <Toast key={toast.message} message={toast.message} type={toast.type} />}
+  </AnimatePresence>
  </div>
  </AppLayout>
  );
+}
+
+// ─── Save Preset Modal ───────────────────────────────────────────────────────
+
+function SavePresetModal({
+  isOpen,
+  onClose,
+  onSave,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (name: string) => void;
+}) {
+  const [name, setName] = useState("");
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    onSave(name.trim());
+    setName("");
+    onClose();
+  };
+
+  return (
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm cursor-pointer"
+    >
+      <motion.div
+        onClick={(e) => e.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        className="w-full max-w-md bg-surface border border-border rounded-2xl p-6 shadow-2xl text-text-primary cursor-default"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500">
+              <BookmarkPlus className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-text-primary">Save Filter Preset</h3>
+              <p className="text-xs text-muted">Save current filters & search state</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-muted hover:text-text-primary p-1 rounded-lg border border-border">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-text-primary mb-1.5 uppercase tracking-wide">
+              Preset Name
+            </label>
+            <input
+              type="text"
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Senior React Devs, Short Notice..."
+              className="w-full px-3.5 py-2.5 bg-secondary-surface/40 border border-border rounded-xl text-sm text-text-primary placeholder-muted outline-none focus:ring-1 focus:ring-blue-500/40"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-border text-text-secondary text-xs font-semibold rounded-xl hover:bg-secondary-surface transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!name.trim()}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow transition-colors disabled:opacity-50"
+            >
+              Save Preset
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
 }

@@ -109,6 +109,10 @@ export default function SemanticSearchPage() {
  }
  };
 
+  // In-memory cache & fast lookup refs for instant search results
+  const searchCacheRef = useState<Record<string, any>>({})[0];
+  const allCandidatesRef = useState<any[]>([])[1];
+
  const loadSettingsAndPositions = async () => {
  try {
  let isSemanticSearchEnabled = true;
@@ -128,6 +132,8 @@ export default function SemanticSearchPage() {
 
  // Initial candidate load — also safe against paginated response
  const candidatesData = await getCandidates();
+ const arr = extractCandidateArray(candidatesData).map(normaliseCandidate);
+ allCandidatesRef(arr);
  safSetCandidates(candidatesData);
 
  } catch (error) {
@@ -153,21 +159,29 @@ export default function SemanticSearchPage() {
  // Search handlers — all use safSetCandidates so shape never matters
  // -------------------------------------------------------------------------
 
- const handleStandardSearch = async (e: React.FormEvent) => {
- e.preventDefault();
- setLoading(true);
- try {
- const response = await searchCandidatesComprehensive({
- query: standardQuery || undefined,
- });
- safSetCandidates(response);
- } catch (error) {
- console.error(error);
- setCandidates([]);
- } finally {
- setLoading(false);
- }
- };
+  const handleStandardSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cacheKey = `std_${standardQuery.trim().toLowerCase()}`;
+    if (searchCacheRef[cacheKey]) {
+      safSetCandidates(searchCacheRef[cacheKey]);
+      setHasSearched(true);
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await searchCandidatesComprehensive({
+        query: standardQuery || undefined,
+      });
+      searchCacheRef[cacheKey] = response;
+      safSetCandidates(response);
+      setHasSearched(true);
+    } catch (error) {
+      console.error(error);
+      setCandidates([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
  const handleAdvancedSearch = async (e: React.FormEvent) => {
  e.preventDefault();

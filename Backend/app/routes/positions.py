@@ -32,7 +32,8 @@ def create_position(
         company=position.company,
         location=position.location,
         description=position.description,
-        required_skills=position.required_skills
+        required_skills=position.required_skills,
+        is_published=position.is_published if position.is_published is not None else False
     )
     db.add(new_position)
     db.commit()
@@ -111,7 +112,28 @@ def update_position(
     position.location = updated_position.location
     position.description = updated_position.description
     position.required_skills = updated_position.required_skills
+    if updated_position.is_published is not None:
+        position.is_published = updated_position.is_published
 
+    db.commit()
+    db.refresh(position)
+    return position
+
+
+@router.put(
+    "/{position_id}/publish",
+    response_model=PositionResponse
+)
+def toggle_publish_position(
+    position_id: int,
+    publish_data: dict,
+    db: Session = Depends(get_db)
+):
+    position = db.query(Position).filter(Position.id == position_id).first()
+    if not position:
+        raise HTTPException(status_code=404, detail="Position not found")
+
+    position.is_published = bool(publish_data.get("is_published", False))
     db.commit()
     db.refresh(position)
     return position

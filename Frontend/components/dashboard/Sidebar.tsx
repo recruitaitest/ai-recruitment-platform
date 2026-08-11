@@ -17,7 +17,8 @@ import {
     LogOut,
     ChevronLeft,
     Lock,
-    FileText
+    FileText,
+    Zap
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
@@ -66,6 +67,9 @@ export function Sidebar({
     const [user, setUser] = useState<any>(null)
     const [portal, setPortal] = useState<'recruiter' | 'admin'>('recruiter')
     const [semanticSearchEnabled, setSemanticSearchEnabled] = useState(true)
+    const [activeAIProvider, setActiveAIProvider] = useState<string | null>(null)
+    const canManageAI = hasPermission("ai_settings.manage", true)
+
 
     useEffect(() => {
         const loadUser = () => {
@@ -89,6 +93,9 @@ export function Sidebar({
             try {
                 const settings = await getAISettings()
                 setSemanticSearchEnabled(settings.semantic_search !== false)
+                if (settings.active_provider) {
+                    setActiveAIProvider(settings.active_provider)
+                }
             } catch (error) {
                 console.error(error)
             }
@@ -132,12 +139,20 @@ export function Sidebar({
             }]
             : []),
         ...(hasPermission("ai_search.view", false) && semanticSearchEnabled
-            ? [{
-                id: 'semantic-search',
-                label: 'AI Search',
-                icon: <Sparkles className="w-5 h-5" />,
-                href: '/semantic-search',
-            }]
+            ? [
+                {
+                    id: 'semantic-search',
+                    label: 'AI Search',
+                    icon: <Sparkles className="w-5 h-5" />,
+                    href: '/semantic-search',
+                },
+                {
+                    id: 'ai-copilot',
+                    label: 'AI Copilot',
+                    icon: <Bot className="w-5 h-5" />,
+                    href: '/copilot',
+                }
+            ]
             : []),
 
         ...(hasPermission("pipelines.view", false)
@@ -202,6 +217,18 @@ export function Sidebar({
             label: 'Dashboard',
             icon: <LayoutGrid className="w-5 h-5" />,
             href: '/admin/dashboard',
+        },
+        {
+            id: 'admin-automation',
+            label: 'Automation',
+            icon: <Zap className="w-5 h-5 text-blue-400" />,
+            href: '/admin/automation',
+        },
+        {
+            id: 'admin-ai-processing',
+            label: 'AI Processing',
+            icon: <Bot className="w-5 h-5 text-emerald-400" />,
+            href: '/admin/ai',
         },
 
         ...(hasPermission("users.view", false)
@@ -393,6 +420,34 @@ export function Sidebar({
                     )
                 })}
             </nav>
+
+            {/* AI Agent indicator */}
+            {activeAIProvider && (
+                <div className={`px-3 py-2 ${ isExpanded ? 'block' : 'hidden' }`}>
+                    {canManageAI ? (
+                    <button 
+                        onClick={() => router.push('/admin/ai')}
+                        title="Click to change AI provider"
+                        className="w-full flex items-center gap-2 rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1.5 transition-all hover:bg-violet-500/20 hover:border-violet-400/50 hover:scale-[1.02] active:scale-95 text-left"
+                    >
+                        <span className="h-2 w-2 rounded-full bg-violet-400 animate-pulse flex-shrink-0" />
+                        <span className="text-xs font-semibold text-violet-500 dark:text-violet-400 truncate">
+                            AI Agent: {activeAIProvider}
+                        </span>
+                    </button>
+                    ) : (
+                    <div 
+                        title="Active AI Agent"
+                        className="flex items-center gap-2 rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1.5"
+                    >
+                        <span className="h-2 w-2 rounded-full bg-violet-400 animate-pulse flex-shrink-0" />
+                        <span className="text-xs font-semibold text-violet-500 dark:text-violet-400 truncate">
+                            AI Agent: {activeAIProvider}
+                        </span>
+                    </div>
+                    )}
+                </div>
+            )}
 
             {/* Bottom section: Compress / Expand Sidebar toggle */}
             <div className="border-t border-border p-2">

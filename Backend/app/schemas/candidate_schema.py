@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime
 
 
 class CandidateCreate(BaseModel):
@@ -12,6 +13,11 @@ class CandidateCreate(BaseModel):
     education: Optional[str] = None
     experience: Optional[int] = 0
     status: Optional[str] = "Applied"
+    current_ctc: Optional[str] = None
+    expected_ctc: Optional[str] = None
+    notice_period: Optional[str] = None
+    current_designation: Optional[str] = None
+    applied_position_id: Optional[int] = None
 
 
 class CandidateUpdate(BaseModel):
@@ -24,6 +30,11 @@ class CandidateUpdate(BaseModel):
     location: Optional[str] = None
     experience: Optional[int] = None
     status: Optional[str] = None
+    current_ctc: Optional[str] = None
+    expected_ctc: Optional[str] = None
+    notice_period: Optional[str] = None
+    current_designation: Optional[str] = None
+    applied_position_id: Optional[int] = None
 
     class Config:
         extra = "ignore"
@@ -44,6 +55,14 @@ class CandidateResponse(BaseModel):
     education: Optional[str] = None
     experience: Optional[int] = None
     status: Optional[str] = None
+
+    current_ctc: Optional[str] = None
+    expected_ctc: Optional[str] = None
+    notice_period: Optional[str] = None
+    current_designation: Optional[str] = None
+    folder_path: Optional[str] = None
+    applied_position_id: Optional[int] = None
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

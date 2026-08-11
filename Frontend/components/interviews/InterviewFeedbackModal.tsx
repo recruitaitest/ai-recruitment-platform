@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { X } from "lucide-react";
 import { toast } from "sonner";
 import { submitInterviewFeedback } from "@/services/interviewService";
+import AIScorecardAutoFillButton from "@/components/ai/AIScorecardAutoFillButton";
 
 interface Props {
  open: boolean;
@@ -164,7 +165,22 @@ export default function InterviewFeedbackModal({
 
           {/* Comments */}
           <div>
-            <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">Comments</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">Comments & Evaluation</label>
+              <AIScorecardAutoFillButton
+                onAutoFill={(ratings, summary) => {
+                  if (summary) setComments(summary);
+                  if (ratings && ratings.length > 0) {
+                    ratings.forEach((r: any) => {
+                      if (r.competency.toLowerCase().includes("overall")) setOverallRating(String(r.rating));
+                      if (r.competency.toLowerCase().includes("technical")) setTechnicalRating(String(r.rating));
+                      if (r.competency.toLowerCase().includes("communication")) setCommunicationRating(String(r.rating));
+                      if (r.competency.toLowerCase().includes("problem")) setProblemSolvingRating(String(r.rating));
+                    });
+                  }
+                }}
+              />
+            </div>
             <textarea
               rows={5}
               value={comments}

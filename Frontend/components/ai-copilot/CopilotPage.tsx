@@ -98,21 +98,42 @@ export default function CopilotPage() {
         };
     }, []);
 
-    const sendMessageToWs = (message: string) => {
-        if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
-            console.error("WebSocket is not connected.");
-            return;
-        }
-
+    const sendMessageToWs = async (message: string) => {
         setIsTyping(true);
+        const assistantId = crypto.randomUUID();
 
-        // Add a placeholder message for the assistant that will be populated by the stream
         setMessages((prev) => [
             ...prev,
-            { id: crypto.randomUUID(), role: "assistant", content: "" }
+            { id: assistantId, role: "assistant", content: "" }
         ]);
 
-        ws.current.send(JSON.stringify({ message }));
+        try {
+            const api = (await import("@/lib/api")).default;
+            const res = await api.post(
+                "/api/ai/recruiter-chat",
+                {
+                    message,
+                    conversation_history: messages.map((m) => ({ sender: m.role === "user" ? "user" : "bot", text: m.content })),
+                },
+                { headers: { "X-Portal-Type": "recruiter" } }
+            );
+            const text = res.data?.response || "I am your Senior Recruitment Operations Assistant. How can I assist with your candidate pipeline today?";
+            setMessages((prev) => {
+                const updated = [...prev];
+                const target = updated.find((m) => m.id === assistantId);
+                if (target) target.content = text;
+                return updated;
+            });
+        } catch (err) {
+            setMessages((prev) => {
+                const updated = [...prev];
+                const target = updated.find((m) => m.id === assistantId);
+                if (target) target.content = "Sorry, encountered an error connecting to recruiter AI chat endpoint.";
+                return updated;
+            });
+        } finally {
+            setIsTyping(false);
+        }
     };
 
     const handlePromptClick = (prompt: string) => {

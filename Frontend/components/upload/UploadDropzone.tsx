@@ -132,6 +132,36 @@ export default function UploadDropzone({ onSuccess, onCancel, onUploadChange }: 
                 status: "Parsing",
             });
 
+            // ── BATCH ZIP ARCHIVE HANDLER (Feature 2.6) ───────────────────
+            if (selectedFile!.name.toLowerCase().endsWith(".zip")) {
+                onUploadChange?.({
+                    fileName: selectedFile!.name,
+                    fileSize: fileSizeMB(selectedFile!),
+                    progress: 45,
+                    status: "Extracting & Parsing Batch Resumes...",
+                });
+
+                const { uploadBulkZipResumes } = await import("@/services/automationService");
+                const zipResult = await uploadBulkZipResumes(selectedFile!);
+
+                onUploadChange?.({
+                    fileName: selectedFile!.name,
+                    fileSize: fileSizeMB(selectedFile!),
+                    progress: 100,
+                    status: "Completed Batch Upload",
+                });
+
+                toast.success(`🎉 Successfully batch parsed ${zipResult.successfully_parsed} resumes from ZIP!`, { duration: 6000 });
+
+                if (zipResult.parsed_candidates && zipResult.parsed_candidates.length > 0) {
+                    onSuccess?.(zipResult.parsed_candidates[0]);
+                } else {
+                    router.push("/candidates");
+                }
+                resetForm();
+                return;
+            }
+
             let candidate = await parseResume(selectedFile!);
 
             onUploadChange?.({
@@ -244,7 +274,7 @@ export default function UploadDropzone({ onSuccess, onCancel, onUploadChange }: 
             <input
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf,.docx"
+                accept=".pdf,.docx,.doc,.zip,application/zip,application/x-zip-compressed"
                 hidden
                 onChange={(e) => {
                     if (e.target.files?.[0]) handleFileChange(e.target.files[0]);
@@ -255,7 +285,7 @@ export default function UploadDropzone({ onSuccess, onCancel, onUploadChange }: 
 
                 {/* Header */}
                 <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-text-primary">Add New Candidate</h2>
+                    <h2 className="text-lg font-semibold text-text-primary">Add Candidate / Bulk Upload</h2>
                     <button
                         onClick={handleCancel}
                         className="rounded-lg border border-border bg-secondary-surface/50 px-4 py-1.5 text-sm text-muted hover:text-text-primary hover:bg-slate-700 transition"
@@ -268,7 +298,7 @@ export default function UploadDropzone({ onSuccess, onCancel, onUploadChange }: 
                 <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
                     <span className="text-primary text-lg">🤖</span>
                     <p className="text-xs text-muted">
-                        <span className="text-primary font-medium">AI-powered parsing</span> — Upload a resume and we&apos;ll automatically extract the candidate&apos;s name, email, phone, skills, and education.
+                        <span className="text-primary font-medium">AI-powered parsing & Bulk ZIP Ingestion</span> — Upload single PDF/DOCX resumes or a <span className="font-semibold text-primary">.ZIP archive</span> to batch create candidate profiles.
                     </p>
                 </div>
 

@@ -1,6 +1,7 @@
 import os
 from app.celery_app import celery_app
 from app.database import SessionLocal
+import app.models  # Ensure all SQLAlchemy models are registered
 from app.models.candidate import Candidate
 from app.utils.resume_parser import (
     extract_text_from_resume,
@@ -118,6 +119,7 @@ def process_resume_task(candidate_id: int, file_path: str):
         return f"Successfully processed resume for {candidate.full_name}"
 
     except Exception as e:
+        db.rollback()
         candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
         if candidate:
             candidate.status = "Error Parsing"

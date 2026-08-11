@@ -134,9 +134,10 @@ export default function EmailLogsTable() {
       setLoading(true);
       try {
         const data = await getEmailLogs();
-        setLogs(data);
+        setLogs(Array.isArray(data) ? data : (Array.isArray(data?.messages) ? data.messages : []));
       } catch (error) {
         console.error("Failed to load email logs", error);
+        setLogs([]);
       } finally {
         setLoading(false);
       }
@@ -148,7 +149,8 @@ export default function EmailLogsTable() {
     console.log("View log detail", id);
   }
 
-  const visible = logs.slice(0, LIMIT);
+  const safeLogs = Array.isArray(logs) ? logs : [];
+  const visible = safeLogs.slice(0, LIMIT);
 
   return (
     <>
@@ -180,10 +182,10 @@ export default function EmailLogsTable() {
         )}
 
         {/* Footer */}
-        {logs.length > LIMIT && (
+        {safeLogs.length > LIMIT && (
           <div className="flex items-center justify-between border-t border-border px-6 py-3 bg-white/[0.02]">
             <span className="text-xs text-gray-500">
-              Showing {LIMIT} of {logs.length}
+              Showing {LIMIT} of {safeLogs.length}
             </span>
             <button
               onClick={() => setViewAll(true)}
@@ -219,7 +221,7 @@ export default function EmailLogsTable() {
                     All Email Ingestion Logs
                   </h2>
                   <p className="mt-1 text-sm text-muted">
-                    {logs.length} emails
+                    {safeLogs.length} emails
                   </p>
                 </div>
                 <button
@@ -232,7 +234,7 @@ export default function EmailLogsTable() {
 
               {/* Scrollable body */}
               <div className="overflow-y-auto flex-1">
-                <EmailRows logs={logs} onView={handleView} />
+                <EmailRows logs={safeLogs} onView={handleView} />
               </div>
             </motion.div>
           </motion.div>

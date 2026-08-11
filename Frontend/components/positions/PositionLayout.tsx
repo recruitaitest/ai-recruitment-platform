@@ -12,6 +12,7 @@ import type { Position } from "@/types/positon";
 import PositionStats from "./PositionStats";
 import PositionFilters from "./PositionFilters";
 import EditPositionModal from "./EditPositionModal";
+import { PositionApplicantsModal } from "./PositionApplicantsModal";
 
 export default function PositionLayout() {
 
@@ -35,6 +36,8 @@ export default function PositionLayout() {
 
  const [openDrawer, setOpenDrawer] =
  useState(false);
+
+ const [applicantsPosition, setApplicantsPosition] = useState<Position | null>(null);
 
  useEffect(() => {
 
@@ -134,6 +137,8 @@ export default function PositionLayout() {
 
  status: "Open",
 
+ is_published: !!position.is_published,
+
  recruiter: "Recruiting Team",
 
  postedDate: "",
@@ -160,6 +165,29 @@ export default function PositionLayout() {
  setLoading(false);
  }
  };
+
+ const handleTogglePublish = async (positionId: number, currentStatus: boolean) => {
+    try {
+      const nextStatus = !currentStatus;
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/positions/${positionId}/publish`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ is_published: nextStatus }),
+        }
+      );
+      if (response.ok) {
+        setAllPositions((prev) =>
+          prev.map((pos) =>
+            pos.id === positionId ? { ...pos, is_published: nextStatus } : pos
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Failed to toggle publish status", err);
+    }
+  };
 
  const filteredPositions =
  allPositions.filter(
@@ -260,6 +288,8 @@ export default function PositionLayout() {
  ) : (
  <PositionTable
  positions={filteredPositions}
+ onTogglePublish={handleTogglePublish}
+ onViewApplicants={(pos) => setApplicantsPosition(pos)}
  onSelect={(position) => {
 
  setSelectedPosition(
@@ -356,6 +386,12 @@ export default function PositionLayout() {
  )
  );
  }}
+ />
+
+ <PositionApplicantsModal
+   isOpen={!!applicantsPosition}
+   onClose={() => setApplicantsPosition(null)}
+   position={applicantsPosition}
  />
 
  </motion.div>

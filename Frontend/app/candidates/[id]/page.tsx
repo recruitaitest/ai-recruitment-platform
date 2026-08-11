@@ -15,7 +15,7 @@ export default function CandidateProfileRoute({
         const fetchCandidate = async () => {
             try {
                 const token = localStorage.getItem("token");
-                const [candidateRes, notesRes] = await Promise.all([
+                const [candidateRes, notesRes, historyRes] = await Promise.all([
                     fetch(
                         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/candidates/${params.id}`,
                         { headers: { Authorization: `Bearer ${token}` } }
@@ -23,10 +23,19 @@ export default function CandidateProfileRoute({
                     fetch(
                         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/candidates/${params.id}/notes`,
                         { headers: { Authorization: `Bearer ${token}` } }
+                    ),
+                    fetch(
+                        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/candidates/${params.id}/history`,
+                        { headers: { Authorization: `Bearer ${token}` } }
                     )
                 ]);
                 
                 const data = await candidateRes.json();
+                let historyData = null;
+                if (historyRes.ok) {
+                    historyData = await historyRes.json();
+                }
+
                 let candidateNotes = [];
                 if (notesRes.ok) {
                     const notesData = await notesRes.json();
@@ -50,6 +59,13 @@ export default function CandidateProfileRoute({
                         .join("")
                         .slice(0, 2)
                         .toUpperCase() || "??",
+
+                    // Centralized Candidate Database Fields
+                    current_ctc: data.current_ctc || "Not specified",
+                    expected_ctc: data.expected_ctc || "Not specified",
+                    notice_period: data.notice_period || "Not specified",
+                    current_designation: data.current_designation || data.company || "Candidate",
+                    folder_path: data.folder_path || `uploads/positions/${data.applied_position_id || 'general'}/`,
 
                     // Contact
                     contact: {
@@ -76,27 +92,33 @@ export default function CandidateProfileRoute({
                     // Status / stage
                     stage: data.status || "Applied",
 
-                    // AI summary placeholder (extend when backend supports it)
+                    // Timeline & History
+                    history: historyData,
+                    interviews: historyData?.interviews || [],
+                    pipelines: historyData?.pipelines || [],
+                    offers: historyData?.offers || [],
+
+                    // AI summary
                     aiSummary: [
                         data.full_name && `${data.full_name} is a candidate`,
                         data.experience && `with ${data.experience} years of experience`,
                         data.company && `previously at ${data.company}`,
                         data.location && `based in ${data.location}`,
+                        data.current_ctc && `Current CTC: ${data.current_ctc}`,
+                        data.expected_ctc && `Expected CTC: ${data.expected_ctc}`,
+                        data.notice_period && `Notice Period: ${data.notice_period}`,
                         data.skills && `with skills in ${data.skills}`,
                     ]
                         .filter(Boolean)
                         .join(" ") + ".",
 
-                    // Empty arrays — extend when backend supports these
                     experience: [],
                     activity: [],
-                    interviews: [],
                     scheduledInterviews: [],
                     resumeVersions: [],
                     notes: candidateNotes,
                     
                     experience_years: data.experience,
-
                     recruiter: "Recruiter",
                 });
             } catch (error) {

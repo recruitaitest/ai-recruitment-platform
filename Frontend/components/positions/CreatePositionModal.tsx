@@ -4,9 +4,10 @@ import { useState } from "react";
 
 import { motion } from "framer-motion";
 
-import { X } from "lucide-react";
-
+import { X, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import type { Position } from "@/types/positon";
+import { generateAIJobDescription } from "@/services/aiService";
 
 
 interface Props {
@@ -39,6 +40,39 @@ export default function CreatePositionModal({
  useState(1);
 
  const [skills, setSkills] = useState("");
+ const [description, setDescription] = useState("");
+ const [generatingAI, setGeneratingAI] = useState(false);
+
+ const handleGenerateAIDirectly = async () => {
+   if (!title.trim()) {
+     toast.error("Please enter a Position Title first.");
+     return;
+   }
+   try {
+     setGeneratingAI(true);
+     const res = await generateAIJobDescription({
+       title: title,
+       seniority: experience || "Mid-Senior Level",
+       key_bullets: skills || title,
+       location: location || "Remote",
+       department: department
+     });
+     if (res) {
+       if (res.required_skills?.length) {
+         setSkills(res.required_skills.join(", "));
+       }
+       if (res.description_markdown) {
+         setDescription(res.description_markdown);
+       }
+       toast.success("AI generated JD & skills directly!");
+     }
+   } catch (err) {
+     console.error("AI Generation error:", err);
+     toast.error("Failed to generate AI JD.");
+   } finally {
+     setGeneratingAI(false);
+   }
+ };
 
  if (!open) return null;
 
@@ -66,7 +100,7 @@ export default function CreatePositionModal({
  location: location,
 
  description:
- `${type} position requiring ${experience} experience`,
+ description || `${type} position requiring ${experience} experience`,
 
  required_skills: skills,
  }),
@@ -261,17 +295,43 @@ export default function CreatePositionModal({
 
           {/* Skills */}
           <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
-              Skills
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Skills & Requirements
+              </label>
+              <button
+                type="button"
+                onClick={handleGenerateAIDirectly}
+                disabled={generatingAI}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium text-xs rounded-lg shadow transition-all disabled:opacity-60"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                {generatingAI ? "Generating JD & Skills..." : "✨ Auto-Generate JD & Skills with AI"}
+              </button>
+            </div>
             <textarea
               value={skills}
               onChange={(e) => setSkills(e.target.value)}
               placeholder="e.g. React, Node.js, TypeScript (comma separated)"
-              rows={3}
+              rows={2}
               className="w-full rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white px-4 py-3 outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 placeholder:text-slate-400"
             />
           </div>
+
+          {/* Job Description */}
+          {description && (
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Generated Job Description (Markdown)
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={5}
+                className="w-full rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white px-4 py-3 outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 placeholder:text-slate-400 font-mono text-xs"
+              />
+            </div>
+          )}
         </div>
 
         {/* Footer */}

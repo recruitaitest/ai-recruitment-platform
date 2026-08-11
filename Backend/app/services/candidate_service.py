@@ -5,6 +5,8 @@ from app.models.candidate_note import CandidateNote
 from app.models.interview import Interview
 from app.models.pipeline import Pipeline
 from app.models.pipeline_stage_history import PipelineStageHistory
+from app.models.position import Position
+from app.models.offer import Offer
 from app.utils.notification_helper import create_notification
 from app.schemas.candidate_schema import CandidateCreate, CandidateUpdate
 from app.services.candidate_parser_service import create_candidate_from_resume
@@ -27,7 +29,12 @@ class CandidateService:
             company=candidate.company,
             location=candidate.location,
             experience=candidate.experience,
-            status=candidate.status
+            status=candidate.status,
+            current_ctc=candidate.current_ctc,
+            expected_ctc=candidate.expected_ctc,
+            notice_period=candidate.notice_period,
+            current_designation=candidate.current_designation,
+            applied_position_id=candidate.applied_position_id
         )
         db.add(new_candidate)
         db.commit()
@@ -43,7 +50,19 @@ class CandidateService:
 
     @staticmethod
     def get_candidates(db: Session):
-        return db.query(Candidate).all()
+        candidates = db.query(Candidate).all()
+        pipelines = db.query(Pipeline).all()
+        pipeline_map = {p.candidate_id: p for p in pipelines}
+
+        for candidate in candidates:
+            if candidate.id in pipeline_map:
+                candidate.status = pipeline_map[candidate.id].stage
+                if not candidate.applied_position_id:
+                    candidate.applied_position_id = pipeline_map[candidate.id].position_id
+            else:
+                candidate.status = "Needs Pipeline"
+
+        return candidates
 
     @staticmethod
     def get_candidate(db: Session, candidate_id: int):
@@ -213,4 +232,112 @@ class CandidateService:
         )
         
         return note
-        return note
+
+    @staticmethod
+    def get_candidate_history(db: Session, candidate_id: int):
+        candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+        if not candidate:
+            raise HTTPException(status_code=404, detail="Candidate not found")
+
+        # Pipelines and Stage History
+        pipelines = db.query(Pipeline).filter(Pipeline.candidate_id == candidate_id).all()
+        pipeline_history = []
+        for p in pipelines:
+            pos = db.query(Position).filter(Position.id == p.position_id).first()
+            stages = db.query(PipelineStageHistory).filter(PipelineStageHistory.pipeline_id == p.id).all()
+            pipeline_history.append({
+                "pipeline_id": p.id,
+                "position_id": p.position_id,
+                "position_title": pos.title if pos else "Unknown Position",
+                "current_stage": p.stage,
+                "notes": p.notes,
+                "created_at": p.created_at,
+                "updated_at": p.updated_at,
+                "stage_history": [
+                    {
+                        "id": s.id,
+                        "old_stage": s.old_stage,
+                        "new_stage": s.new_stage,
+                        "changed_at": s.changed_at
+                    } for s in stages
+                ]
+            })
+
+        # Interviews
+        interviews = db.query(Interview).filter(Interview.candidate_id == candidate_id).all()
+        interview_history = []
+        for i in interviews:
+            pos = db.query(Position).filter(Position.id == i.position_id).first()
+            interview_history.append({
+                "id": i.id,
+                "position_id": i.position_id,
+                "position_title": pos.title if pos else "General Interview",
+                "interview_date": i.interview_date,
+                "interview_time": i.interview_time,
+                "interview_type": i.interview_type,
+                "interview_mode": i.interview_mode,
+                "meeting_link": i.meeting_link,
+                "status": i.status,
+                "feedback": i.feedback,
+                "overall_rating": i.overall_rating,
+                "recommendation": i.recommendation,
+                "completed_at": i.completed_at
+            })
+
+        # Notes
+        notes = db.query(CandidateNote).filter(CandidateNote.candidate_id == candidate_id).order_by(CandidateNote.created_at.desc()).all()
+        notes_history = [
+            {
+                "id": n.id,
+                "author_id": n.author_id,
+                "author_name": n.author_name,
+                "content": n.content,
+                "created_at": n.created_at
+            } for n in notes
+        ]
+
+        # Offers
+        offers = db.query(Offer).filter(Offer.candidate_id == candidate_id).all()
+        offers_history = []
+        for o in offers:
+            pos = db.query(Position).filter(Position.id == o.position_id).first()
+            offers_history.append({
+                "id": o.id,
+                "position_id": o.position_id,
+                "position_title": pos.title if pos else "Unknown Position",
+                "salary": o.salary,
+                "employment_type": o.employment_type,
+                "joining_date": o.joining_date,
+                "status": o.status,
+                "notes": o.notes,
+                "created_at": o.created_at
+            })
+
+        # Target Position Info
+        applied_position = None
+        if candidate.applied_position_id:
+            pos = db.query(Position).filter(Position.id == candidate.applied_position_id).first()
+            if pos:
+                applied_position = {
+                    "id": pos.id,
+                    "title": pos.title,
+                    "company": pos.company,
+                    "location": pos.location
+                }
+
+        return {
+            "candidate_id": candidate.id,
+            "full_name": candidate.full_name,
+            "email": candidate.email,
+            "phone": candidate.phone,
+            "status": candidate.status,
+            "current_ctc": candidate.current_ctc,
+            "expected_ctc": candidate.expected_ctc,
+            "notice_period": candidate.notice_period,
+            "folder_path": candidate.folder_path,
+            "applied_position": applied_position,
+            "pipelines": pipeline_history,
+            "interviews": interview_history,
+            "notes": notes_history,
+            "offers": offers_history
+        }

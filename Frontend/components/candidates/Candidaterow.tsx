@@ -36,16 +36,15 @@ export function CandidateRow({
  }`}
  >
  {/* Checkbox */}
- <td className="w-10 px-3 py-3">
- <input
- type="checkbox"
- checked={selected}
- onChange={() => onSelect(candidate.id)}
- onClick={(e) => e.stopPropagation()}
- className="w-4 h-4 rounded border-border text-primary cursor-pointer accent-primary"
- aria-label={`Select ${candidate.name}`}
- />
- </td>
+ <td className="w-10 px-3 py-3" onClick={(e) => e.stopPropagation()}>
+    <input
+      type="checkbox"
+      checked={selected}
+      onChange={() => onSelect(candidate.id)}
+      className="w-4 h-4 rounded border-border text-primary cursor-pointer accent-primary"
+      aria-label={`Select ${candidate.name}`}
+    />
+  </td>
 
  {/* Candidate */}
  <td className="px-3 py-3 min-w-[180px]">

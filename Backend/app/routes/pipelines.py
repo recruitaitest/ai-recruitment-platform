@@ -18,10 +18,8 @@ from app.models.pipeline_stage_history import (
 router = APIRouter()
 
 
-@router.post(
-    "/",
-    response_model=PipelineResponse
-)
+@router.post("")
+@router.post("/")
 def create_pipeline(
     pipeline: PipelineCreate,
     db: Session = Depends(get_db)
@@ -67,6 +65,10 @@ def create_pipeline(
     db.add(new_pipeline)
     db.flush()
 
+    # Sync candidate status and applied position
+    candidate.status = pipeline.stage
+    candidate.applied_position_id = pipeline.position_id
+
     history = PipelineStageHistory(
         pipeline_id=new_pipeline.id,
         old_stage=None,
@@ -80,6 +82,7 @@ def create_pipeline(
     return new_pipeline
 
 
+@router.get("")
 @router.get("/")
 def get_pipelines(
     db: Session = Depends(get_db)
@@ -182,6 +185,10 @@ def update_pipeline(
     pipeline.stage = updated_pipeline.stage
     pipeline.notes = updated_pipeline.notes
 
+    # Sync candidate status and applied position
+    candidate.status = updated_pipeline.stage
+    candidate.applied_position_id = updated_pipeline.position_id
+
     if old_stage != updated_pipeline.stage:
         history = PipelineStageHistory(
             pipeline_id=pipeline.id,
@@ -212,6 +219,11 @@ def delete_pipeline(
             status_code=404,
             detail="Pipeline not found"
         )
+
+    # Reset candidate status to Needs Pipeline
+    candidate = db.query(Candidate).filter(Candidate.id == pipeline.candidate_id).first()
+    if candidate:
+        candidate.status = "Needs Pipeline"
 
     # Delete related offers to avoid IntegrityError
     from app.models.offer import Offer

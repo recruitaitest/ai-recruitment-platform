@@ -1,274 +1,282 @@
 "use client";
 
 import { useState } from "react";
-
 import {
- X,
- Mail,
- Phone,
- MapPin,
- Briefcase,
- Download,
+  X,
+  Mail,
+  Phone,
+  MapPin,
+  Briefcase,
+  Download,
+  Share2,
+  MessageSquare,
+  Sparkles,
+  Users,
+  Video,
+  Calendar,
+  FileText,
+  Trash2,
 } from "lucide-react";
-
 import { motion } from "framer-motion";
 import { hasPermission } from "@/utils/permissions";
+import AIQuestionGeneratorModal from "@/components/ai/AIQuestionGeneratorModal";
+import AIInterviewFeedbackCard from "@/components/ai/AIInterviewFeedbackCard";
 
-import { Candidate } from "@/types/interview";
+// Section 4 Collaboration Components
+import MentionNoteInput from "@/components/collaboration/MentionNoteInput";
+import PanelFeedbackAggregator from "@/components/collaboration/PanelFeedbackAggregator";
+import CandidateApprovalWorkflow from "@/components/collaboration/CandidateApprovalWorkflow";
+import TeamScorecardVoting from "@/components/collaboration/TeamScorecardVoting";
+import CandidateActivityFeed from "@/components/collaboration/CandidateActivityFeed";
+import SharedCandidatePoolModal from "@/components/collaboration/SharedCandidatePoolModal";
+import SlackTeamsIntegrationModal from "@/components/collaboration/SlackTeamsIntegrationModal";
 
-import { Interview } from "@/types/interview";
+import { Candidate, Interview } from "@/types/interview";
 
 interface Props {
- open: boolean;
- onClose: () => void;
- candidate: Candidate | null;
- interview: Interview | null;
- onEdit: () => void;
- onDelete: () => void;
- onFeedback: () => void;
+  open: boolean;
+  onClose: () => void;
+  candidate: Candidate | null;
+  interview: Interview | null;
+  onEdit: () => void;
+  onDelete: () => void;
+  onFeedback: () => void;
 }
 
 export default function CandidateDrawer({
- open,
- onClose,
- candidate,
- interview,
- onEdit,
- onDelete,
- onFeedback,
+  open,
+  onClose,
+  candidate,
+  interview,
+  onEdit,
+  onDelete,
+  onFeedback,
 }: Props) {
- const [showFeedback, setShowFeedback] = useState(false);
- 
- if (!open) return null;
- if (!candidate) return null;
- return (
- <motion.div
- initial={{ opacity: 0 }}
- animate={{ opacity: 1 }}
- className="fixed inset-0 z-[100] flex justify-end bg-black/60 backdrop-blur-sm"
- >
- {/* Drawer */}
- <motion.div
- initial={{ x: 400 }}
- animate={{ x: 0 }}
- exit={{ x: 400 }}
- transition={{ duration: 0.3 }}
- className="h-full w-full max-w-xl overflow-y-auto border-l border-border bg-surface shadow-2xl"
- >
- {/* Header */}
- <div className="sticky top-0 z-20 border-b border-border bg-surface/95 backdrop-blur px-6 py-5">
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [aiQuestionOpen, setAiQuestionOpen] = useState(false);
+  const [nominateModalOpen, setNominateModalOpen] = useState(false);
+  const [slackModalOpen, setSlackModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"overview" | "collaboration" | "activity">("overview");
 
- <div className="flex items-center justify-between">
+  if (!open || !candidate) return null;
 
- <div className="flex items-center gap-4">
+  const candidateIdNum = typeof candidate.id === "number" ? candidate.id : parseInt(String(candidate.id)) || 1;
 
- <div className="flex h-14 w-14 items-center justify-center rounded-full bg-violet-600 text-lg font-bold text-white">
- S
- </div>
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm"
+    >
+      <motion.div
+        initial={{ x: "100%" }}
+        animate={{ x: 0 }}
+        exit={{ x: "100%" }}
+        transition={{ type: "spring", damping: 25, stiffness: 200 }}
+        className="flex h-full w-full max-w-2xl flex-col bg-surface border-l border-border text-text-primary shadow-2xl overflow-hidden"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-border p-6 bg-secondary-surface/40">
+          <div>
+            <h2 className="text-xl font-bold text-text-primary">{candidate.name}</h2>
+            <p className="text-xs text-muted flex items-center gap-1 mt-0.5">
+              <Briefcase className="h-3.5 w-3.5" />
+              {candidate.role} • Stage: <strong className="text-blue-400">{(candidate as any).stage || (candidate as any).status || "Screening"}</strong>
+            </p>
+          </div>
 
- <div>
- <h2 className="text-xl font-semibold text-text-primary">
- {candidate.name}
- </h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setNominateModalOpen(true)}
+              className="p-2 rounded-xl bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/30 text-xs font-bold transition flex items-center gap-1.5"
+              title="Nominate to Shared Pool"
+            >
+              <Share2 className="w-3.5 h-3.5" /> Nominate
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl text-muted hover:text-text-primary hover:bg-secondary-surface transition border border-border"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
 
- <p className="text-sm text-muted">
- {candidate.role}
- </p>
- </div>
- </div>
+        {/* Tab Navigation */}
+        <div className="flex items-center border-b border-border px-6 bg-background/50 text-xs font-bold">
+          <button
+            onClick={() => setActiveTab("overview")}
+            className={`py-3 px-4 border-b-2 transition ${
+              activeTab === "overview"
+                ? "border-blue-500 text-blue-500"
+                : "border-transparent text-muted hover:text-text-primary"
+            }`}
+          >
+            Overview & Details
+          </button>
+          <button
+            onClick={() => setActiveTab("collaboration")}
+            className={`py-3 px-4 border-b-2 transition flex items-center gap-1.5 ${
+              activeTab === "collaboration"
+                ? "border-blue-500 text-blue-500"
+                : "border-transparent text-muted hover:text-text-primary"
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" /> Team Collaboration & Approvals
+          </button>
+          <button
+            onClick={() => setActiveTab("activity")}
+            className={`py-3 px-4 border-b-2 transition ${
+              activeTab === "activity"
+                ? "border-blue-500 text-blue-500"
+                : "border-transparent text-muted hover:text-text-primary"
+            }`}
+          >
+            Activity Audit Trail
+          </button>
+        </div>
 
- <button
- onClick={onClose}
- className="rounded-xl p-2 hover:bg-secondary-surface transition"
- >
- <X className="h-5 w-5 text-muted" />
- </button>
- </div>
- </div>
+        {/* Content Body */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {activeTab === "overview" && (
+            <>
+              {/* Contact Info */}
+              <div className="grid grid-cols-2 gap-3 p-4 bg-secondary-surface/40 border border-border rounded-xl text-xs">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-blue-400" />
+                  <span className="text-text-primary font-medium">{candidate.email}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-emerald-400" />
+                  <span className="text-text-primary font-medium">{candidate.phone || "N/A"}</span>
+                </div>
+              </div>
 
- {/* Body */}
- <div className="space-y-6 p-6">
+              {/* Skills */}
+              {candidate.skills && (
+                <div className="space-y-2">
+                  <h3 className="text-xs font-bold uppercase text-muted tracking-wider">Candidate Skills</h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    {candidate.skills.map((s) => (
+                      <span key={s} className="px-2.5 py-1 bg-blue-500/10 text-blue-400 text-xs font-semibold rounded-full border border-blue-500/20">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
- {/* Contact */}
- <div className="rounded-2xl border border-border bg-card p-5">
+              {/* Mention Note Input */}
+              <div className="bg-surface border border-border rounded-2xl p-4 shadow-sm">
+                <h3 className="text-sm font-bold text-text-primary mb-2">Recruiter & Team Notes</h3>
+                <MentionNoteInput
+                  onAddNote={(text, mentions) => {
+                    console.log("Added note:", text, "Mentions:", mentions);
+                  }}
+                />
+              </div>
 
- <h3 className="text-lg font-semibold text-text-primary">
- Contact Information
- </h3>
+              {/* Interview Actions Toolbar */}
+              <div className="p-4 bg-violet-500/10 border border-violet-500/30 rounded-2xl space-y-3">
+                <h3 className="text-xs font-bold uppercase text-violet-400 tracking-wider">Interview Actions</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Join Video Call Button */}
+                  <a
+                    href={interview?.meeting_link || "https://meet.google.com"}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow"
+                  >
+                    <Video className="w-4 h-4" /> Join Interview
+                  </a>
 
- <div className="mt-5 space-y-4">
+                  {/* Reschedule Button */}
+                  <button
+                    type="button"
+                    onClick={onEdit}
+                    className="py-2.5 px-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow"
+                  >
+                    <Calendar className="w-4 h-4" /> Reschedule
+                  </button>
+                </div>
 
- <div className="flex items-center gap-3">
- <Mail className="h-5 w-5 text-violet-400" />
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Submit Feedback Button */}
+                  <button
+                    type="button"
+                    onClick={onFeedback}
+                    className="py-2.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow"
+                  >
+                    <FileText className="w-4 h-4" /> Submit Feedback
+                  </button>
 
- <p className="text-sm text-secondary">
- {candidate.email}
- </p>
- </div>
+                  {/* Delete / Cancel Button */}
+                  <button
+                    type="button"
+                    onClick={onDelete}
+                    className="py-2.5 px-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
+                  >
+                    <Trash2 className="w-4 h-4" /> Cancel Interview
+                  </button>
+                </div>
+              </div>
 
- <div className="flex items-center gap-3">
- <Phone className="h-5 w-5 text-violet-400" />
+              {/* AI Question Generator & Actions */}
+              <div className="p-4 bg-secondary-surface/40 border border-border rounded-2xl space-y-3">
+                <button
+                  type="button"
+                  onClick={() => setAiQuestionOpen(true)}
+                  className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition shadow flex items-center justify-center gap-1.5"
+                >
+                  <Sparkles className="w-4 h-4" /> Generate Interview Kit & Questions
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSlackModalOpen(true)}
+                  className="w-full py-2 bg-purple-600/10 hover:bg-purple-600/20 text-purple-400 border border-purple-500/30 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" /> Configure Slack / Teams Alert Webhook
+                </button>
+              </div>
+            </>
+          )}
 
- <p className="text-sm text-secondary">
- {candidate.phone}
- </p>
- </div>
+          {activeTab === "collaboration" && (
+            <div className="space-y-6">
+              {/* Panel Feedback Aggregator */}
+              <PanelFeedbackAggregator candidateId={candidateIdNum} candidateName={candidate.name} />
 
- <div className="flex items-center gap-3">
- <MapPin className="h-5 w-5 text-violet-400" />
+              {/* Candidate Approval Workflow */}
+              <CandidateApprovalWorkflow candidateId={candidateIdNum} candidateName={candidate.name} />
 
- <p className="text-sm text-secondary">
- {candidate.location}
- </p>
- </div>
- </div>
- </div>
+              {/* Team Scorecard Voting */}
+              <TeamScorecardVoting candidateId={candidateIdNum} />
+            </div>
+          )}
 
- {/* Skills */}
- <div className="rounded-2xl border border-border bg-card p-5">
+          {activeTab === "activity" && (
+            <CandidateActivityFeed candidateId={candidateIdNum} />
+          )}
+        </div>
 
- <h3 className="text-lg font-semibold text-text-primary">
- Skills
- </h3>
-
- <div className="mt-5 flex flex-wrap gap-3">
- {candidate.skills.map((skill) => (
- <span
- key={skill}
- className="rounded-full bg-violet-100 px-4 py-2 text-sm text-violet-700 font-medium"
- >
- {skill}
- </span>
- ))}
- </div>
- </div>
-
- {/* Experience */}
- <div className="rounded-2xl border border-border bg-card p-5">
-
- <div className="flex items-center gap-3">
- <Briefcase className="h-5 w-5 text-violet-400" />
-
- <h3 className="text-lg font-semibold text-text-primary">
- Experience
- </h3>
- </div>
-
- <div className="mt-5 space-y-5">
- <div className="rounded-2xl border border-border bg-surface p-4">
- <p className="text-sm text-secondary whitespace-pre-wrap">
- {candidate.experience || "No experience details provided."}
- </p>
- </div>
- </div>
- </div>
-
- {/* Notes */}
- <div className="rounded-2xl border border-border bg-card p-5">
-
- <h3 className="text-lg font-semibold text-text-primary">
- Recruiter Notes
- </h3>
-
- <textarea
- rows={5}
- placeholder="Add recruiter notes..."
- className="mt-5 w-full rounded-2xl border border-border bg-surface px-4 py-3 text-text-primary outline-none placeholder:text-muted"
- />
- </div>
-
- {/* Interview Feedback */}
- {showFeedback && (interview as any)?.feedback && (
- <div className="rounded-2xl border border-border bg-card p-5">
- <h3 className="text-lg font-semibold text-text-primary">
- Interview Feedback
- </h3>
- <div className="mt-5 rounded-2xl border border-border bg-surface p-4">
- <p className="text-sm text-secondary whitespace-pre-wrap">
- {(interview as any).feedback}
- </p>
- </div>
- </div>
- )}
-
- {/* Actions */}
- <div className="rounded-2xl border border-border bg-card p-5">
-
- <h3 className="text-lg font-semibold text-text-primary">
- Actions
- </h3>
-
- <div className="mt-5 space-y-4">
- {((interview as any)?.mode === 'Online' || (interview as any)?.interview_mode === 'Online' || (interview as any)?.type === 'video' || (interview as any)?.interview_type === 'video') ? (
- <button
- onClick={() => {
- const link = (interview as any).meeting_link || (interview as any).location || 'https://meet.google.com/new';
- window.open(link.startsWith('http') ? link : `https://${link}`, '_blank');
- }}
- className="w-full rounded-2xl bg-primary px-5 py-3 text-sm font-medium text-white hover:bg-primary-hover active:scale-[0.97] transition focus-ring"
- >
- Join Interview
- </button>
- ) : null}
-
- {hasPermission("interviews.update") && (interview as any)?.status !== "Completed" && (
- <button
- onClick={onEdit}
- className="w-full rounded-2xl bg-violet-600 px-5 py-3 text-sm font-medium text-white hover:bg-violet-500 transition"
- >
- Edit / Reschedule Interview
- </button>
- )}
-
- {(interview as any)?.status === "Completed" ? (
- <button
- onClick={() => setShowFeedback(!showFeedback)}
- className="w-full rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-medium text-white hover:bg-emerald-500 transition"
- >
- {showFeedback ? "Hide Feedback" : "View Feedback"}
- </button>
- ) : (
- <button
- onClick={onFeedback}
- className="w-full rounded-2xl bg-primary px-5 py-3 text-sm font-medium text-white hover:bg-primary-hover active:scale-[0.97] transition focus-ring"
- >
- Submit Feedback
- </button>
- )}
-
- {hasPermission("interviews.delete") && (
- <button
- onClick={onDelete}
- className="w-full rounded-2xl bg-red-600 px-5 py-3 text-sm font-medium text-white hover:bg-red-500 transition"
- >
- Delete Interview
- </button>
- )}
- </div>
- </div>
-
- {/* Resume */}
- <div className="rounded-2xl border border-border bg-card p-5">
-
- <h3 className="text-lg font-semibold text-text-primary">
- Resume
- </h3>
-
- <div className="mt-5">
- <button 
- onClick={() => {
- if (candidate.id) {
- const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
- window.open(`${baseUrl}/candidates/${candidate.id}/resume`, '_blank');
- }
- }}
- className="flex w-full items-center justify-center rounded-2xl bg-violet-600 px-5 py-3 text-sm font-medium text-white hover:bg-violet-500 transition">
- View Resume
- </button>
- </div>
- </div>
- </div>
- </motion.div>
- </motion.div>
- );
+        {/* Modals */}
+        <AIQuestionGeneratorModal
+          isOpen={aiQuestionOpen}
+          onClose={() => setAiQuestionOpen(false)}
+          defaultPositionTitle={candidate.role}
+        />
+        <SharedCandidatePoolModal
+          isOpen={nominateModalOpen}
+          onClose={() => setNominateModalOpen(false)}
+          candidateId={candidateIdNum}
+          candidateName={candidate.name}
+        />
+        <SlackTeamsIntegrationModal
+          isOpen={slackModalOpen}
+          onClose={() => setSlackModalOpen(false)}
+        />
+      </motion.div>
+    </motion.div>
+  );
 }

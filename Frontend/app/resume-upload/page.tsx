@@ -28,21 +28,23 @@ import MatchScoreCard from "@/components/upload/MatchScoreCard";
 import ResumePreview from "@/components/upload/ResumePreview";
 
 import { AppLayout } from "@/components/AppLayout";
-import { candidates } from "@/data/mockInterviews";
 
 export default function ResumeUploadPage() {
 
  const router = useRouter();
  const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
- const [uploadedCandidates, setUploadedCandidates] =
- useState<any[]>([]);
+ const [uploadedCandidates, setUploadedCandidates] = useState<any[]>([]);
+
  useEffect(() => {
+   if (!isAuthenticated()) {
+     router.push("/login");
+     return;
+   }
 
- if (!isAuthenticated()) {
-
- router.push("/login");
- }
-
+   fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/candidates/`)
+     .then((res) => res.json())
+     .then((data) => setUploadedCandidates(Array.isArray(data) ? data : []))
+     .catch((err) => console.error("Failed to fetch dynamic candidates:", err));
  }, []);
 
  const [uploadInfo, setUploadInfo] = useState({

@@ -30,6 +30,8 @@ from app.models.email_account import EmailAccount
 from app.models.email_message import EmailMessage
 from app.models.email_attachment import EmailAttachment
 from app.models.mailbox_sync_history import MailboxSyncHistory
+from app.models.automation_models import AutomationRule, WebhookEndpoint, ScheduledEmailTask, OfferTemplate
+from app.models.collaboration_models import Nomination, ApprovalStep, TeamVote
 
 # ── Create all tables ───────────────────────────────────────────────────────
 Base.metadata.create_all(bind=engine)
@@ -60,8 +62,12 @@ from app.routes import matching
 from app.routes import offer
 from app.routes import mailbox
 from app.routes import copilot
+from app.routes import portal
+from app.routes.ai_features import router as ai_features_router
+from app.routes.automation import router as automation_router
+from app.routes.collaboration import router as collaboration_router
 
-app = FastAPI()
+app = FastAPI(redirect_slashes=False)
 
 # ── Prometheus Monitoring ───────────────────────────────────────────────────
 Instrumentator().instrument(app).expose(app)
@@ -129,6 +135,14 @@ app.include_router(admin_ai_settings_router)
 app.include_router(admin_settings_router)
 app.include_router(audit_router)
 app.include_router(gdpr_router, prefix="/admin/gdpr", tags=["GDPR"])
+app.include_router(ai_features_router)
+app.include_router(automation_router)
+from app.routes.candidate_portal import router as candidate_portal_router
+from app.routes.messaging import router as messaging_router
+
+app.include_router(candidate_portal_router, prefix="/portal/candidate", tags=["Candidate Portal"])
+app.include_router(messaging_router, prefix="/messaging", tags=["Messaging"])
+app.include_router(collaboration_router, prefix="/collaboration", tags=["Collaboration"])
 
 # ── Notifications ────────────────────────────────────────────────────────────
 app.include_router(
@@ -230,9 +244,14 @@ app.include_router(
 # ── Dashboard ────────────────────────────────────────────────────────────────
 app.include_router(dashboard.router)
 
+# ── Career Portal ────────────────────────────────────────────────────────────
+app.include_router(portal.router)
+
 # ── AI Copilot ───────────────────────────────────────────────────────────────
 app.include_router(
     copilot.router,
     prefix="/copilot",
     tags=["Copilot"]
 )
+
+app.include_router(ai_features_router)

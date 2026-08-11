@@ -19,17 +19,18 @@ export default function ChatInput({
  <div className="mx-auto flex max-w-4xl items-center gap-3 rounded-2xl border bg-muted/20 px-5 py-4 shadow-lg">
 
  {/* Input */}
- <input
- type="text"
+ <textarea
+ rows={1}
  value={input}
  onChange={(e) => setInput(e.target.value)}
  onKeyDown={(e) => {
- if (e.key === "Enter") {
+ if (e.key === "Enter" && !e.shiftKey) {
+ e.preventDefault();
  onSend();
  }
  }}
- placeholder="Ask AI to find candidates, summarize resumes, or generate insights..."
- className="flex-1 min-w-0 bg-transparent text-[15px] outline-none placeholder:text-muted-foreground"
+ placeholder="Ask AI to find candidates, summarize resumes, or generate insights... (Shift+Enter for newline)"
+ className="flex-1 min-w-0 bg-transparent text-[15px] outline-none placeholder:text-muted-foreground resize-none max-h-28 overflow-y-auto leading-relaxed"
  />
 
  {/* Mic */}

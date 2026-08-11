@@ -30,3 +30,11 @@ export function applyTheme(theme: Theme) {
   // Dispatch a custom event to notify other components (e.g., headers, navbars)
   window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme, isDark } }));
 }
+
+export function toggleTheme(): Theme {
+  const current = getTheme();
+  const next: Theme = current === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('theme', next);
+  applyTheme(next);
+  return next;
+}
