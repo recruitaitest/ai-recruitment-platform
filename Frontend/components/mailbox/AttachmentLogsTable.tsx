@@ -72,34 +72,34 @@ function AttachmentRows({
 }) {
   if (logs.length === 0)
     return (
-      <p className="px-6 py-10 text-center text-sm text-text-secondary">
+      <p className="px-6 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
         No resume attachments processed yet.
       </p>
     );
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full">
-        <thead className="bg-secondary-surface">
+      <table className="min-w-full text-left text-xs">
+        <thead className="bg-slate-100 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800">
           <tr>
-            <th className="px-6 py-4 text-left text-sm font-medium text-text-secondary">
+            <th className="px-6 py-3.5 font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
               Filename
             </th>
-            <th className="px-6 py-4 text-left text-sm font-medium text-text-secondary">
+            <th className="px-6 py-3.5 font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
               Subject
             </th>
-            <th className="px-6 py-4 text-left text-sm font-medium text-text-secondary">
+            <th className="px-6 py-3.5 font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
               Sender
             </th>
-            <th className="px-6 py-4 text-left text-sm font-medium text-text-secondary">
+            <th className="px-6 py-3.5 font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
               Received
             </th>
-            <th className="px-6 py-4 text-left text-sm font-medium text-text-secondary">
+            <th className="px-6 py-3.5 font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
               Size
             </th>
-            <th className="px-6 py-4 text-left text-sm font-medium text-text-secondary">
+            <th className="px-6 py-3.5 font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
               Parsing
             </th>
-            <th className="px-6 py-4 text-left text-sm font-medium text-text-secondary">
+            <th className="px-6 py-3.5 font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
               Candidate
             </th>
           </tr>
@@ -108,45 +108,45 @@ function AttachmentRows({
           {logs.map((log) => (
             <motion.tr
               key={log.id}
-              whileHover={{ y: -2, scale: 1.005 }}
-              transition={{ duration: 0.15, ease: "easeOut" }}
-              className="border-t border-border hover:bg-secondary-surface transition-colors cursor-pointer"
+              whileHover={{ y: -1 }}
+              transition={{ duration: 0.15 }}
+              className="border-t border-slate-200 dark:border-slate-800/80 hover:bg-slate-100/60 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
             >
-              <td className="px-6 py-4">
+              <td className="px-6 py-3.5">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft">
-                    <FileText className="h-5 w-5 text-primary" />
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 dark:bg-blue-500/10 text-indigo-600 dark:text-blue-400 border border-indigo-200 dark:border-blue-500/20">
+                    <FileText className="h-4 w-4" />
                   </div>
-                  <p className="font-medium text-text-primary">
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">
                     {log.filename}
                   </p>
                 </div>
               </td>
-              <td className="max-w-[200px] truncate px-6 py-4 text-sm text-text-secondary">
+              <td className="max-w-[200px] truncate px-6 py-3.5 text-slate-600 dark:text-slate-300">
                 {log.subject || "—"}
               </td>
-              <td className="max-w-[200px] truncate px-6 py-4 text-sm text-text-secondary">
+              <td className="max-w-[200px] truncate px-6 py-3.5 text-slate-600 dark:text-slate-300">
                 {log.sender}
               </td>
-              <td className="px-6 py-4 text-sm text-text-secondary">
+              <td className="px-6 py-3.5 text-slate-500 dark:text-slate-400 font-mono">
                 {formatDateTime(log.received_at)}
               </td>
-              <td className="px-6 py-4 text-sm text-text-secondary">
+              <td className="px-6 py-3.5 text-slate-500 dark:text-slate-400 font-mono">
                 {formatFileSize(log.file_size)}
               </td>
-              <td className="px-6 py-4">
+              <td className="px-6 py-3.5">
                 {renderParsingStatus(log.parsed)}
               </td>
-              <td className="px-6 py-4">
+              <td className="px-6 py-3.5">
                 {log.candidate_id ? (
                   <button
                     onClick={() => onViewCandidate(log.candidate_id!)}
-                    className="flex items-center gap-1 text-sm font-medium text-primary hover:text-primary-hover transition"
+                    className="flex items-center gap-1 font-semibold text-indigo-600 dark:text-blue-400 hover:underline transition"
                   >
                     View <ArrowUpRight className="h-3.5 w-3.5" />
                   </button>
                 ) : (
-                  <span className="text-sm text-gray-500">—</span>
+                  <span className="text-slate-400 dark:text-slate-500">—</span>
                 )}
               </td>
             </motion.tr>
@@ -198,34 +198,34 @@ export default function AttachmentLogsTable() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="overflow-hidden rounded-2xl border border-border bg-secondary-surface shadow-lg"
+        className="overflow-hidden rounded-2xl border border-slate-200 dark:border-[#26324A] bg-white dark:bg-[#161C2C] shadow-lg"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-6 py-5">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-6 py-5 bg-slate-50/50 dark:bg-slate-900/20">
           <div>
-            <h2 className="text-xl font-semibold text-text-primary">
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
               Resume Processing Logs
             </h2>
-            <p className="mt-1 text-sm text-text-secondary">
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               Track resume attachments and AI parsing into candidate records.
             </p>
           </div>
-          <div className="flex items-center gap-2 text-sm text-text-secondary">
-            <FileText className="h-4 w-4" />
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+            <FileText className="h-4 w-4 text-indigo-500 dark:text-blue-400" />
             AI Resume Parsing
           </div>
         </div>
 
         {loading && (
-          <div className="flex items-center justify-center gap-2 py-10 text-text-secondary">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="text-sm">Loading attachments...</span>
+          <div className="flex items-center justify-center gap-2 py-10 text-slate-500 dark:text-slate-400">
+            <Loader2 className="h-5 w-5 animate-spin text-indigo-600 dark:text-blue-400" />
+            <span className="text-sm font-medium">Loading attachments...</span>
           </div>
         )}
 
         {!loading && error && (
-          <div className="flex items-center gap-3 px-6 py-6 text-sm text-red-300">
-            <AlertTriangle className="h-5 w-5 text-red-400" />
+          <div className="flex items-center gap-3 px-6 py-6 text-sm text-rose-500 dark:text-rose-400">
+            <AlertTriangle className="h-5 w-5 text-rose-500" />
             {error}
           </div>
         )}
@@ -237,13 +237,13 @@ export default function AttachmentLogsTable() {
 
         {/* Footer */}
         {logs.length > LIMIT && (
-          <div className="flex items-center justify-between border-t border-border px-6 py-3 bg-white/[0.02]">
-            <span className="text-xs text-gray-500">
+          <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-800 px-6 py-3 bg-slate-50/50 dark:bg-slate-900/40">
+            <span className="text-xs text-slate-500 dark:text-slate-400">
               Showing {LIMIT} of {logs.length}
             </span>
             <button
               onClick={() => setViewAll(true)}
-              className="text-xs font-semibold text-primary hover:text-primary-hover transition"
+              className="text-xs font-semibold text-indigo-600 dark:text-blue-400 hover:underline transition"
             >
               View All →
             </button>
@@ -258,31 +258,31 @@ export default function AttachmentLogsTable() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
             onClick={() => setViewAll(false)}
           >
             <motion.div
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              className="relative w-full max-w-5xl max-h-[90vh] flex flex-col rounded-2xl border border-border bg-card shadow-2xl overflow-hidden"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-5xl max-h-[90vh] flex flex-col rounded-2xl border border-slate-200 dark:border-[#26324A] bg-white dark:bg-[#161C2C] shadow-2xl overflow-hidden text-slate-900 dark:text-white"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="flex items-center justify-between border-b border-border px-6 py-5">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-6 py-5 bg-slate-50 dark:bg-slate-900/40">
                 <div>
-                  <h2 className="text-2xl font-bold text-text-primary">
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">
                     All Resume Processing Logs
                   </h2>
-                  <p className="mt-1 text-sm text-muted">
-                    {logs.length} attachments
+                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    {logs.length} total attachments processed
                   </p>
                 </div>
                 <button
                   onClick={() => setViewAll(false)}
-                  className="rounded-xl p-2 hover:bg-secondary-surface transition"
+                  className="rounded-xl p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800 transition"
                 >
-                  <X className="h-5 w-5 text-muted" />
+                  <X className="h-5 w-5" />
                 </button>
               </div>
               {/* Scrollable body */}

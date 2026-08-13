@@ -2,6 +2,7 @@ import os
 import json
 import logging
 from typing import List, Optional, Dict, Any
+from sqlalchemy.orm import Session
 from app.services.llm_factory import get_chat_model
 from app.models.candidate import Candidate
 from app.models.position import Position
@@ -82,6 +83,9 @@ Provide a comprehensive screening analysis in structured JSON:
 def generate_job_description(req: JDGenerateRequest) -> JDGenerateResponse:
     try:
         llm = get_chat_model(temperature=0.3, json_mode=True)
+        if not llm:
+            raise ValueError("No live LLM model available")
+
         structured_llm = llm.with_structured_output(JDGenerateResponse)
         
         prompt = f"""
@@ -93,29 +97,58 @@ Key Requirements/Bullets: {req.key_bullets}
 Location: {req.location}
 Department: {req.department}
 
-Return JSON with:
-- title
-- summary (2-3 sentences overview)
-- description_markdown (complete formatted markdown JD)
-- responsibilities (list of 5 key duties)
-- requirements (list of 5 core requirements)
-- preferred_qualifications (list of 3 nice-to-have items)
-- required_skills (list of comma-separated key tech/skill strings)
+In description_markdown, use clean structured headings:
+# {req.title}
+## Job Summary
+## Key Responsibilities
+## Required Skills & Qualifications
+## Benefits & Perks
+
+Return JSON matching these exact types:
+- title: string
+- summary: string (2-3 sentences overview)
+- description_markdown: string (complete formatted markdown JD with # and ## headers)
+- responsibilities: array of strings (5 key duties)
+- requirements: array of strings (5 core requirements)
+- preferred_qualifications: array of strings (3 nice-to-have items)
+- required_skills: array of strings (e.g. ["Python", "Node.js", "PostgreSQL", "REST API", "Docker", "Redis"])
 """
-        return structured_llm.invoke(prompt)
+        res = structured_llm.invoke(prompt)
+        if res and res.required_skills:
+            return res
+        raise ValueError("Invalid LLM response")
     except Exception as e:
         logger.error(f"Error in JD generation: {e}")
-        title = req.title
-        skills = [s.strip() for s in req.key_bullets.split(",") if s.strip()] if req.key_bullets else [title, "Communication", "Problem Solving"]
+        title = req.title or "Software Engineer"
+        lower_title = title.lower()
+        
+        # Smart role-based default technical skills dictionary
+        if "backend" in lower_title or "back-end" in lower_title or "server" in lower_title:
+            default_skills = ["Python", "Node.js", "Java", "PostgreSQL", "REST API", "Docker", "Redis", "Microservices"]
+        elif "frontend" in lower_title or "front-end" in lower_title or "ui" in lower_title:
+            default_skills = ["React", "TypeScript", "JavaScript", "HTML5", "CSS3", "Next.js", "Tailwind CSS", "Redux"]
+        elif "fullstack" in lower_title or "full-stack" in lower_title:
+            default_skills = ["Python", "React", "TypeScript", "Node.js", "PostgreSQL", "Docker", "REST API", "AWS"]
+        elif "devops" in lower_title or "cloud" in lower_title or "infrastructure" in lower_title:
+            default_skills = ["AWS", "Docker", "Kubernetes", "CI/CD", "Terraform", "Linux", "Python", "Bash"]
+        elif "data" in lower_title or "machine learning" in lower_title or "ai" in lower_title:
+            default_skills = ["Python", "SQL", "Pandas", "PySpark", "Machine Learning", "Airflow", "PostgreSQL", "Docker"]
+        else:
+            default_skills = ["Software Development", "Problem Solving", "Git", "REST API", "Agile", "Code Review"]
+
+        custom_bullets = [s.strip() for s in (req.key_bullets or "").split(",") if s.strip() and s.strip().lower() != lower_title]
+        final_skills = custom_bullets if custom_bullets else default_skills
+
         return JDGenerateResponse(
             title=title,
-            summary=f"We are seeking an experienced {title} ({req.seniority}) to join our dynamic team in {req.location}.",
-            description_markdown=f"# {title}\n\n**Location:** {req.location} | **Seniority:** {req.seniority}\n\n### About the Role\nWe are looking for a skilled {title} to lead initiatives and deliver high quality solutions.\n\n### Key Responsibilities\n- Deliver core project features and meet deadlines.\n- Collaborate across technical and product teams.\n\n### Requirements\n- Proven experience in {title} or related domain.\n- Core skills: {', '.join(skills)}.",
-            responsibilities=[f"Lead design and execution of {title} projects", "Collaborate with cross-functional team members", "Maintain high standards of quality and code"],
-            requirements=[f"3+ years experience as {title}", f"Strong proficiency in {', '.join(skills)}", "Excellent communication and problem solving"],
-            preferred_qualifications=["Degree in Computer Science or equivalent", "Experience with modern cloud platforms"],
-            required_skills=skills
+            summary=f"We are seeking an experienced {title} ({req.seniority}) to join our team in {req.location}.",
+            description_markdown=f"# {title}\n\n**Location:** {req.location} | **Seniority:** {req.seniority}\n\n### About the Role\nWe are looking for a skilled {title} to build high-performance services and scale our engineering infrastructure.\n\n### Key Responsibilities\n- Design and implement scalable, secure backend systems.\n- Write clean, maintainable, and well-tested code.\n- Collaborate across technical and product teams to deliver core features.\n\n### Requirements\n- Proven experience as a {title}.\n- Strong technical proficiency in: {', '.join(final_skills)}.\n- Solid understanding of database architecture and API design.",
+            responsibilities=[f"Lead design and execution of {title} projects", "Write clean, maintainable, and testable code", "Collaborate with cross-functional product teams"],
+            requirements=[f"{req.seniority} experience as {title}", f"Proficiency in {', '.join(final_skills[:4])}", "Strong communication and technical problem solving"],
+            preferred_qualifications=["Degree in Computer Science or equivalent", "Experience with modern cloud platforms (AWS/Azure)"],
+            required_skills=final_skills
         )
+
 
 # --- 1.3 AI Interview Question Generator ---
 def generate_interview_questions(req: QuestionGenerateRequest) -> QuestionGenerateResponse:
@@ -502,18 +535,33 @@ def detect_resume_red_flags(candidate: Candidate) -> RedFlagDetectionResponse:
 
 # --- 1.13 AI Salary Benchmark Fetcher ---
 def fetch_salary_benchmark(role_title: str, location: str, experience_years: float) -> SalaryBenchmarkResponse:
-    # Baseline market benchmarks in INR
-    base_median = 1200000.0  # 12 LPA base
-    title_lower = role_title.lower()
+    title_lower = (role_title or "").lower()
     
+    # Dynamic role-based baseline benchmarks in INR
+    if "architect" in title_lower or "principal" in title_lower:
+        role_base = 2200000.0  # 22 LPA base
+    elif "backend" in title_lower or "devops" in title_lower or "cloud" in title_lower:
+        role_base = 1400000.0  # 14 LPA base
+    elif "fullstack" in title_lower or "full stack" in title_lower or "ai" in title_lower or "machine learning" in title_lower:
+        role_base = 1500000.0  # 15 LPA base
+    elif "frontend" in title_lower or "front end" in title_lower or "mobile" in title_lower:
+        role_base = 1250000.0  # 12.5 LPA base
+    elif "data" in title_lower or "analyst" in title_lower:
+        role_base = 1100000.0  # 11 LPA base
+    elif "gis" in title_lower or "support" in title_lower or "qa" in title_lower or "tester" in title_lower:
+        role_base = 850000.0   # 8.5 LPA base
+    else:
+        # Deterministic title hash multiplier for unique variation
+        title_hash = sum(ord(c) for c in title_lower) % 7
+        role_base = 1000000.0 + (title_hash * 100000.0)
+
+    # Seniority multipliers
     if "senior" in title_lower or "lead" in title_lower:
-        base_median *= 1.8
-    elif "principal" in title_lower or "architect" in title_lower:
-        base_median *= 2.5
+        role_base *= 1.6
     elif "junior" in title_lower or "intern" in title_lower:
-        base_median *= 0.5
-        
-    base_median += (experience_years * 150000.0)
+        role_base *= 0.55
+
+    base_median = role_base + (experience_years * 140000.0)
     
     p25 = round(base_median * 0.75, -4)
     p50 = round(base_median, -4)
@@ -529,7 +577,7 @@ def fetch_salary_benchmark(role_title: str, location: str, experience_years: flo
         percentile_50=p50,
         percentile_75=p75,
         percentile_90=p90,
-        market_trend="High Demand (+12% YoY compensation growth for this tech stack)"
+        market_trend=f"High Demand (+12% YoY compensation growth for {role_title})"
     )
 
 # --- 1.14 Dual-Mode AI Chatbot Service Functions ---
@@ -603,64 +651,63 @@ def process_careers_chat(message: str, conversation_history: Optional[List[Dict[
     
     try:
         llm = get_chat_model(temperature=0.3, json_mode=False)
-        ai_resp = llm.invoke(prompt)
-        content = ai_resp.content if hasattr(ai_resp, 'content') else str(ai_resp)
-        return {
-            "response": content,
-            "portal_type": "careers",
-            "is_refusal": False
-        }
+        if llm:
+            ai_resp = llm.invoke(prompt)
+            content = ai_resp.content if hasattr(ai_resp, 'content') else str(ai_resp)
+            return {
+                "response": content,
+                "portal_type": "careers",
+                "is_refusal": False
+            }
     except Exception as e:
         logger.error(f"Error in process_careers_chat LLM: {e}")
-        # Intelligent fallback using ONLY active positions
-        if "apply" in lower_msg or "how to" in lower_msg:
-            resp = "How to Apply:\n1. Browse active open position cards on this Careers Portal.\n2. Click the 'Apply Now' button on your target position.\n3. Upload your resume (PDF/DOCX) and fill in your quick details.\nOur recruitment team will review your application!"
-        elif "interview" in lower_msg or "process" in lower_msg:
-            resp = "Selection Process:\n• Step 1: AI Skill Match & Resume Screening\n• Step 2: Technical Architecture & Live Coding Session\n• Step 3: Final Culture & HR Discussion"
-        else:
-            titles = "\n".join([f"• {p.title} ({p.location})" for p in active_positions]) if active_positions else "General Applications Open"
-            resp = f"Active Openings on Careers Portal:\n{titles}\n\nAsk me about required skills or details for any of these open roles!"
-        return {
-            "response": resp,
-            "portal_type": "careers",
-            "is_refusal": False
-        }
+
+    # Intelligent fallback using ONLY active positions
+    if "apply" in lower_msg or "how to" in lower_msg:
+        resp = "How to Apply:\n1. Browse active open position cards on this Careers Portal.\n2. Click the 'Apply Now' button on your target position.\n3. Upload your resume (PDF/DOCX) and fill in your quick details.\nOur recruitment team will review your application!"
+    elif "interview" in lower_msg or "process" in lower_msg:
+        resp = "Selection Process:\n• Step 1: AI Skill Match & Resume Screening\n• Step 2: Technical Architecture & Live Coding Session\n• Step 3: Final Culture & HR Discussion"
+    else:
+        titles = "\n".join([f"• {p.title} ({p.location})" for p in active_positions]) if active_positions else "General Applications Open"
+        resp = f"Active Openings on Careers Portal:\n{titles}\n\nAsk me about required skills or details for any of these open roles!"
+
+    return {
+        "response": resp,
+        "portal_type": "careers",
+        "is_refusal": False
+    }
+
 
 def process_recruiter_chat(message: str, conversation_history: Optional[List[Dict[str, Any]]] = None, db: Session = None) -> Dict[str, Any]:
     lower_msg = message.lower().strip()
     
-    # 1. Gather rich Recruiter & Platform metrics from DB
+    # 1. Gather rich Recruiter & Platform metrics from DB safely
     candidates_count = db.query(Candidate).count() if db else 0
     positions_count = db.query(Position).count() if db else 0
-    pipelines_count = db.query(Pipeline).count() if db else 0
     
     stages_counts = {
-        "Applied": db.query(Pipeline).filter(Pipeline.stage == "Applied").count() if db else 0,
-        "Screening": db.query(Pipeline).filter(Pipeline.stage == "Screening").count() if db else 0,
-        "Technical Interview": db.query(Pipeline).filter(Pipeline.stage == "Technical Interview").count() if db else 0,
-        "HR Round": db.query(Pipeline).filter(Pipeline.stage == "HR Round").count() if db else 0,
-        "Offer": db.query(Pipeline).filter(Pipeline.stage == "Offer").count() if db else 0,
-        "Hired": db.query(Pipeline).filter(Pipeline.stage == "Hired").count() if db else 0,
-        "Rejected": db.query(Pipeline).filter(Pipeline.stage == "Rejected").count() if db else 0,
+        "Applied": db.query(Candidate).filter(Candidate.status == "Applied").count() if db else 0,
+        "Screening": db.query(Candidate).filter(Candidate.status == "Screening").count() if db else 0,
+        "Technical Interview": db.query(Candidate).filter(Candidate.status == "Technical Interview").count() if db else 0,
+        "HR Round": db.query(Candidate).filter(Candidate.status == "HR Round").count() if db else 0,
+        "Offer": db.query(Candidate).filter(Candidate.status == "Offer").count() if db else 0,
+        "Hired": db.query(Candidate).filter(Candidate.status == "Hired").count() if db else 0,
+        "Rejected": db.query(Candidate).filter(Candidate.status == "Rejected").count() if db else 0,
     }
     
     hired_count = stages_counts["Hired"]
     offers_count = stages_counts["Offer"]
-    success_rate = round((hired_count / max(1, pipelines_count)) * 100, 1) if pipelines_count > 0 else 78.5
+    success_rate = round((hired_count / max(1, candidates_count)) * 100, 1) if candidates_count > 0 else 78.5
     
     positions_list = db.query(Position).all() if db else []
     pos_map = {p.id: p.title for p in positions_list}
-    pos_summary = [f"- {p.title} (ID#{p.id}, {p.location or 'Remote'}): Skills={p.required_skills or 'N/A'}, Published={p.is_published}" for p in positions_list]
+    pos_summary = [f"- {p.title} ({p.location or 'Remote'}): Skills={p.required_skills or 'N/A'}" for p in positions_list]
     
-    pipeline_records = db.query(Pipeline).all() if db else []
-    cand_stage_map = {p.candidate_id: p.stage for p in pipeline_records}
-
-    recent_candidates = db.query(Candidate).order_by(Candidate.id.desc()).limit(15).all() if db else []
+    recent_candidates = db.query(Candidate).order_by(Candidate.id.desc()).limit(10).all() if db else []
     cand_summary = []
     for c in recent_candidates:
-        role_title = pos_map.get(c.applied_position_id, "Full Stack Developer") if c.applied_position_id else "Full Stack Developer"
-        stage_name = cand_stage_map.get(c.id, c.status or "Applied")
-        cand_summary.append(f"- Candidate: Name={c.full_name} | Email={c.email} | Applied Role={role_title} | Pipeline Stage={stage_name} | Exp={c.experience or 0} yrs | Skills={c.skills or 'N/A'}")
+        role_title = pos_map.get(c.applied_position_id, "Software Developer") if c.applied_position_id else "Software Developer"
+        cand_summary.append(f"- Candidate: Name={c.full_name} | Email={c.email} | Role={role_title} | Status={c.status or 'Applied'} | Exp={c.experience or 0} yrs | Skills={c.skills or 'N/A'}")
 
     # Comprehensive Website Features Knowledge Base
     website_knowledge = (
@@ -714,7 +761,7 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
         f"LIVE DATABASE RECRUITMENT METRICS:\n"
         f"- Total Database Candidates: {candidates_count}\n"
         f"- Total Open Positions: {positions_count}\n"
-        f"- Total Applications in Pipeline: {pipelines_count}\n"
+        f"- Total Applications in Pipeline: {candidates_count}\n"
         f"- Stage Breakdown: Applied={stages_counts['Applied']}, Screening={stages_counts['Screening']}, Technical Interview={stages_counts['Technical Interview']}, HR Round={stages_counts['HR Round']}, Offer={stages_counts['Offer']}, Hired={stages_counts['Hired']}, Rejected={stages_counts['Rejected']}\n"
         f"- Current Hiring Success Rate: {success_rate}%\n\n"
         f"ACTIVE OPEN POSITIONS:\n" + ("\n".join(pos_summary) if pos_summary else "None") + "\n\n"
@@ -735,31 +782,34 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
     
     try:
         llm = get_chat_model(temperature=0.2, json_mode=False)
-        ai_resp = llm.invoke(prompt)
-        content = ai_resp.content if hasattr(ai_resp, 'content') else str(ai_resp)
-        return {
-            "response": content,
-            "portal_type": "recruiter",
-            "is_refusal": False
-        }
+        if llm:
+            ai_resp = llm.invoke(prompt)
+            content = ai_resp.content if hasattr(ai_resp, 'content') else str(ai_resp)
+            return {
+                "response": content,
+                "portal_type": "recruiter",
+                "is_refusal": False
+            }
     except Exception as e:
-        logger.error(f"Error in process_recruiter_chat LLM: {e}")
-        # High-accuracy fallback calculation & Navigation guide
-        if "upload" in lower_msg or "resume" in lower_msg:
-            resp = "📄 **How to Upload & Parse Resumes:**\n1. Go to the **Resume Upload** page (`/resume-upload`).\n2. Drag & drop single or bulk PDF/DOCX resumes.\n3. The AI engine will automatically parse contact info, technical skills, experience, and index vectors for semantic search!"
-        elif "position" in lower_msg or "job" in lower_msg or "create" in lower_msg:
-            resp = "💼 **Job Positions & AI Description Generator:**\n1. Go to **Positions** (`/positions`).\n2. Click **'Create Position'** or use the **AI JD Generator** to generate complete job descriptions and required skills automatically!\n3. Toggle **'Publish'** to make positions visible on the Careers Portal (`/portal/careers`)."
-        elif "search" in lower_msg or "semantic" in lower_msg or "find" in lower_msg:
-            resp = "🔍 **Semantic AI Search:**\n1. Go to **Semantic Search** (`/semantic-search`).\n2. Type natural language queries (e.g., *'React developers with 5+ years experience'*).\n3. Our Qdrant/OpenSearch vector engine returns instant candidate match scores!"
-        elif "pipeline" in lower_msg or "kanban" in lower_msg or "stage" in lower_msg:
-            resp = f"📊 **Pipeline Stage Overview (`/pipeline`):**\n• **Applied:** {stages_counts['Applied']}\n• **Screening:** {stages_counts['Screening']}\n• **Technical Interview:** {stages_counts['Technical Interview']}\n• **HR Round:** {stages_counts['HR Round']}\n• **Offer:** {stages_counts['Offer']}\n• **Hired:** {stages_counts['Hired']}\n• **Rejected:** {stages_counts['Rejected']}"
-        elif "success rate" in lower_msg or "metric" in lower_msg or "stats" in lower_msg:
-            resp = f"📈 **Recruitment Platform Executive Metrics:**\n• **Total Database Candidates:** {candidates_count}\n• **Open Job Positions:** {positions_count}\n• **Candidates Hired:** {hired_count}\n• **Current Hiring Success Rate:** {success_rate}%"
-        else:
-            resp = f"Hello Administrator! 🛠️ Our platform currently manages **{candidates_count} candidates** across **{positions_count} open positions** with a **{success_rate}% hiring success rate**.\n\nYou can ask me about:\n• **Website Navigation:** *'How to upload resumes?'*, *'Where to create jobs?'*, *'How does Semantic Search work?'*\n• **Pipeline & Candidates:** *'How many candidates in screening?'*, *'Show recent candidates'*\n• **Platform Features:** *'What features are on the Dashboard?'*"
-            
-        return {
-            "response": resp,
-            "portal_type": "recruiter",
-            "is_refusal": False
-        }
+        logger.error(f"Error in recruiter chat LLM: {e}")
+
+    # Fallback when LLM is unavailable or encounters an error
+    if "upload" in lower_msg or "resume" in lower_msg:
+        resp = "📄 **How to Upload & Parse Resumes:**\n1. Go to the **Resume Upload** page (`/resume-upload`).\n2. Drag & drop single or bulk PDF/DOCX resumes.\n3. The AI engine will automatically parse contact info, technical skills, experience, and index vectors for semantic search!"
+    elif "position" in lower_msg or "job" in lower_msg or "create" in lower_msg:
+        resp = "💼 **Job Positions & AI Description Generator:**\n1. Go to **Positions** (`/positions`).\n2. Click **'Create Position'** or use the **AI JD Generator** to generate complete job descriptions and required skills automatically!\n3. Toggle **'Publish'** to make positions visible on the Careers Portal (`/portal/careers`)."
+    elif "search" in lower_msg or "semantic" in lower_msg or "find" in lower_msg:
+        resp = "🔍 **Semantic AI Search:**\n1. Go to **Semantic Search** (`/semantic-search`).\n2. Type natural language queries (e.g., *'React developers with 5+ years experience'*).\n3. Our Qdrant/OpenSearch vector engine returns instant candidate match scores!"
+    elif "pipeline" in lower_msg or "kanban" in lower_msg or "stage" in lower_msg:
+        resp = f"📊 **Pipeline Stage Overview (`/pipeline`):**\n• **Applied:** {stages_counts['Applied']}\n• **Screening:** {stages_counts['Screening']}\n• **Technical Interview:** {stages_counts['Technical Interview']}\n• **HR Round:** {stages_counts['HR Round']}\n• **Offer:** {stages_counts['Offer']}\n• **Hired:** {stages_counts['Hired']}\n• **Rejected:** {stages_counts['Rejected']}"
+    elif "success rate" in lower_msg or "metric" in lower_msg or "stats" in lower_msg:
+        resp = f"📈 **Recruitment Platform Executive Metrics:**\n• **Total Database Candidates:** {candidates_count}\n• **Open Job Positions:** {positions_count}\n• **Candidates Hired:** {hired_count}\n• **Current Hiring Success Rate:** {success_rate}%"
+    else:
+        resp = f"Hello Administrator! 🛠️ Our platform currently manages **{candidates_count} candidates** across **{positions_count} open positions** with a **{success_rate}% hiring success rate**.\n\nYou can ask me about:\n• **Website Navigation:** *'How to upload resumes?'*, *'Where to create jobs?'*, *'How does Semantic Search work?'*\n• **Pipeline & Candidates:** *'How many candidates in screening?'*, *'Show recent candidates'*\n• **Platform Features:** *'What features are on the Dashboard?'*"
+        
+    return {
+        "response": resp,
+        "portal_type": "recruiter",
+        "is_refusal": False
+    }
+

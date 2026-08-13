@@ -570,9 +570,6 @@ export default function CandidatesPage() {
      if (e.key.toLowerCase() === "c" && selected.size >= 2) {
        e.preventDefault();
        setComparisonOpen(true);
-     } else if (e.key.toLowerCase() === "r") {
-       e.preventDefault();
-       router.push("/resume-upload");
      }
    };
 

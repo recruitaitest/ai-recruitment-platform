@@ -16,6 +16,7 @@ import {
   Calendar,
   FileText,
   Trash2,
+  CheckCircle2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { hasPermission } from "@/utils/permissions";
@@ -61,6 +62,7 @@ export default function CandidateDrawer({
   if (!open || !candidate) return null;
 
   const candidateIdNum = typeof candidate.id === "number" ? candidate.id : parseInt(String(candidate.id)) || 1;
+  const isCompleted = (interview?.status || (candidate as any)?.status || "").toLowerCase() === "completed";
 
   return (
     <motion.div
@@ -138,7 +140,7 @@ export default function CandidateDrawer({
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-28">
           {activeTab === "overview" && (
             <>
               {/* Contact Info */}
@@ -177,68 +179,89 @@ export default function CandidateDrawer({
                 />
               </div>
 
-              {/* Interview Actions Toolbar */}
-              <div className="p-4 bg-violet-500/10 border border-violet-500/30 rounded-2xl space-y-3">
-                <h3 className="text-xs font-bold uppercase text-violet-400 tracking-wider">Interview Actions</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {/* Join Video Call Button */}
-                  <a
-                    href={interview?.meeting_link || "https://meet.google.com"}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow"
-                  >
-                    <Video className="w-4 h-4" /> Join Interview
-                  </a>
+              {/* Interview Actions Toolbar - Only shown for non-completed interviews */}
+              {!isCompleted ? (
+                <div className="p-4 bg-violet-500/10 border border-violet-500/30 rounded-2xl space-y-3">
+                  <h3 className="text-xs font-bold uppercase text-violet-400 tracking-wider">Interview Actions</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Join Video Call Button */}
+                    <a
+                      href={interview?.meeting_link || "https://meet.google.com"}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow"
+                    >
+                      <Video className="w-4 h-4" /> Join Interview
+                    </a>
 
-                  {/* Reschedule Button */}
+                    {/* Reschedule Button */}
+                    <button
+                      type="button"
+                      onClick={onEdit}
+                      className="py-2.5 px-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow"
+                    >
+                      <Calendar className="w-4 h-4" /> Reschedule
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Submit Feedback Button */}
+                    <button
+                      type="button"
+                      onClick={onFeedback}
+                      className="py-2.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow"
+                    >
+                      <FileText className="w-4 h-4" /> Submit Feedback
+                    </button>
+
+                    {/* Delete / Cancel Button */}
+                    <button
+                      type="button"
+                      onClick={onDelete}
+                      className="py-2.5 px-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
+                    >
+                      <Trash2 className="w-4 h-4" /> Cancel Interview
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                    <div>
+                      <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Interview Completed</h4>
+                      <p className="text-[11px] text-muted">Evaluation & scorecard feedback recorded.</p>
+                    </div>
+                  </div>
                   <button
                     type="button"
-                    onClick={onEdit}
-                    className="py-2.5 px-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow"
+                    onClick={() => setActiveTab("collaboration")}
+                    className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow"
                   >
-                    <Calendar className="w-4 h-4" /> Reschedule
+                    View Scorecard
                   </button>
                 </div>
+              )}
 
-                <div className="grid grid-cols-2 gap-2">
-                  {/* Submit Feedback Button */}
+              {/* AI Question Generator & Actions - Hidden for Completed Interviews */}
+              {!isCompleted && (
+                <div className="p-4 bg-secondary-surface/40 border border-border rounded-2xl space-y-3">
                   <button
                     type="button"
-                    onClick={onFeedback}
-                    className="py-2.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow"
+                    onClick={() => setAiQuestionOpen(true)}
+                    className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition shadow flex items-center justify-center gap-1.5"
                   >
-                    <FileText className="w-4 h-4" /> Submit Feedback
+                    <Sparkles className="w-4 h-4" /> Generate Interview Kit & Questions
                   </button>
-
-                  {/* Delete / Cancel Button */}
                   <button
                     type="button"
-                    onClick={onDelete}
-                    className="py-2.5 px-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
+                    onClick={() => setSlackModalOpen(true)}
+                    className="w-full py-2 bg-purple-600/10 hover:bg-purple-600/20 text-purple-400 border border-purple-500/30 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
                   >
-                    <Trash2 className="w-4 h-4" /> Cancel Interview
+                    <MessageSquare className="w-3.5 h-3.5" /> Configure Slack / Teams Alert Webhook
                   </button>
                 </div>
-              </div>
-
-              {/* AI Question Generator & Actions */}
-              <div className="p-4 bg-secondary-surface/40 border border-border rounded-2xl space-y-3">
-                <button
-                  type="button"
-                  onClick={() => setAiQuestionOpen(true)}
-                  className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition shadow flex items-center justify-center gap-1.5"
-                >
-                  <Sparkles className="w-4 h-4" /> Generate Interview Kit & Questions
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSlackModalOpen(true)}
-                  className="w-full py-2 bg-purple-600/10 hover:bg-purple-600/20 text-purple-400 border border-purple-500/30 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
-                >
-                  <MessageSquare className="w-3.5 h-3.5" /> Configure Slack / Teams Alert Webhook
-                </button>
-              </div>
+              )}
             </>
           )}
 

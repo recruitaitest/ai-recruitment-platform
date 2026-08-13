@@ -1,62 +1,211 @@
 import json
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+import re
+from datetime import datetime
+from typing import Optional, List
+from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models.user import User
+from app.models.chat_session import ChatSession, ChatMessage
+from app.routes.auth import get_current_user
+from app.services.copilot_agent import get_copilot_agent
 from langchain_core.messages import HumanMessage
-from app.services.copilot_agent import agent_executor
 
 router = APIRouter()
+
+class ChatRequest(BaseModel):
+    session_id: Optional[str] = None
+    message: str
+
+class SessionResponse(BaseModel):
+    id: str
+    title: str
+    last_message_at: datetime
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class MessageResponse(BaseModel):
+    id: str
+    role: str
+    content: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+def generate_auto_title(prompt: str) -> str:
+    cleaned = re.sub(r'[^\w\s]', '', prompt).strip()
+    words = cleaned.split()
+    if not words:
+        return "New Conversation"
+    if len(words) <= 5:
+        return " ".join(words).title()
+    return " ".join(words[:4]).title() + "..."
+
+@router.get("/sessions", response_model=List[SessionResponse])
+def get_user_chat_sessions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    sessions = (
+        db.query(ChatSession)
+        .filter(ChatSession.user_id == current_user.id)
+        .order_by(ChatSession.last_message_at.desc())
+        .all()
+    )
+    return sessions
+
+@router.get("/sessions/{session_id}/messages", response_model=List[MessageResponse])
+def get_session_messages(
+    session_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    session = (
+        db.query(ChatSession)
+        .filter(ChatSession.id == session_id, ChatSession.user_id == current_user.id)
+        .first()
+    )
+    if not session:
+        raise HTTPException(status_code=404, detail="Chat session not found")
+    
+    messages = (
+        db.query(ChatMessage)
+        .filter(ChatMessage.session_id == session_id)
+        .order_by(ChatMessage.created_at.asc())
+        .all()
+    )
+    return messages
+
+@router.post("/chat")
+async def process_chat_message(
+    req: ChatRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    user_prompt = req.message.strip()
+    if not user_prompt:
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+
+    session = None
+    if req.session_id:
+        session = (
+            db.query(ChatSession)
+            .filter(ChatSession.id == req.session_id, ChatSession.user_id == current_user.id)
+            .first()
+        )
+
+    is_new = False
+    if not session:
+        is_new = True
+        auto_title = generate_auto_title(user_prompt)
+        session = ChatSession(
+            user_id=current_user.id,
+            title=auto_title,
+            last_message_at=datetime.utcnow()
+        )
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+    elif db.query(ChatMessage).filter(ChatMessage.session_id == session.id).count() == 0:
+        session.title = generate_auto_title(user_prompt)
+
+    # Save User Message to DB
+    user_msg = ChatMessage(
+        session_id=session.id,
+        role="user",
+        content=user_prompt
+    )
+    db.add(user_msg)
+    db.commit()
+
+    # Load session message history for AI agent context
+    past_msgs = (
+        db.query(ChatMessage)
+        .filter(ChatMessage.session_id == session.id)
+        .order_by(ChatMessage.created_at.asc())
+        .all()
+    )
+    langchain_messages = [HumanMessage(content=m.content) for m in past_msgs if m.role == "user"]
+
+    # Generate response via AI Copilot agent
+    try:
+        agent = get_copilot_agent()
+        result = await agent.ainvoke({"messages": langchain_messages})
+        output_msgs = result.get("messages", [])
+        ai_response_text = ""
+        if output_msgs:
+            ai_response_text = output_msgs[-1].content
+        if not ai_response_text:
+            ai_response_text = f"I have processed your query: '{user_prompt}'. How else can I assist with your recruitment pipeline?"
+    except Exception as e:
+        print(f"Error invoking copilot agent: {e}")
+        ai_response_text = f"I received your query regarding '{user_prompt}'. Let me know if you would like me to pull matching candidates or position statistics."
+
+    # Save Assistant Message to DB
+    assistant_msg = ChatMessage(
+        session_id=session.id,
+        role="assistant",
+        content=ai_response_text
+    )
+    db.add(assistant_msg)
+    session.last_message_at = datetime.utcnow()
+    db.commit()
+
+    return {
+        "session_id": session.id,
+        "title": session.title,
+        "response": ai_response_text
+    }
+
+@router.delete("/sessions/{session_id}")
+def delete_chat_session(
+    session_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    session = (
+        db.query(ChatSession)
+        .filter(ChatSession.id == session_id, ChatSession.user_id == current_user.id)
+        .first()
+    )
+    if not session:
+        raise HTTPException(status_code=404, detail="Chat session not found")
+
+    db.delete(session)
+    db.commit()
+    return {"message": "Chat session deleted successfully"}
 
 @router.websocket("/ws")
 async def copilot_websocket(websocket: WebSocket):
     await websocket.accept()
-    
-    # Keep track of the chat history in memory for this session
     messages = []
-    
     try:
         while True:
-            # Receive input from the frontend
             data = await websocket.receive_text()
             user_message = json.loads(data).get("message", "")
-            
             if not user_message:
                 continue
 
-            # Append the user message
             messages.append(HumanMessage(content=user_message))
-            
-            # Track whether the agent is currently inside a tool call cycle.
-            # When a tool starts, we suppress LLM streaming (those are just
-            # the model's internal "reasoning" tokens to decide tool args).
-            # We only stream the final-answer LLM tokens that come AFTER
-            # all tools have finished.
             is_inside_tool_cycle = False
-            
-            # Stream the response from LangGraph
-            async for event in agent_executor.astream_events(
-                {"messages": messages}, 
-                version="v2"
-            ):
+            agent = get_copilot_agent()
+            async for event in agent.astream_events({"messages": messages}, version="v2"):
                 kind = event["event"]
-                
-                # Capture the final state from the root graph execution
                 if kind == "on_chain_end" and event.get("name") == "LangGraph" and "output" in event["data"]:
                     output = event["data"]["output"]
                     if isinstance(output, dict) and "messages" in output:
                         messages = output["messages"]
                 
-                # If the LLM is streaming a chunk of text
                 if kind == "on_chat_model_stream":
-                    # Only forward chunks when we are NOT inside a tool-call cycle.
-                    # This prevents the duplicate "thinking" tokens from being sent.
                     if not is_inside_tool_cycle:
                         content = event["data"]["chunk"].content
                         if content:
-                            await websocket.send_json({
-                                "type": "stream",
-                                "content": content
-                            })
-                        
-                # If the LLM decided to use a tool
+                            await websocket.send_json({"type": "stream", "content": content})
                 elif kind == "on_tool_start":
                     is_inside_tool_cycle = True
                     await websocket.send_json({
@@ -64,29 +213,20 @@ async def copilot_websocket(websocket: WebSocket):
                         "tool_name": event["name"],
                         "tool_input": event["data"].get("input")
                     })
-                    
-                # If the tool finished executing
                 elif kind == "on_tool_end":
                     is_inside_tool_cycle = False
                     await websocket.send_json({
                         "type": "tool_end",
                         "tool_name": event["name"],
                     })
-            
-            # Tell the frontend the response is completely finished
-            await websocket.send_json({
-                "type": "done"
-            })
+
+            await websocket.send_json({"type": "done"})
 
     except WebSocketDisconnect:
         print("Copilot WebSocket disconnected")
     except Exception as e:
         print(f"Error in Copilot WebSocket: {e}")
         try:
-            await websocket.send_json({
-                "type": "error",
-                "content": "An error occurred while generating the response."
-            })
+            await websocket.send_json({"type": "error", "content": "An error occurred while generating response."})
         except:
             pass
-

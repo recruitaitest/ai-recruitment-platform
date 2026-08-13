@@ -11,7 +11,7 @@ from app.models.position import Position
 from app.models.pipeline import Pipeline
 from app.models.pipeline_stage_history import PipelineStageHistory
 from app.schemas.candidate_schema import CandidateResponse
-from app.services.email_service import EmailService
+from app.services.email_service import EmailService, send_multi_channel_acknowledgment
 from app.utils.resume_parser import extract_text_from_resume
 from app.utils.duplicate_detector import generate_resume_hash
 from app.services.qdrant_indexer import index_candidate
@@ -146,10 +146,11 @@ def apply_to_position(
                 db.add(new_pipeline)
                 db.commit()
 
-            # Schedule automated acknowledgment email
+            # Schedule automated multi-channel acknowledgment (Email, WhatsApp, SMS)
             background_tasks.add_task(
-                EmailService.send_acknowledgment_email,
+                send_multi_channel_acknowledgment,
                 to_email=email,
+                phone=phone,
                 candidate_name=full_name,
                 position_title=position.title
             )
@@ -201,10 +202,11 @@ def apply_to_position(
     index_candidate(new_candidate)
     index_candidate_to_opensearch(new_candidate)
 
-    # 4. Trigger Automatic Acknowledgment Email
+    # 4. Trigger Automatic Multi-Channel Acknowledgment (Email, WhatsApp, SMS)
     background_tasks.add_task(
-        EmailService.send_acknowledgment_email,
+        send_multi_channel_acknowledgment,
         to_email=email,
+        phone=phone,
         candidate_name=full_name,
         position_title=position.title
     )

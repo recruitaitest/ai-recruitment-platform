@@ -1,190 +1,182 @@
-import os
-from dotenv import load_dotenv
+import logging
 from app.database import SessionLocal
 from app.models.ai_settings import AISettings
 
-load_dotenv()
-
-# Initialize lazily to prevent massive memory usage on startup
-_embedding_model = None
+logger = logging.getLogger(__name__)
 
 def get_current_ai_settings():
     """
-    Reads the active provider and its config from the DB.
-    Falls back to .env-based defaults if the DB columns don't exist yet
-    (e.g. before the Alembic migration runs) so the server can still start.
+    Reads the active provider and its configuration strictly from the Database.
+    All AI configurations and API keys are managed exclusively via the UI dedicated page (/admin/ai).
     """
     try:
         db = SessionLocal()
         try:
             settings = db.query(AISettings).first()
-            if not settings:
-                return _env_fallback()
-            provider = settings.active_provider or None
-            config = settings.provider_config or {}
-            if not provider:
-                return _env_fallback()
-            return provider, config
-        except Exception:
-            # Column may not exist yet (migration pending) — fall back silently
-            return _env_fallback()
+            if not settings or not settings.active_provider:
+                return None, {}
+            return settings.active_provider, settings.provider_config or {}
         finally:
             db.close()
-    except Exception:
-        return _env_fallback()
+    except Exception as e:
+        logger.error(f"Error fetching AI settings from DB: {e}")
+        return None, {}
 
-def _env_fallback():
-    """Returns the provider + config derived purely from .env variables."""
-    use_ollama = os.getenv("USE_OLLAMA", "false").lower() == "true"
-    ollama_url = os.getenv("OLLAMA_BASE_URL", "")
-    if use_ollama and ollama_url:
-        print("[LLM Factory] Falling back to .env → Ollama")
-        return "Ollama", {
-            "Ollama": {
-                "serverUrl": ollama_url,
-                "modelName": os.getenv("OLLAMA_MODEL", "llama3"),
-                "embeddingModelName": os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text"),
-            }
-        }
-    print("[LLM Factory] Falling back to .env → Groq")
-    return "Groq", {
-        "Groq": {
-            "apiKey": os.getenv("GROQ_API_KEY", ""),
-            "modelName": "llama-3.3-70b-versatile",
-        }
-    }
-
-def get_chat_model(temperature=0.2, json_mode=False):
-    provider, config = get_current_ai_settings()
+def get_chat_model(
+    temperature: float = 0.2,
+    json_mode: bool = False,
+    override_provider: str = None,
+    override_api_key: str = None,
+    override_model_name: str = None,
+    override_server_url: str = None
+):
+    """
+    Instantiates the Chat LLM model strictly using the configuration set via the UI page (/admin/ai)
+    or optional runtime overrides passed in the request.
+    """
+    db_provider, config = get_current_ai_settings()
+    provider = override_provider or db_provider
     
+    if not provider:
+        print("[LLM Factory] No AI Provider configured in UI settings or request override.")
+        return None
+        
     print(f"[LLM Factory] Initializing {provider} Chat Model (JSON: {json_mode})")
     
     provider_settings = config.get(provider, {})
-    model_name = provider_settings.get("modelName")
+    model_name = override_model_name or provider_settings.get("modelName")
+    api_key = override_api_key or provider_settings.get("apiKey")
+    server_url = override_server_url or provider_settings.get("serverUrl")
     
     if provider == "Ollama":
-        from langchain_ollama import ChatOllama
-        server_url = provider_settings.get("serverUrl") or "http://localhost:11434"
-        print(f"  -> Source: Using Ollama URL from {'UI' if provider_settings.get('serverUrl') else 'default fallback'}")
+        url = server_url or "http://localhost:11434"
+        target_model = model_name or "llama3"
         
-        kwargs = {
-            "model": model_name or "llama3",
-            "base_url": server_url,
-            "temperature": temperature
-        }
-        if json_mode:
-            kwargs["format"] = "json"
-            
-        return ChatOllama(**kwargs)
-        
+        # Test if custom Ollama server is live
+        ollama_live = False
+        try:
+            import urllib.request, json
+            req = urllib.request.Request(f"{url.rstrip('/')}/api/tags", headers={"User-Agent": "FastAPI"})
+            with urllib.request.urlopen(req, timeout=2.0) as resp:
+                if resp.status == 200:
+                    ollama_live = True
+                    data = json.loads(resp.read().decode())
+                    avail_models = [m.get("name") for m in data.get("models", []) if isinstance(m, dict)]
+                    
+                    if avail_models and not any(target_model.split(':')[0] in m for m in avail_models):
+                        chat_models = [m for m in avail_models if "embed" not in m.lower()]
+                        if chat_models:
+                            target_model = chat_models[0]
+                            print(f"  -> Auto-selected installed Ollama chat model: '{target_model}'")
+        except Exception as e:
+            print(f"  -> Ollama reachability check warning: {e}")
+            ollama_live = False
+
+        if ollama_live:
+            from langchain_ollama import ChatOllama
+            kwargs = {
+                "model": target_model,
+                "base_url": url,
+                "temperature": temperature,
+                "timeout": 5.0
+            }
+            if json_mode:
+                kwargs["format"] = "json"
+            return ChatOllama(**kwargs)
+        else:
+            print(f"  -> Ollama server at {url} is unreachable.")
+            return None
+
     elif provider == "Groq":
+        if not api_key:
+            print("  -> Groq API Key missing in UI settings.")
+            return None
+            
         from langchain_groq import ChatGroq
-        has_ui_key = bool(provider_settings.get("apiKey"))
-        api_key = provider_settings.get("apiKey") or os.getenv("GROQ_API_KEY", "dummy_key")
-        print(f"  -> Source: Using Groq API Key from {'UI' if has_ui_key else '.env'}")
-        
-        return ChatGroq(
-            model=model_name or "llama-3.3-70b-versatile",
-            temperature=temperature,
-            api_key=api_key
-        )
-        
+        valid_model = model_name or "llama-3.3-70b-versatile"
+        if "llama3-70b" in valid_model or "llama3-8b" in valid_model:
+            valid_model = "llama-3.3-70b-versatile"
+            
+        return ChatGroq(model=valid_model, temperature=temperature, api_key=api_key)
+
     elif provider == "Gemini":
+        if not api_key:
+            print("  -> Gemini API Key missing in UI settings.")
+            return None
+            
         from langchain_google_genai import ChatGoogleGenerativeAI
-        has_ui_key = bool(provider_settings.get("apiKey"))
-        api_key = provider_settings.get("apiKey") or os.getenv("GOOGLE_API_KEY")
-        print(f"  -> Source: Using Gemini API Key from {'UI' if has_ui_key else '.env'}")
-        
-        return ChatGoogleGenerativeAI(
-            model=model_name or "gemini-1.5-pro",
-            temperature=temperature,
-            google_api_key=api_key
-        )
-        
+        valid_model = model_name or "gemini-1.5-pro"
+        if valid_model in ["gemini-pro", "gemini-1.0-pro"]:
+            valid_model = "gemini-1.5-pro"
+            
+        return ChatGoogleGenerativeAI(model=valid_model, temperature=temperature, google_api_key=api_key)
+
     elif provider == "OpenAI":
+        if not api_key:
+            print("  -> OpenAI API Key missing in UI settings.")
+            return None
+            
         from langchain_openai import ChatOpenAI
-        has_ui_key = bool(provider_settings.get("apiKey"))
-        api_key = provider_settings.get("apiKey") or os.getenv("OPENAI_API_KEY")
-        print(f"  -> Source: Using OpenAI API Key from {'UI' if has_ui_key else '.env'}")
-        
-        return ChatOpenAI(
-            model=model_name or "gpt-4o",
-            temperature=temperature,
-            api_key=api_key
-        )
-        
+        return ChatOpenAI(model=model_name or "gpt-4o", temperature=temperature, api_key=api_key)
+
     elif provider == "Claude":
+        if not api_key:
+            print("  -> Claude API Key missing in UI settings.")
+            return None
+            
         from langchain_anthropic import ChatAnthropic
-        has_ui_key = bool(provider_settings.get("apiKey"))
-        api_key = provider_settings.get("apiKey") or os.getenv("ANTHROPIC_API_KEY")
-        print(f"  -> Source: Using Claude API Key from {'UI' if has_ui_key else '.env'}")
-        
-        return ChatAnthropic(
-            model_name=model_name or "claude-3-5-sonnet-20240620",
-            temperature=temperature,
-            api_key=api_key
-        )
+        return ChatAnthropic(model_name=model_name or "claude-3-5-sonnet-20240620", temperature=temperature, api_key=api_key)
 
     elif provider == "Hugging Face":
+        if not api_key:
+            print("  -> Hugging Face API Token missing in UI settings.")
+            return None
+            
         from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
-        has_ui_key = bool(provider_settings.get("apiKey"))
-        api_key = provider_settings.get("apiKey") or os.getenv("HUGGINGFACEHUB_API_TOKEN")
-        print(f"  -> Source: Using Hugging Face API Key from {'UI' if has_ui_key else '.env'}")
-        
         llm = HuggingFaceEndpoint(
             repo_id=model_name or "mistralai/Mixtral-8x7B-Instruct-v0.1",
             temperature=temperature,
             huggingfacehub_api_token=api_key,
         )
         return ChatHuggingFace(llm=llm)
-        
-    else:
-        # Fallback
-        from langchain_ollama import ChatOllama
-        return ChatOllama(model="llama3", base_url="http://localhost:11434")
+
+    return None
 
 def get_embedding_model():
+    """
+    Instantiates the Embedding Model strictly using configuration set via UI page (/admin/ai).
+    """
     provider, config = get_current_ai_settings()
-    
-    # Check if we should use a different provider for embedding? 
-    # Usually they are tied to the same provider, but we have embeddingModelName
-    
+    if not provider:
+        return None
+        
     provider_settings = config.get(provider, {})
     embedding_model_name = provider_settings.get("embeddingModelName")
-    
-    print(f"[LLM Factory] Initializing {provider} Embedding Model")
+    api_key = provider_settings.get("apiKey")
+    server_url = provider_settings.get("serverUrl")
     
     if provider == "Ollama":
         from langchain_ollama import OllamaEmbeddings
-        server_url = provider_settings.get("serverUrl", "http://localhost:11434")
         return OllamaEmbeddings(
             model=embedding_model_name or "nomic-embed-text",
-            base_url=server_url
+            base_url=server_url or "http://localhost:11434"
         )
-        
-    elif provider == "Gemini":
+    elif provider == "Gemini" and api_key:
         from langchain_google_genai import GoogleGenerativeAIEmbeddings
-        api_key = provider_settings.get("apiKey") or os.getenv("GOOGLE_API_KEY")
         return GoogleGenerativeAIEmbeddings(
             model=embedding_model_name or "models/gemini-embedding-2",
             google_api_key=api_key
         )
-        
-    elif provider == "OpenAI":
+    elif provider == "OpenAI" and api_key:
         from langchain_openai import OpenAIEmbeddings
-        api_key = provider_settings.get("apiKey") or os.getenv("OPENAI_API_KEY")
         return OpenAIEmbeddings(
             model=embedding_model_name or "text-embedding-3-small",
             api_key=api_key
         )
-        
-    elif provider == "Hugging Face":
+    elif provider == "Hugging Face" and api_key:
         from langchain_huggingface import HuggingFaceEmbeddings
         return HuggingFaceEmbeddings(
             model_name=embedding_model_name or "BAAI/bge-large-en-v1.5"
         )
         
-    else:
-        # Fallback to Ollama if embedding isn't supported natively by the provider tab config (like Groq)
-        from langchain_ollama import OllamaEmbeddings
-        return OllamaEmbeddings(model="nomic-embed-text", base_url="http://localhost:11434")
+    return None

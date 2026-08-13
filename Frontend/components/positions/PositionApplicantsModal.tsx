@@ -4,7 +4,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, X, Sparkles, Search, CheckCircle2, Briefcase, Mail, Loader2 } from "lucide-react";
 import { CandidateComparisonModal } from "@/components/candidates/CandidateComparisonModal";
-import { SilverMedalistReEngagement } from "@/components/engagement/SilverMedalistReEngagement";
 
 interface Position {
   id: number;
@@ -224,8 +223,6 @@ export function PositionApplicantsModal({
 
           {/* Applicants Table Body */}
           <div className="p-6 overflow-y-auto overflow-x-auto flex-1 space-y-6">
-            {/* Silver Medalist Re-Engagement Engine */}
-            <SilverMedalistReEngagement positionId={position.id} />
 
             {loading ? (
               <div className="py-20 text-center">

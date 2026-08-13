@@ -1,251 +1,295 @@
 "use client";
 
-import { Bot } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { Bot, Plus, MessageSquare, Trash2, Clock, Sparkles } from "lucide-react";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import api from "@/lib/api";
 
 import ChatSection from "./ChatSection";
 import ChatInput from "./ChatInput";
 import SuggestedPrompts from "./SuggestedPrompts";
 
-export default function CopilotPage() {
+const generateId = () =>
+  typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
-    const [messages, setMessages] = useState<
-        {
-            id: string | number;
-            role: "user" | "assistant";
-            content: string;
-            candidates?: any[];
-        }[]
-    >([
-        {
-            id: 1,
+interface ChatSessionItem {
+  id: string;
+  title: string;
+  last_message_at: string;
+  created_at: string;
+}
+
+export default function CopilotPage() {
+  const [sessions, setSessions] = useState<ChatSessionItem[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<
+    {
+      id: string | number;
+      role: "user" | "assistant";
+      content: string;
+    }[]
+  >([
+    {
+      id: 1,
+      role: "assistant",
+      content:
+        "Hello 👋 I’m your AI recruitment assistant. Ask me to search candidates, summarize resumes, or generate interview questions.",
+    },
+  ]);
+
+  const [input, setInput] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
+
+  useEffect(() => {
+    fetchSessions();
+  }, []);
+
+  const fetchSessions = async () => {
+    try {
+      const res = await api.get("/copilot/sessions");
+      if (Array.isArray(res.data)) {
+        setSessions(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to load chat sessions:", err);
+    }
+  };
+
+  const handleSelectSession = async (sessionId: string) => {
+    try {
+      setActiveSessionId(sessionId);
+      const res = await api.get(`/copilot/sessions/${sessionId}/messages`);
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        setMessages(
+          res.data.map((m: any) => ({
+            id: m.id,
+            role: m.role as "user" | "assistant",
+            content: m.content,
+          }))
+        );
+      } else {
+        setMessages([
+          {
+            id: generateId(),
             role: "assistant",
-            content:
-                "Hello 👋 I’m your AI recruitment assistant. Ask me to search candidates, summarize resumes, or generate interview questions.",
-        },
+            content: "Conversation history loaded.",
+          },
+        ]);
+      }
+    } catch (err) {
+      console.error("Failed to load session messages:", err);
+      toast.error("Failed to load conversation history.");
+    }
+  };
+
+  const handleNewChat = () => {
+    setActiveSessionId(null);
+    setMessages([
+      {
+        id: generateId(),
+        role: "assistant",
+        content:
+          "Hello 👋 I’m your AI recruitment assistant. Ask me to search candidates, summarize resumes, or generate interview questions.",
+      },
+    ]);
+  };
+
+  const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
+    e.stopPropagation();
+    try {
+      await api.delete(`/copilot/sessions/${sessionId}`);
+      toast.success("Chat conversation deleted.");
+      if (activeSessionId === sessionId) {
+        handleNewChat();
+      }
+      fetchSessions();
+    } catch (err) {
+      toast.error("Failed to delete chat session.");
+    }
+  };
+
+  const handleSendMessage = async (textToSend?: string) => {
+    const promptText = (textToSend || input).trim();
+    if (!promptText || isTyping) return;
+
+    const userMsgId = generateId();
+    const assistantMsgId = generateId();
+
+    const userMessage = {
+      id: userMsgId,
+      role: "user" as const,
+      content: promptText,
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    if (!textToSend) setInput("");
+    setIsTyping(true);
+    setIsThinking(true);
+
+    // Placeholder assistant response
+    setMessages((prev) => [
+      ...prev,
+      { id: assistantMsgId, role: "assistant", content: "" },
     ]);
 
-    const [input, setInput] = useState("");
-    const [isTyping, setIsTyping] = useState(false);
-    const [isThinking, setIsThinking] = useState(false);
+    try {
+      const res = await api.post("/copilot/chat", {
+        session_id: activeSessionId,
+        message: promptText,
+      });
 
-    const ws = useRef<WebSocket | null>(null);
+      const responseText =
+        res.data?.response ||
+        "I have processed your query. Let me know if you would like matching candidates or resume insights.";
 
-    useEffect(() => {
-        // Connect to WebSocket
-        const wsBase =
-            process.env.NEXT_PUBLIC_API_URL?.replace("http", "ws") ||
-            "ws://localhost:8000";
+      if (res.data?.session_id) {
+        setActiveSessionId(res.data.session_id);
+      }
 
-        const socket = new WebSocket(`${wsBase}/copilot/ws`);
-        ws.current = socket;
+      setMessages((prev) => {
+        const updated = [...prev];
+        const target = updated.find((m) => m.id === assistantMsgId);
+        if (target) target.content = responseText;
+        return updated;
+      });
 
-        socket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
+      fetchSessions();
+    } catch (err) {
+      console.error("Chat error:", err);
+      setMessages((prev) => {
+        const updated = [...prev];
+        const target = updated.find((m) => m.id === assistantMsgId);
+        if (target)
+          target.content =
+            "Sorry, encountered an error processing your recruitment copilot query.";
+        return updated;
+      });
+    } finally {
+      setIsTyping(false);
+      setIsThinking(false);
+    }
+  };
 
-            if (data.type === "stream") {
-                setIsThinking(false);
-                setMessages((prev) => {
-                    const newMessages = [...prev];
-                    const lastMsg = newMessages[newMessages.length - 1];
-                    if (lastMsg && lastMsg.role === "assistant") {
-                        newMessages[newMessages.length - 1] = {
-                            ...lastMsg,
-                            content: lastMsg.content + data.content
-                        };
-                    }
-                    return newMessages;
-                });
-            } else if (data.type === "tool_start") {
-                // Show thinking animation instead of text
-                setIsThinking(true);
-                // Clear the assistant message so the final answer starts fresh
-                setMessages((prev) => {
-                    const newMessages = [...prev];
-                    const lastMsg = newMessages[newMessages.length - 1];
-                    if (lastMsg && lastMsg.role === "assistant") {
-                        newMessages[newMessages.length - 1] = {
-                            ...lastMsg,
-                            content: ""
-                        };
-                    }
-                    return newMessages;
-                });
-            } else if (data.type === "tool_end") {
-                // Tool finished, keep thinking until stream starts
-            } else if (data.type === "done") {
-                setIsTyping(false);
-                setIsThinking(false);
-            } else if (data.type === "error") {
-                setMessages((prev) => {
-                    const newMessages = [...prev];
-                    const lastMsg = newMessages[newMessages.length - 1];
-                    if (lastMsg && lastMsg.role === "assistant") {
-                        newMessages[newMessages.length - 1] = {
-                            ...lastMsg,
-                            content: "Sorry, I encountered an error: " + data.content
-                        };
-                    }
-                    return newMessages;
-                });
-                setIsTyping(false);
-                setIsThinking(false);
-            }
-        };
+  const handlePromptClick = (prompt: string) => {
+    handleSendMessage(prompt);
+  };
 
-        return () => {
-            socket.close();
-        };
-    }, []);
+  return (
+    <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-background">
+      {/* Middle Conversation History Sidebar */}
+      <aside className="hidden w-[300px] shrink-0 border-r border-slate-200 dark:border-[#26324A] bg-slate-50/80 dark:bg-[#161C2C] lg:flex lg:flex-col">
+        {/* Sidebar Header */}
+        <div className="border-b border-slate-200 dark:border-slate-800 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow">
+                <Bot className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white">AI Copilot</h2>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Recruitment Assistant</p>
+              </div>
+            </div>
+          </div>
 
-    const sendMessageToWs = async (message: string) => {
-        setIsTyping(true);
-        const assistantId = crypto.randomUUID();
-
-        setMessages((prev) => [
-            ...prev,
-            { id: assistantId, role: "assistant", content: "" }
-        ]);
-
-        try {
-            const api = (await import("@/lib/api")).default;
-            const res = await api.post(
-                "/api/ai/recruiter-chat",
-                {
-                    message,
-                    conversation_history: messages.map((m) => ({ sender: m.role === "user" ? "user" : "bot", text: m.content })),
-                },
-                { headers: { "X-Portal-Type": "recruiter" } }
-            );
-            const text = res.data?.response || "I am your Senior Recruitment Operations Assistant. How can I assist with your candidate pipeline today?";
-            setMessages((prev) => {
-                const updated = [...prev];
-                const target = updated.find((m) => m.id === assistantId);
-                if (target) target.content = text;
-                return updated;
-            });
-        } catch (err) {
-            setMessages((prev) => {
-                const updated = [...prev];
-                const target = updated.find((m) => m.id === assistantId);
-                if (target) target.content = "Sorry, encountered an error connecting to recruiter AI chat endpoint.";
-                return updated;
-            });
-        } finally {
-            setIsTyping(false);
-        }
-    };
-
-    const handlePromptClick = (prompt: string) => {
-        const userMessage = {
-            id: crypto.randomUUID(),
-            role: "user" as const,
-            content: prompt,
-        };
-
-        setMessages((prev) => [...prev, userMessage]);
-        sendMessageToWs(prompt);
-    };
-
-    const handleSendMessage = () => {
-        if (!input.trim()) return;
-
-        const currentInput = input;
-        const userMessage = {
-            id: crypto.randomUUID(),
-            role: "user" as const,
-            content: currentInput,
-        };
-
-        setMessages((prev) => [...prev, userMessage]);
-        setInput("");
-        sendMessageToWs(currentInput);
-    };
-
-    return (
-        <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-background">
-
-            {/* Sidebar */}
-            <aside className="hidden w-[280px] shrink-0 border-r bg-muted/20 lg:flex lg:flex-col">
-
-                {/* Sidebar Header */}
-                <div className="border-b px-6 py-5">
-                    <div className="flex items-center gap-3">
-
-                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-                            <Bot className="h-5 w-5" />
-                        </div>
-
-                        <div>
-                            <h2 className="text-base font-semibold">
-                                AI Copilot
-                            </h2>
-
-                            <p className="text-sm text-muted-foreground">
-                                Recruitment Assistant
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Suggested Prompts */}
-                <div className="min-h-0 flex-1 overflow-y-auto">
-                    <SuggestedPrompts
-                        onPromptClick={handlePromptClick}
-                    />
-                </div>
-            </aside>
-
-            {/* Main Section */}
-            <main className="flex min-w-0 flex-1 flex-col">
-
-                {/* Header */}
-                <div className="border-b px-8 py-6">
-
-                    <div className="flex items-center gap-4">
-
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
-                            <Bot className="h-5 w-5" />
-                        </div>
-
-                        <div>
-                            <h1 className="text-2xl font-semibold tracking-tight">
-                                AI Recruiter Copilot
-                            </h1>
-
-                            <p className="mt-1 text-sm text-muted-foreground">
-                                Intelligent candidate search and recruitment assistance
-                            </p>
-                        </div>
-
-                    </div>
-                </div>
-
-                {/* Chat Area */}
-                <div className="min-h-0 flex-1">
-
-                    <div className="flex h-full flex-col">
-
-                        {/* Messages */}
-                        <div className="min-h-0 flex-1">
-                            <ChatSection
-                                messages={messages}
-                                isTyping={isTyping}
-                                isThinking={isThinking}
-                            />
-                        </div>
-
-                        {/* Input */}
-                        <ChatInput
-                            input={input}
-                            setInput={setInput}
-                            onSend={handleSendMessage}
-                        />
-
-                    </div>
-
-                </div>
-            </main>
+          {/* New Chat Button */}
+          <button
+            onClick={handleNewChat}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 text-xs font-semibold shadow transition-all active:scale-95"
+          >
+            <Plus className="h-4 w-4" />
+            New Chat
+          </button>
         </div>
-    );
+
+        {/* Conversation History List */}
+        <div className="min-h-0 flex-1 overflow-y-auto p-3 space-y-1">
+          <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+            <Clock className="w-3 h-3 text-indigo-500 dark:text-indigo-400" />
+            Chat History
+          </div>
+
+          {sessions.length === 0 ? (
+            <div className="p-4 text-center text-xs text-slate-500 dark:text-slate-400">
+              No previous conversations. Start a new chat!
+            </div>
+          ) : (
+            sessions.map((sess) => {
+              const isActive = activeSessionId === sess.id;
+              return (
+                <div
+                  key={sess.id}
+                  onClick={() => handleSelectSession(sess.id)}
+                  className={`group relative flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-xs transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-indigo-50 dark:bg-indigo-600/15 text-indigo-600 dark:text-indigo-300 font-semibold border border-indigo-200 dark:border-indigo-500/30 shadow-sm"
+                      : "text-slate-700 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <MessageSquare className={`h-4 w-4 shrink-0 ${isActive ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 dark:text-slate-500"}`} />
+                    <span className="truncate">{sess.title || "New Conversation"}</span>
+                  </div>
+
+                  <button
+                    onClick={(e) => handleDeleteSession(e, sess.id)}
+                    title="Delete Chat"
+                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-opacity"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              );
+            })
+          )}
+
+          {/* Suggested Prompts Section */}
+          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 mt-4">
+            <SuggestedPrompts onPromptClick={handlePromptClick} />
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Chat Interface */}
+      <main className="flex min-w-0 flex-1 flex-col">
+        {/* Chat Header */}
+        <div className="border-b border-border px-8 py-5 flex items-center justify-between bg-surface/50">
+          <div className="flex items-center gap-4">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-md">
+              <Bot className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight text-text-primary">
+                AI Recruiter Copilot
+              </h1>
+              <p className="text-xs text-muted mt-0.5">
+                Intelligent candidate search, resume summarization, and recruitment insights
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Chat Messages Area */}
+        <div className="min-h-0 flex-1 flex flex-col">
+          <div className="min-h-0 flex-1">
+            <ChatSection
+              messages={messages}
+              isTyping={isTyping}
+              isThinking={isThinking}
+            />
+          </div>
+
+          {/* Chat Input */}
+          <ChatInput
+            input={input}
+            setInput={setInput}
+            onSend={() => handleSendMessage()}
+          />
+        </div>
+      </main>
+    </div>
+  );
 }

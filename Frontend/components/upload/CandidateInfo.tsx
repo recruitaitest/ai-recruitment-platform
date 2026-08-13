@@ -6,6 +6,29 @@ export default function CandidateInfo({
  candidate,
 }: CandidateInfoProps) {
 
+ if (candidate?.status === "Processing" || candidate?.full_name?.startsWith("Processing:")) {
+    return (
+      <div className="rounded-2xl border border-border bg-surface p-6 text-center space-y-4">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-xl font-semibold">AI Parsing Preview</h3>
+            <p className="text-sm text-muted">Analyzing resume document...</p>
+          </div>
+          <span className="rounded-full bg-indigo-500/20 px-3 py-1 text-xs text-indigo-300 border border-indigo-500/30 animate-pulse">
+            Processing...
+          </span>
+        </div>
+        <div className="flex flex-col items-center justify-center py-12 space-y-3">
+          <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-lg font-semibold text-indigo-400">Parsing Resume... Please wait</p>
+          <p className="text-xs text-muted max-w-sm">
+            Extracting candidate profile, technical skills, work history, and AI insights (20-25 seconds).
+          </p>
+        </div>
+      </div>
+    );
+  }
+
  if (!candidate) {
  return (
  <div className="rounded-2xl border border-border bg-surface p-6 ">

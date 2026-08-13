@@ -66,14 +66,14 @@ def process_resume_task(candidate_id: int, file_path: str):
         
         resume_hash = generate_resume_hash(text)
         
-        # Check for duplicates using text hash, email, phone, or name
+        # Check for duplicates using text hash, valid email, or valid phone (never generic fallback names)
         from sqlalchemy import or_
         filters = [Candidate.resume_hash == resume_hash]
-        if parsed_email:
+        if parsed_email and "placeholder.local" not in parsed_email.lower():
             filters.append(Candidate.email == parsed_email)
-        if parsed_phone:
+        if parsed_phone and len(parsed_phone.strip()) >= 7:
             filters.append(Candidate.phone == parsed_phone)
-        if parsed_name:
+        if parsed_name and parsed_name.lower() not in ["extracted candidate", "unknown candidate", "processing"]:
             filters.append(Candidate.full_name == parsed_name)
             
         existing = db.query(Candidate).filter(
@@ -94,8 +94,8 @@ def process_resume_task(candidate_id: int, file_path: str):
         candidate.full_name = candidate_name
         candidate.email = candidate_email
         candidate.phone = parsed_phone or ""
-        candidate.skills = ", ".join(skills)
-        candidate.education = education
+        candidate.skills = ", ".join(skills) if isinstance(skills, list) else (skills or "")
+        candidate.education = ", ".join(education) if isinstance(education, list) else (education or "")
         candidate.experience = experience
         candidate.location = location
         candidate.resume_hash = resume_hash

@@ -1,25 +1,24 @@
+"use client";
+
 import AdminLayout from "@/components/admin/layout/AdminLayout";
+import MailboxHeader from "@/components/mailbox/MailboxHeader";
+import MailboxStats from "@/components/mailbox/MailboxStats";
+import MailboxTable from "@/components/mailbox/MailboxTable";
+import MailboxToolbar from "@/components/mailbox/MailboxToolbar";
+import RecentSyncActivity from "@/components/mailbox/RecentSyncActivity";
+import NotificationBanner from "@/components/mailbox/NotificationBanner";
 
-import MailboxTable from "@/components/admin/mailbox/MailboxTable";
-
-export default function MailboxPage() {
- return (
- <AdminLayout>
- <div className="space-y-8">
- {/* Header */}
- <div>
- <h2 className="text-3xl font-bold tracking-tight text-text-primary">
- Mailbox Management
- </h2>
-
- <p className="mt-2 text-muted">
- Configure Office365 mailbox integrations and sync services.
- </p>
- </div>
-
- {/* Mailbox Table */}
- <MailboxTable />
- </div>
- </AdminLayout>
- );
+export default function AdminMailboxPage() {
+  return (
+    <AdminLayout>
+      <div className="space-y-8 pb-12">
+        <MailboxHeader />
+        <NotificationBanner />
+        <MailboxStats />
+        <RecentSyncActivity />
+        <MailboxToolbar />
+        <MailboxTable />
+      </div>
+    </AdminLayout>
+  );
 }

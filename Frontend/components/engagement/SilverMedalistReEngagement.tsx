@@ -28,12 +28,9 @@ export function SilverMedalistReEngagement({ positionId }: { positionId?: number
     try {
       const res = await api.get(`/candidates/silver-medalists/${positionId || 1}`);
       setMedalists(res.data || []);
-    } catch {
-      setMedalists([
-        { id: 145, full_name: "Pakki Nithish", email: "nithish@example.com", previous_stage: "Technical Interview", skills: "Python, FastAPI, Next.js, React", experience: 5, match_score: 94 },
-        { id: 176, full_name: "Priya Menon", email: "priya@example.com", previous_stage: "HR Round", skills: "System Design, React, Node.js", experience: 4, match_score: 89 },
-        { id: 148, full_name: "Dasari Lahari", email: "lahari@example.com", previous_stage: "Technical Interview", skills: "Full Stack Development, SQL, AI", experience: 4, match_score: 86 },
-      ]);
+    } catch (err) {
+      console.error("Failed to load silver medalists:", err);
+      setMedalists([]);
     } finally {
       setLoading(false);
     }

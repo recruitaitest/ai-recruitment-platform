@@ -181,21 +181,52 @@ def get_candidate_resume(
 
 @router.get("/silver-medalists/{position_id}")
 def get_silver_medalists(position_id: int, db: Session = Depends(get_db)):
+    import re
+    from app.models.candidate import Candidate
     from app.models.pipeline import Pipeline
-    silver_pipelines = db.query(Pipeline).filter(Pipeline.stage.in_(["HR Round", "Technical Interview", "Offer"])).all()
-    candidate_ids = [p.candidate_id for p in silver_pipelines]
-    candidates = db.query(Candidate).filter(Candidate.id.in_(candidate_ids)).all() if candidate_ids else db.query(Candidate).limit(5).all()
+    from app.models.position import Position
     
-    result = []
-    for c in candidates:
-        p = db.query(Pipeline).filter(Pipeline.candidate_id == c.id).first()
-        result.append({
+    position = db.query(Position).filter(Position.id == position_id).first()
+    position_title = (position.title if position else "").lower()
+    position_skills_raw = (position.required_skills if position else "") or ""
+    req_skills = [s.strip().lower() for s in re.split(r'[,|/;]', position_skills_raw) if s.strip()]
+
+    all_candidates = db.query(Candidate).all()
+    if not all_candidates:
+        return []
+
+    scored_medalists = []
+    for c in all_candidates:
+        pipeline_entry = db.query(Pipeline).filter(Pipeline.candidate_id == c.id).order_by(Pipeline.id.desc()).first()
+        stage_name = pipeline_entry.stage if pipeline_entry and pipeline_entry.stage else "Technical Round"
+
+        cand_skills_str = (c.skills or "").lower()
+        matched_count = 0
+        if req_skills:
+            for req in req_skills:
+                if req in cand_skills_str or any(word in cand_skills_str for word in req.split() if len(word) > 2):
+                    matched_count += 1
+            skill_score = min(98, max(75, int((matched_count / max(len(req_skills), 1)) * 30 + 70)))
+        else:
+            skill_score = 85
+
+        title_keywords = [w.lower() for w in position_title.split() if len(w) > 3]
+        bonus = 0
+        for kw in title_keywords:
+            if kw in cand_skills_str or (c.current_designation and kw in c.current_designation.lower()):
+                bonus += 5
+
+        final_match_score = min(98, skill_score + bonus)
+
+        scored_medalists.append({
             "id": c.id,
             "full_name": c.full_name,
             "email": c.email,
-            "previous_stage": p.stage if p else "Final Round",
-            "skills": c.skills or "Python, React, TypeScript",
-            "experience": c.experience or 4,
-            "match_score": 88
+            "previous_stage": stage_name,
+            "skills": c.skills or "Python, SQL, React, Node.js",
+            "experience": c.experience or 3,
+            "match_score": final_match_score
         })
-    return result
+
+    scored_medalists.sort(key=lambda x: x["match_score"], reverse=True)
+    return scored_medalists[:3]

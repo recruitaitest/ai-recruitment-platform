@@ -26,6 +26,13 @@ services:
       - DATABASE_URL=postgresql://user:password@db:5432/resume_db
       - REDIS_URL=redis://redis:6379/0
       - AWS_ENDPOINT_URL=http://minio:9000
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - AWS_BUCKET_NAME=recruitment-files
+      - STORAGE_PROVIDER=s3
+      - OPENSEARCH_HOST=opensearch
+      - OPENSEARCH_PORT=9200
+      - QDRANT_URL=http://qdrant:6333
     depends_on:
       - db
       - redis
@@ -42,6 +49,13 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - DATABASE_URL=postgresql://user:password@db:5432/resume_db
       - AWS_ENDPOINT_URL=http://minio:9000
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - AWS_BUCKET_NAME=recruitment-files
+      - STORAGE_PROVIDER=s3
+      - OPENSEARCH_HOST=opensearch
+      - OPENSEARCH_PORT=9200
+      - QDRANT_URL=http://qdrant:6333
     depends_on:
       - db
       - redis

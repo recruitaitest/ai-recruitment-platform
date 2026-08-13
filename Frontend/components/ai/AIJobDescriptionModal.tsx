@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import { Sparkles, X, Check } from "lucide-react";
 import { generateAIJobDescription } from "@/services/aiService";
 
+import JobDescriptionView from "@/components/positions/JobDescriptionView";
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -118,10 +120,8 @@ export default function AIJobDescriptionModal({ isOpen, onClose, onApplyJD }: Pr
             </button>
           </form>
         ) : (
-          <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-            <div className="bg-slate-50 dark:bg-slate-800/80 p-4 rounded-xl border border-slate-200 dark:border-gray-700 text-xs text-slate-800 dark:text-gray-200 whitespace-pre-wrap font-mono leading-relaxed max-h-80 overflow-y-auto">
-              {result.description_markdown}
-            </div>
+          <div className="flex-1 overflow-y-auto space-y-4 pr-1 max-h-[60vh]">
+            <JobDescriptionView content={result.description_markdown} title="AI Generated Job Description" />
 
             <div className="flex items-center gap-2">
               <button

@@ -137,12 +137,12 @@ export default function TeamScorecardVoting({ candidateId }: TeamScorecardVoting
           className="w-full p-2.5 bg-surface border border-border rounded-xl text-xs text-text-primary outline-none focus:ring-1 focus:ring-blue-500/40 resize-none"
         />
 
-        <div className="flex justify-end">
+        <div className="flex justify-end pt-1">
           <button
             type="submit"
-            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition shadow-md"
+            className="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition shadow-lg ring-2 ring-indigo-500/20 active:scale-95 flex items-center justify-center gap-1.5"
           >
-            Submit Vote
+            <CheckCircle2 className="w-4 h-4" /> Submit Team Vote
           </button>
         </div>
       </form>

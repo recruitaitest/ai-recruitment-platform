@@ -36,7 +36,6 @@ export function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShortcutsMod
       category: "Candidate Actions (on Candidates Page)",
       items: [
         { keys: ["c"], description: "Compare Selected Candidates (when 2+ selected)" },
-        { keys: ["r"], description: "Go to Bulk Resume Upload" },
       ],
     },
   ];

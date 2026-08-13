@@ -19,3 +19,11 @@ from app.models.email_account import EmailAccount
 from app.models.email_message import EmailMessage
 from app.models.email_attachment import EmailAttachment
 from app.models.mailbox_sync_history import MailboxSyncHistory
+from app.models.ai_settings import AISettings
+from app.models.notification_settings import NotificationSettings
+from app.models.automation_models import AutomationRule, WebhookEndpoint, ScheduledEmailTask, OfferTemplate
+from app.models.collaboration_models import Nomination, ApprovalStep, TeamVote
+from app.models.processed_email import ProcessedEmail
+from app.models.integration_settings import IntegrationSettings
+from app.models.chat_session import ChatSession, ChatMessage
+

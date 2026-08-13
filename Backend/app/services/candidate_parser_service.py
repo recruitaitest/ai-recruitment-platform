@@ -37,7 +37,18 @@ def create_candidate_from_resume(
         db.commit()
         db.refresh(candidate)
         if auto_parse:
-            process_resume_task.apply_async(kwargs={"candidate_id": candidate.id, "file_path": file_path}, countdown=1)
+            try:
+                process_resume_task.apply_async(kwargs={"candidate_id": candidate.id, "file_path": file_path}, countdown=1)
+            except Exception as e:
+                print(f"Celery dispatch warning: {e}. Executing inline background resume parsing.")
+                import threading
+                def _run_inline():
+                    try:
+                        from app.tasks.resume_tasks import process_resume_task
+                        process_resume_task(candidate.id, file_path)
+                    except Exception as err:
+                        print(f"Inline resume parsing error: {err}")
+                threading.Thread(target=_run_inline, daemon=True).start()
     else:
         db.flush()
 

@@ -53,7 +53,7 @@ def require_permission(permission_name: str):
     ):
 
         user_role = current_user.get("role")
-        if isinstance(user_role, str) and user_role.strip().upper().replace(" ", "_") == "COMPANY_OWNER":
+        if isinstance(user_role, str) and user_role.strip().upper().replace(" ", "_") in ["COMPANY_OWNER", "ADMIN", "SUPER_ADMIN", "ADMINISTRATOR", "OWNER"]:
             return current_user
 
         role = (

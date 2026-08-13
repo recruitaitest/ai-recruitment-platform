@@ -20,7 +20,7 @@ def get_audit_logs(
     db: Session = Depends(get_db),
     current_user = Depends(
         require_permission(
-            "audit.view"
+            "audit.view,admin.view,settings.manage"
         )
     )
 ):

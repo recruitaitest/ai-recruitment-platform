@@ -18,7 +18,8 @@ import {
     ChevronLeft,
     Lock,
     FileText,
-    Zap
+    Zap,
+    Share2
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
@@ -230,6 +231,12 @@ export function Sidebar({
             icon: <Bot className="w-5 h-5 text-emerald-400" />,
             href: '/admin/ai',
         },
+        {
+            id: 'admin-integrations',
+            label: 'Integrations',
+            icon: <Share2 className="w-5 h-5 text-indigo-400" />,
+            href: '/admin/integrations',
+        },
 
         ...(hasPermission("users.view", false)
             ? [{
@@ -420,34 +427,6 @@ export function Sidebar({
                     )
                 })}
             </nav>
-
-            {/* AI Agent indicator */}
-            {activeAIProvider && (
-                <div className={`px-3 py-2 ${ isExpanded ? 'block' : 'hidden' }`}>
-                    {canManageAI ? (
-                    <button 
-                        onClick={() => router.push('/admin/ai')}
-                        title="Click to change AI provider"
-                        className="w-full flex items-center gap-2 rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1.5 transition-all hover:bg-violet-500/20 hover:border-violet-400/50 hover:scale-[1.02] active:scale-95 text-left"
-                    >
-                        <span className="h-2 w-2 rounded-full bg-violet-400 animate-pulse flex-shrink-0" />
-                        <span className="text-xs font-semibold text-violet-500 dark:text-violet-400 truncate">
-                            AI Agent: {activeAIProvider}
-                        </span>
-                    </button>
-                    ) : (
-                    <div 
-                        title="Active AI Agent"
-                        className="flex items-center gap-2 rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1.5"
-                    >
-                        <span className="h-2 w-2 rounded-full bg-violet-400 animate-pulse flex-shrink-0" />
-                        <span className="text-xs font-semibold text-violet-500 dark:text-violet-400 truncate">
-                            AI Agent: {activeAIProvider}
-                        </span>
-                    </div>
-                    )}
-                </div>
-            )}
 
             {/* Bottom section: Compress / Expand Sidebar toggle */}
             <div className="border-t border-border p-2">

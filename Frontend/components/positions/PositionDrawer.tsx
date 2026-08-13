@@ -115,12 +115,31 @@ export default function PositionDrawer({
           </div>
 
           {/* AI Salary Benchmarks & Sourcing Strategy */}
-          {position.id && (
-            <div>
-              <AISalaryBenchmarkWidget roleTitle={position.title} location={position.location} />
-              <AISourcingStrategyCard positionId={position.id} />
-            </div>
-          )}
+          {position.id && (() => {
+            const expString = (position.experience || "").toLowerCase();
+            let expYears = 3;
+            if (expString.includes("fresher") || expString.includes("entry")) {
+              expYears = 0;
+            } else {
+              const matches = expString.match(/\d+/g);
+              if (matches && matches.length >= 2) {
+                expYears = (parseInt(matches[0]) + parseInt(matches[1])) / 2;
+              } else if (matches && matches.length === 1) {
+                expYears = parseInt(matches[0]);
+              }
+            }
+
+            return (
+              <div>
+                <AISalaryBenchmarkWidget
+                  roleTitle={position.title}
+                  location={position.location}
+                  experienceYears={expYears}
+                />
+                <AISourcingStrategyCard positionId={position.id} />
+              </div>
+            );
+          })()}
 
           {/* AI Recommended Candidates */}
           <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-[#161C2C] p-5">

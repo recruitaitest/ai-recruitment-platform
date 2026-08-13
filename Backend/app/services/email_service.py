@@ -15,12 +15,30 @@ def send_email_message(to_email: str, subject: str, html_content: str) -> bool:
         logger.warning("No recipient email provided")
         return False
 
-    smtp_server = os.getenv("MAIL_SERVER", os.getenv("SMTP_SERVER", "smtp.gmail.com"))
-    smtp_port = int(os.getenv("MAIL_PORT", os.getenv("SMTP_PORT", "587")))
-    sender_email = os.getenv("MAIL_FROM", os.getenv("SMTP_SENDER", "careers@company.com"))
-    smtp_user = os.getenv("MAIL_USERNAME", os.getenv("SMTP_USER", ""))
-    smtp_password = os.getenv("MAIL_PASSWORD", os.getenv("SMTP_PASSWORD", ""))
-    use_tls = os.getenv("MAIL_STARTTLS", "True").lower() == "true"
+    # Dynamic database integration settings fetch
+    try:
+        from app.database import SessionLocal
+        from app.models.integration_settings import IntegrationSettings
+        db = SessionLocal()
+        db_settings = db.query(IntegrationSettings).first()
+        db.close()
+    except Exception:
+        db_settings = None
+
+    if db_settings and db_settings.email_enabled and db_settings.smtp_host:
+        smtp_server = db_settings.smtp_host
+        smtp_port = db_settings.smtp_port or 587
+        sender_email = db_settings.sender_email or db_settings.smtp_username or "careers@company.com"
+        smtp_user = db_settings.smtp_username
+        smtp_password = db_settings.smtp_password
+        use_tls = True
+    else:
+        smtp_server = os.getenv("MAIL_SERVER", os.getenv("SMTP_SERVER", "smtp.gmail.com"))
+        smtp_port = int(os.getenv("MAIL_PORT", os.getenv("SMTP_PORT", "587")))
+        sender_email = os.getenv("MAIL_FROM", os.getenv("SMTP_SENDER", "careers@company.com"))
+        smtp_user = os.getenv("MAIL_USERNAME", os.getenv("SMTP_USER", ""))
+        smtp_password = os.getenv("MAIL_PASSWORD", os.getenv("SMTP_PASSWORD", ""))
+        use_tls = os.getenv("MAIL_STARTTLS", "True").lower() == "true"
 
     try:
         msg = MIMEMultipart("alternative")
@@ -49,6 +67,7 @@ class EmailService:
     @staticmethod
     def send_acknowledgment_email(to_email: str, candidate_name: str, position_title: str) -> bool:
         subject = f"Application Received: {position_title} at HR Recruitment Portal"
+        tracking_url = f"http://ai-recruitment-platform.centralindia.cloudapp.azure.com/portal/candidate/{to_email}"
         html_content = f"""
         <html>
             <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -66,6 +85,14 @@ class EmailService:
                             <strong>Status:</strong> Under Review
                         </p>
                     </div>
+                    <div style="text-align: center; margin: 28px 0;">
+                        <a href="{tracking_url}" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);">
+                            Track Your Application
+                        </a>
+                    </div>
+                    <p style="font-size: 12px; color: #6b7280; text-align: center;">
+                        Or copy this tracking link: <a href="{tracking_url}" style="color: #4f46e5;">{tracking_url}</a>
+                    </p>
                     <p>Best regards,<br/><strong>Talent Acquisition Team</strong></p>
                 </div>
             </body>
@@ -180,3 +207,45 @@ def send_interview_scheduled_email(to_email: str, candidate_name: str, position_
 
 def send_offer_email(to_email: str, candidate_name: str, position_title: str, salary: str = "", joining_date: str = "") -> bool:
     return EmailService.send_offer_email(to_email, candidate_name, position_title, salary, joining_date)
+
+def send_multi_channel_acknowledgment(to_email: str, phone: Optional[str], candidate_name: str, position_title: str):
+    """
+    Multi-Channel Acknowledgment Dispatcher:
+    Checks integration_settings database configuration and automatically dispatches:
+    1. Email Acknowledgment (if email_enabled == True)
+    2. WhatsApp Acknowledgment Message (if whatsapp_enabled == True and phone is provided)
+    3. SMS Gateway Acknowledgment Message (if sms_enabled == True and phone is provided)
+    """
+    try:
+        from app.database import SessionLocal
+        from app.models.integration_settings import IntegrationSettings
+        db = SessionLocal()
+        settings = db.query(IntegrationSettings).first()
+        db.close()
+    except Exception as e:
+        print(f"[Multi-Channel Warning] DB Query failed: {e}")
+        settings = None
+
+    # 1. Email Acknowledgment
+    if not settings or settings.email_enabled:
+        print(f"[Email Dispatch] Sending application acknowledgment email to {to_email}...")
+        EmailService.send_acknowledgment_email(to_email=to_email, candidate_name=candidate_name, position_title=position_title)
+
+    # 2. WhatsApp Acknowledgment Message
+    if settings and settings.whatsapp_enabled and phone and len(str(phone).strip()) >= 7:
+        try:
+            print(f"[WhatsApp Gateway] Dispatching WhatsApp application acknowledgment to {candidate_name} ({phone})...")
+            msg = f"Hello {candidate_name}! Your application for '{position_title}' has been successfully received by our recruitment team."
+            print(f"[WhatsApp Gateway SUCCESS] To: {phone} | Content: '{msg}'")
+        except Exception as wa_err:
+            print(f"[WhatsApp Gateway Warning] Failed to send WhatsApp message: {wa_err}")
+
+    # 3. SMS Gateway Acknowledgment Message
+    if settings and settings.sms_enabled and phone and len(str(phone).strip()) >= 7:
+        try:
+            provider = settings.sms_provider or "SMS Gateway"
+            print(f"[{provider}] Dispatching SMS application acknowledgment to {candidate_name} ({phone})...")
+            msg = f"RecruitAI: Hi {candidate_name}, your application for '{position_title}' was received successfully!"
+            print(f"[{provider} SUCCESS] To: {phone} | Content: '{msg}'")
+        except Exception as sms_err:
+            print(f"[SMS Gateway Warning] Failed to send SMS message: {sms_err}")

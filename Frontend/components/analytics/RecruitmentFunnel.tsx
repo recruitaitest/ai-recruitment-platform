@@ -208,63 +208,39 @@ export function RecruitmentFunnel() {
  </div>
 
  {/* Right Side Stats */}
- <div className="space-y-3">
- {recruitmentData.map(
- (item) => (
+ <div className="space-y-2 flex flex-col justify-center">
+ {recruitmentData.map((item) => (
  <div
- key={
- item.name
- }
- className="
- flex
- items-center
- justify-between
- rounded-2xl
- border
- border-border
- bg-secondary-surface
- px-4
- py-2.5
- 
- "
+ key={item.name}
+ className="flex items-center justify-between rounded-xl border border-border bg-secondary-surface px-3.5 py-2 transition-all hover:border-indigo-500/30"
  >
- <div className="flex items-center gap-4">
+ <div className="flex items-center gap-2.5">
  <div
- className="w-4 h-4 rounded-full"
+ className="w-3 h-3 rounded-full shrink-0"
  style={{
- backgroundColor:
- item.color,
+ backgroundColor: item.color,
  }}
  />
-
- <span className="text-text-primary text-xl font-medium">
- {
- item.name
- }
+ <span className="text-text-primary text-xs font-semibold">
+ {item.name}
  </span>
  </div>
 
- <div className="flex items-center gap-5">
- <span className="text-text-primary text-base font-semibold">
+ <div className="flex items-center gap-3">
+ <span className="text-text-secondary text-xs font-medium">
  {item.value.toLocaleString()}
  </span>
-
- <div className="h-6 w-[1px] bg-secondary-surface" />
-
  <span
- className="text-xl font-semibold"
+ className="text-xs font-bold"
  style={{
  color: item.color,
  }}
  >
- {
- item.percentage
- }
+ {item.percentage}
  </span>
  </div>
  </div>
- )
- )}
+ ))}
  </div>
  </div>
  </div>

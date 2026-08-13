@@ -91,5 +91,7 @@ Tool Usage & Accuracy Guidelines:
 - Do NOT guess, assume, or hallucinate any details. If the tools do not provide their branch of engineering or education, say you don't know based on the resume.
 """
 
-# Create the agent executor
-agent_executor = create_react_agent(llm, tools, prompt=system_prompt)
+def get_copilot_agent():
+    llm = get_chat_model(temperature=0.2)
+    return create_react_agent(llm, tools, prompt=system_prompt)
+

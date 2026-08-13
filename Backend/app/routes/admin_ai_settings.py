@@ -128,22 +128,27 @@ def test_ai_connection(
 
         elif provider == "Hugging Face":
             import requests
-            api_key = cfg.get("apiKey", "")
+            api_key = cfg.get("apiKey", "").strip()
             if not api_key:
                 return {"success": False, "source": "UI", "message": "No API key provided."}
-            resp = requests.get(
-                "https://huggingface.co/api/whoami",
-                headers={"Authorization": f"Bearer {api_key}"},
-                timeout=5
-            )
+            
+            headers = {"Authorization": f"Bearer {api_key}"}
+            resp = requests.get("https://huggingface.co/api/whoami-v2", headers=headers, timeout=5)
+            if resp.status_code == 401:
+                return {
+                    "success": False,
+                    "source": "UI",
+                    "message": "Invalid Hugging Face Token (401 Unauthorized). Ensure your token starts with 'hf_' and includes User Information Read permission."
+                }
             resp.raise_for_status()
-            name = resp.json().get("name", "user")
+            data = resp.json()
+            name = data.get("name") or data.get("username") or "user"
             latency_ms = int((time.time() - start) * 1000)
             return {
                 "success": True,
                 "source": "UI",
                 "latency_ms": latency_ms,
-                "message": f"Hugging Face token valid ({latency_ms}ms). Logged in as: {name}",
+                "message": f"Hugging Face token valid ({latency_ms}ms). Account: {name}",
             }
 
         else:
@@ -161,8 +166,7 @@ def test_ai_connection(
 
 @router.get("")
 def get_ai_settings(
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     import os
     settings = (
