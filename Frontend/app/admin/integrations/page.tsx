@@ -120,7 +120,7 @@ export default function AdminIntegrationsPage() {
   // RBAC Guard
   if (user && !isAdminUser(user)) {
     return (
-      <AdminLayout title="Integrations" user={user}>
+      <AdminLayout>
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 space-y-4">
           <div className="w-16 h-16 bg-rose-500/10 border border-rose-500/30 rounded-full flex items-center justify-center text-rose-500">
             <Lock className="w-8 h-8" />
@@ -135,7 +135,7 @@ export default function AdminIntegrationsPage() {
   }
 
   return (
-    <AdminLayout title="Integrations & Messaging Settings" user={user}>
+    <AdminLayout>
       <div className="max-w-5xl mx-auto space-y-6 pb-12">
         {/* Header Title Card */}
         <div className="flex items-center justify-between flex-wrap gap-4 bg-white dark:bg-[#1B2337] border border-slate-200 dark:border-[#26324A] p-6 rounded-3xl shadow-sm">
@@ -165,11 +165,10 @@ export default function AdminIntegrationsPage() {
         <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-1 flex-wrap">
           <button
             onClick={() => setActiveTab("whatsapp")}
-            className={`flex items-center gap-2 px-5 py-2.5 text-xs font-semibold rounded-xl transition-all ${
-              activeTab === "whatsapp"
-                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
-                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-            }`}
+            className={`flex items-center gap-2 px-5 py-2.5 text-xs font-semibold rounded-xl transition-all ${activeTab === "whatsapp"
+              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+              : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+              }`}
           >
             <MessageSquare className="w-4 h-4" />
             WhatsApp Business API
@@ -177,11 +176,10 @@ export default function AdminIntegrationsPage() {
 
           <button
             onClick={() => setActiveTab("sms")}
-            className={`flex items-center gap-2 px-5 py-2.5 text-xs font-semibold rounded-xl transition-all ${
-              activeTab === "sms"
-                ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30"
-                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-            }`}
+            className={`flex items-center gap-2 px-5 py-2.5 text-xs font-semibold rounded-xl transition-all ${activeTab === "sms"
+              ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30"
+              : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+              }`}
           >
             <Smartphone className="w-4 h-4" />
             SMS Gateway API

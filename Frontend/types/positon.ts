@@ -12,5 +12,6 @@ export interface Position {
   recruiter: string;
   postedDate: string;
   skills: string[];
+  description?: string;
   is_published?: boolean;
 }

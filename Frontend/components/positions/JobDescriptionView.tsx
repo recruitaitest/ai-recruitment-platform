@@ -84,7 +84,7 @@ export default function JobDescriptionView({ content, title }: Props) {
     return elements;
   };
 
-  const formatInlineBold = (text: str) => {
+  const formatInlineBold = (text: string) => {
     const parts = text.split(/(\*\*.*?\*\*)/g);
     return parts.map((part, idx) => {
       if (part.startsWith("**") && part.endsWith("**")) {
