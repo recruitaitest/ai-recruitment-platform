@@ -62,17 +62,16 @@ interface Candidate {
  skills: string[];
  status: Status;
  matchScore: number;
- owner: string;
+ source: string;
  currentCtc: string;
  expectedCtc: string;
  noticePeriod: string;
  folderPath: string;
  appliedPositionId?: number;
- updatedAt: string;
  avatar: string;
 }
 
-type SortKey = "name" | "skills" | "experience" | "ctc" | "status" | "owner" | "updatedAt" | "";
+type SortKey = "name" | "skills" | "experience" | "ctc" | "status" | "source" | "";
 type SortDir = "asc" | "desc";
 
 const PER_PAGE = 8;
@@ -400,11 +399,22 @@ function CandidateRow({
         <StatusBadge status={candidate.status} />
       </td>
 
-      {/* Recruiter Owner */}
-      <td className="px-3 py-3 text-[12px] text-text-secondary">{candidate.owner}</td>
-
-      {/* Updated */}
-      <td className="px-3 py-3 text-[12px] text-muted whitespace-nowrap">{candidate.updatedAt}</td>
+      {/* Source */}
+      <td className="px-3 py-3">
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap ${
+          candidate.source === "Career Portal"
+            ? "bg-purple-500/15 text-purple-400 border border-purple-500/20"
+            : candidate.source === "Email"
+            ? "bg-amber-500/15 text-amber-400 border border-amber-500/20"
+            : "bg-blue-500/15 text-blue-400 border border-blue-500/20"
+        }`}>
+          <i className={`ti ${
+            candidate.source === "Career Portal" ? "ti-world" :
+            candidate.source === "Email" ? "ti-mail" : "ti-upload"
+          }`} style={{ fontSize: 12 }} />
+          {candidate.source}
+        </span>
+      </td>
 
       {/* 3.9 Quick Row Action Bar */}
       <td className="px-3 py-3 w-[110px]" onClick={(e) => e.stopPropagation()}>
@@ -686,9 +696,8 @@ export default function CandidatesPage() {
  experience: c.experience ?? 0,
  location: c.location ?? "Unknown",
  status: (c.status as Status) ?? "Applied",
- owner: c.owner ?? "Recruiter",
+ source: c.source ?? "Manual Upload",
  skills: c.skills ? c.skills.split(",").map((s: string) => s.trim()).filter(Boolean) : [],
- updatedAt: c.updated_at ? new Date(c.updated_at).toLocaleDateString() : "Recently",
  avatar: `https://i.pravatar.cc/150?img=${(i % 70) + 1}`,
  }));
  setCandidates(formatted);
@@ -813,9 +822,9 @@ const q = search.toLowerCase().trim();
  } else if (sortKey === "ctc") {
  av = a.currentCtc || a.expectedCtc || "";
  bv = b.currentCtc || b.expectedCtc || "";
- } else if (sortKey === "owner") {
- av = a.owner || "";
- bv = b.owner || "";
+ } else if (sortKey === "source") {
+  av = a.source || "";
+  bv = b.source || "";
  }
  if (typeof av === "number" && typeof bv === "number")
  return sortDir === "asc" ? av - bv : bv - av;
@@ -851,9 +860,9 @@ const q = search.toLowerCase().trim();
  // ── EXPORT ───────────────────────────────────────────────────────────────
  const handleExport = useCallback(() => {
  const toExport = selected.size > 0 ? candidates.filter((c) => selected.has(c.id)) : sorted;
- const header = "Name,Email,Skills,Experience,Company,Location,Status,Owner,Updated";
+ const header = "Name,Email,Skills,Experience,Company,Location,Status,Source";
  const rows = toExport.map((c) =>
- [c.name, c.email, `"${c.skills.join(", ")}"`, `${c.experience} yrs`, c.company, c.location, c.status, c.owner, c.updatedAt].join(",")
+ [c.name, c.email, `"${c.skills.join(", ")}"`, `${c.experience} yrs`, c.company, c.location, c.status, c.source].join(",")
  );
  const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv" });
  const url = URL.createObjectURL(blob);
@@ -1159,8 +1168,7 @@ const q = search.toLowerCase().trim();
  <ThBtn col="experience" label="Exp" />
  <ThBtn col="ctc" label="CTC & Notice" />
  <ThBtn col="status" label="Status" />
- <ThBtn col="owner" label="Recruiter" />
- <ThBtn col="updatedAt" label="Updated" />
+ <ThBtn col="source" label="Source" />
  <th className="px-3 py-3 w-[72px]" />
  </tr>
  </thead>

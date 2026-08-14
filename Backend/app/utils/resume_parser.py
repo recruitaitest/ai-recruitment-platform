@@ -105,6 +105,7 @@ class CandidateDetails(BaseModel):
     totalExp: int = Field(0, description="Total years of professional experience as integer.", alias="experienceYears")
     skills: List[str] = Field(default_factory=list, description="Array of technical and professional skills.")
     education: Optional[List[str]] = Field(default_factory=list, description="Array of degrees and academic qualifications.")
+    location: Optional[str] = Field(None, description="City or region where the candidate is located.")
     summary: Optional[str] = Field(None, description="2-sentence professional executive summary.")
 
     class Config:
@@ -175,6 +176,7 @@ def fallback_extract_details(text: str) -> CandidateDetails:
         totalExp=2,
         skills=extracted_skills if extracted_skills else ["Software Engineering"],
         education=["Bachelor's Degree"],
+        location=None,
         summary="Experienced software engineer with expertise in core engineering practices and scalable application delivery."
     )
 

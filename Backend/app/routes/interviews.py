@@ -46,6 +46,7 @@ def update_interview(
 
 
 @router.delete("/{interview_id}")
+@router.delete("/{interview_id}/")
 def delete_interview(
     interview_id: int,
     db: Session = Depends(get_db)
@@ -54,6 +55,7 @@ def delete_interview(
 
 
 @router.put("/{interview_id}/feedback", response_model=InterviewResponse)
+@router.put("/{interview_id}/feedback/", response_model=InterviewResponse)
 def submit_feedback(
     interview_id: int,
     feedback_data: InterviewFeedback,

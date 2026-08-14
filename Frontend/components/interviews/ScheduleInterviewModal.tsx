@@ -110,16 +110,38 @@ export default function ScheduleInterviewModal({
  }
  }, [fixedInterviewType]);
 
- const errors = {
- candidate: !(candidateId ?? selectedCandidateId),
- position: !(positionId ?? selectedPositionId),
- date: !date || date < currentDate,
- time: !time || (date === currentDate && time < currentTime),
- meetingLink: mode === "Online" && !meetingLink.trim(),
- location: mode === "In-Person" && !location.trim(),
- };
+  const isSunday = (dateStr: string) => {
+    if (!dateStr) return false;
+    const parts = dateStr.split("-").map(Number);
+    if (parts.length !== 3) return false;
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    return d.getDay() === 0;
+  };
 
- const hasErrors = Object.values(errors).some(Boolean);
+  const isNightOrOffHours = (timeStr: string) => {
+    if (!timeStr) return false;
+    const [h, m] = timeStr.split(":").map(Number);
+    if (isNaN(h)) return false;
+    const totalMinutes = h * 60 + (m || 0);
+    // Standard business hours: 09:00 AM (540 min) to 06:00 PM (1080 min)
+    return totalMinutes < 540 || totalMinutes > 1080;
+  };
+
+  const isDateSunday = isSunday(date);
+  const isPastDate = !date || date < currentDate;
+  const isTimeOffHours = isNightOrOffHours(time);
+  const isPastTime = date === currentDate && time < currentTime;
+
+  const errors = {
+    candidate: !(candidateId ?? selectedCandidateId),
+    position: !(positionId ?? selectedPositionId),
+    date: isPastDate || isDateSunday,
+    time: !time || isPastTime || isTimeOffHours,
+    meetingLink: mode === "Online" && !meetingLink.trim(),
+    location: mode === "In-Person" && !location.trim(),
+  };
+
+  const hasErrors = Object.values(errors).some(Boolean);
 
   const fieldClass = (hasError: boolean) =>
     `w-full rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white px-4 py-3 outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition ${
@@ -435,48 +457,75 @@ export default function ScheduleInterviewModal({
  </div>
  )}
 
- <div className="grid gap-6 md:grid-cols-2">
- <div>
- <label className="mb-2 flex items-center gap-1 text-sm font-medium text-secondary">
- Interview Date <span className="text-red-400">*</span>
- </label>
- <div className={dateTimeClass(errors.date)}>
- <CalendarDays className="h-5 w-5 shrink-0 text-violet-400" />
- <input
- type="date"
- value={date}
- min={currentDate}
- onChange={(e) => setDate(e.target.value)}
- className="w-full bg-transparent text-text-primary outline-none"
- />
- </div>
- {touched && errors.date && (
- <p className="mt-1 text-xs text-red-400">Date is required.</p>
- )}
- </div>
+  <div className="grid gap-6 md:grid-cols-2">
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <label className="flex items-center gap-1 text-sm font-semibold text-slate-700 dark:text-slate-300">
+          Interview Date <span className="text-red-400">*</span>
+        </label>
+        <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+          Mon – Sat only
+        </span>
+      </div>
+      <div className={dateTimeClass(errors.date)}>
+        <CalendarDays className="h-5 w-5 shrink-0 text-indigo-500 dark:text-indigo-400" />
+        <input
+          type="date"
+          value={date}
+          min={currentDate}
+          onChange={(e) => {
+            setDate(e.target.value);
+            setScheduleError(null);
+          }}
+          className="w-full bg-transparent text-slate-900 dark:text-white outline-none cursor-pointer"
+        />
+      </div>
+      {touched && isDateSunday && (
+        <p className="mt-1.5 text-xs text-red-500 font-medium">
+          ⚠️ Sundays are non-working days. Please select Monday – Saturday.
+        </p>
+      )}
+      {touched && !isDateSunday && isPastDate && (
+        <p className="mt-1.5 text-xs text-red-400">Date is required and cannot be in the past.</p>
+      )}
+    </div>
 
- <div>
- <label className="mb-2 flex items-center gap-1 text-sm font-medium text-secondary">
- Interview Time <span className="text-red-400">*</span>
- </label>
- <div className={dateTimeClass(errors.time)}>
- <Clock3 className="h-5 w-5 shrink-0 text-violet-400" />
- <input
- type="time"
- value={time}
- min={date === currentDate ? currentTime : undefined}
- onChange={(e) => setTime(e.target.value)}
- className="w-full bg-transparent text-text-primary outline-none"
- />
- </div>
- {touched && !time && (
- <p className="mt-1 text-xs text-red-400">Time is required.</p>
- )}
- {touched && time && errors.time && (
- <p className="mt-1 text-xs text-red-400">Please select a future time.</p>
- )}
- </div>
- </div>
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <label className="flex items-center gap-1 text-sm font-semibold text-slate-700 dark:text-slate-300">
+          Interview Time <span className="text-red-400">*</span>
+        </label>
+        <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+          09:00 AM – 06:00 PM
+        </span>
+      </div>
+      <div className={dateTimeClass(errors.time)}>
+        <Clock3 className="h-5 w-5 shrink-0 text-indigo-500 dark:text-indigo-400" />
+        <input
+          type="time"
+          value={time}
+          min="09:00"
+          max="18:00"
+          onChange={(e) => {
+            setTime(e.target.value);
+            setScheduleError(null);
+          }}
+          className="w-full bg-transparent text-slate-900 dark:text-white outline-none cursor-pointer"
+        />
+      </div>
+      {touched && !time && (
+        <p className="mt-1.5 text-xs text-red-400">Time is required.</p>
+      )}
+      {touched && time && isTimeOffHours && (
+        <p className="mt-1.5 text-xs text-red-500 font-medium">
+          ⚠️ Night/off-hours not allowed. Please select between 09:00 AM and 06:00 PM.
+        </p>
+      )}
+      {touched && time && !isTimeOffHours && isPastTime && (
+        <p className="mt-1.5 text-xs text-red-400">Please select a future time for today.</p>
+      )}
+    </div>
+  </div>
 
             <div>
               <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">

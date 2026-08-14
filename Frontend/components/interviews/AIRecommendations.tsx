@@ -185,73 +185,69 @@ export default function AIRecommendations() {
  }
  }
 
- // Return max 4 insights
- return result.slice(0, 4);
- }, [interviews, candidates, positions]);
+  // Return max 2 insights to keep the component compact
+  return result.slice(0, 2);
+  }, [interviews, candidates, positions]);
 
- return (
- <motion.div
- whileHover={{ y: -4 }}
- transition={{ duration: 0.2 }}
- className="rounded-2xl border border-border bg-card p-6 shadow-sm"
- >
+  return (
+    <motion.div
+      whileHover={{ y: -2 }}
+      transition={{ duration: 0.2 }}
+      className="rounded-2xl border border-border bg-card p-5 shadow-sm"
+    >
+      <div className="flex items-center gap-3">
+        <div className="rounded-xl bg-primary/10 p-2.5">
+          <Sparkles className="h-5 w-5 text-primary" />
+        </div>
+        <div>
+          <h2 className="text-base font-semibold text-text-primary">
+            AI Insights
+          </h2>
+          <p className="text-xs text-muted">
+            Smart interview recommendations
+          </p>
+        </div>
+      </div>
 
- <div className="flex items-center gap-3">
-
- <div className="rounded-2xl bg-primary/10 p-3">
- <Sparkles className="h-6 w-6 text-primary" />
- </div>
-
- <div>
- <h2 className="text-lg font-semibold text-text-primary">
- AI Insights
- </h2>
-
- <p className="text-sm text-muted">
- Smart interview recommendations
- </p>
- </div>
- </div>
-
- <div className="mt-6 space-y-4">
- {loading ? (
- <>
- {[1, 2].map((i) => (
- <div
- key={i}
- className="h-14 animate-pulse rounded-2xl bg-secondary-surface/60"
- />
- ))}
- </>
- ) : insights.length > 0 ? (
- insights.map((insight, index) => (
- <motion.div
- key={index}
- initial={{ opacity: 0, y: 10 }}
- animate={{ opacity: 1, y: 0 }}
- transition={{ delay: index * 0.1 }}
- className={`rounded-2xl border p-4 flex items-start gap-3 ${
- insight.type === "warning"
- ? "border-amber-500/30 bg-amber-500/10"
- : insight.type === "success"
- ? "border-green-500/30 bg-green-500/10"
- : "border-border bg-secondary-surface"
- }`}
- >
- <div className="mt-0.5">{insight.icon}</div>
- <p className="text-sm text-secondary">
- {insight.text}
- </p>
- </motion.div>
- ))
- ) : (
- <div className="rounded-2xl border border-border bg-surface p-4">
- <p className="text-sm text-muted text-center">
- No insights available yet. Schedule more interviews to get AI recommendations.
- </p>
- </div>
- )}
- </div>
- </motion.div>
- );
+      <div className="mt-4 space-y-2.5">
+        {loading ? (
+          <>
+            {[1, 2].map((i) => (
+              <div
+                key={i}
+                className="h-12 animate-pulse rounded-xl bg-secondary-surface/60"
+              />
+            ))}
+          </>
+        ) : insights.length > 0 ? (
+          insights.map((insight, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.08 }}
+              className={`rounded-xl border p-3 flex items-start gap-2.5 ${
+                insight.type === "warning"
+                  ? "border-amber-500/30 bg-amber-500/10"
+                  : insight.type === "success"
+                  ? "border-green-500/30 bg-green-500/10"
+                  : "border-border bg-secondary-surface"
+              }`}
+            >
+              <div className="mt-0.5 shrink-0">{insight.icon}</div>
+              <p className="text-xs leading-relaxed text-secondary">
+                {insight.text}
+              </p>
+            </motion.div>
+          ))
+        ) : (
+          <div className="rounded-xl border border-border bg-surface p-3">
+            <p className="text-xs text-muted text-center">
+              No insights available yet. Schedule more interviews to get AI recommendations.
+            </p>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
 }

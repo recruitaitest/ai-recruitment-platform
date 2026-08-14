@@ -15,7 +15,20 @@ import EditInterviewModal from "./EditInterviewModal";
 import InterviewFeedbackModal from "./InterviewFeedbackModal";
 import CreateOfferModal from "@/components/offer/CreateOfferModal";
 import AIQuestionGeneratorModal from "@/components/ai/AIQuestionGeneratorModal";
-import { Sparkles } from "lucide-react";
+import { toast } from "sonner";
+import {
+  Sparkles,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Trash2,
+  Video,
+  Building2,
+  Phone,
+  Calendar,
+  Star,
+  FileText
+} from "lucide-react";
 
 import type { Candidate, Interview } from "@/types/interview";
 
@@ -39,12 +52,22 @@ export default function InterviewLayout() {
  const [positions, setPositions] = useState<any[]>([]);
  const [pipelines, setPipelines] = useState<any[]>([]);
  const [deleteError, setDeleteError] = useState<string | null>(null);
- const [sortConfig, setSortConfig] = useState<{
- key: string;
- direction: "asc" | "desc";
+
+ // Independent sorting states for Upcoming and Completed tables
+ const [upcomingSortConfig, setUpcomingSortConfig] = useState<{
+   key: string;
+   direction: "asc" | "desc";
  }>({
- key: "interview_date",
- direction: "asc",
+   key: "interview_date",
+   direction: "asc",
+ });
+
+ const [completedSortConfig, setCompletedSortConfig] = useState<{
+   key: string;
+   direction: "asc" | "desc";
+ }>({
+   key: "interview_date",
+   direction: "desc",
  });
 
  const [showAllUpcoming, setShowAllUpcoming] = useState(false);
@@ -145,22 +168,33 @@ export default function InterviewLayout() {
  loadAll();
  }, []);
 
- // ✅ Delete from backend then update local state
+ // ✅ Robust Delete from backend then update local state & toast
  const handleDeleteInterview = async (id: number) => {
  setDeleteError(null);
  try {
- const response = await fetch(`${API_URL}/interviews/${id}/`, {
- method: "DELETE",
+ const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+ const headers: Record<string, string> = {};
+ if (token) {
+   headers["Authorization"] = `Bearer ${token}`;
+ }
+
+ const response = await fetch(`${API_URL}/interviews/${id}`, {
+   method: "DELETE",
+   headers,
  });
 
  if (!response.ok) {
- throw new Error(`Delete failed with status ${response.status}`);
+   throw new Error(`Delete failed with status ${response.status}`);
  }
 
  setAllInterviews((prev) => prev.filter((item) => item.id !== id));
+ setSelectedInterview(null);
  setOpenDrawer(false);
+ toast.success("Interview deleted successfully!");
+ loadAll();
  } catch (error) {
  console.error("Delete error:", error);
+ toast.error("Failed to delete interview. Please try again.");
  setDeleteError("Failed to delete interview. Please try again.");
  }
  };
@@ -190,47 +224,131 @@ export default function InterviewLayout() {
  return matchesSearch && matchesStatus && matchesType && matchesMode;
  });
 
- const handleSort = (key: string) => {
- setSortConfig((prev) => ({
- key,
- direction:
- prev.key === key && prev.direction === "asc" ? "desc" : "asc",
- }));
+ const handleUpcomingSort = (key: string) => {
+   setUpcomingSortConfig((prev) => ({
+     key,
+     direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+   }));
  };
 
- const sortIcon = (key: string) => {
- if (sortConfig.key !== key) return "Sort";
- return sortConfig.direction === "asc" ? "Asc" : "Desc";
+ const handleCompletedSort = (key: string) => {
+   setCompletedSortConfig((prev) => ({
+     key,
+     direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+   }));
  };
 
- const sortedInterviews = [...filteredInterviews].sort((a, b) => {
- const aValue = a[sortConfig.key] ?? "";
- const bValue = b[sortConfig.key] ?? "";
+ const renderUpcomingSortHeader = (label: string, sortKey: string) => {
+   const isActive = upcomingSortConfig.key === sortKey;
+   return (
+     <button
+       type="button"
+       onClick={() => handleUpcomingSort(sortKey)}
+       className={`group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all select-none ${
+         isActive
+           ? "text-violet-400 bg-violet-500/15 border border-violet-500/30 shadow-xs"
+           : "text-slate-400 hover:text-text-primary hover:bg-surface/80 border border-transparent"
+       }`}
+       title={`Sort by ${label} (${isActive ? (upcomingSortConfig.direction === "asc" ? "Ascending" : "Descending") : "Click to sort"})`}
+     >
+       <span>{label}</span>
+       {isActive ? (
+         upcomingSortConfig.direction === "asc" ? (
+           <ArrowUp className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+         ) : (
+           <ArrowDown className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+         )
+       ) : (
+         <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 opacity-60 shrink-0" />
+       )}
+     </button>
+   );
+ };
 
- if (sortConfig.key === "interview_date") {
- const aTime = new Date(aValue).getTime();
- const bTime = new Date(bValue).getTime();
- return sortConfig.direction === "asc" ? aTime - bTime : bTime - aTime;
- }
+ const renderCompletedSortHeader = (label: string, sortKey: string) => {
+   const isActive = completedSortConfig.key === sortKey;
+   return (
+     <button
+       type="button"
+       onClick={() => handleCompletedSort(sortKey)}
+       className={`group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all select-none ${
+         isActive
+           ? "text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 shadow-xs"
+           : "text-slate-400 hover:text-text-primary hover:bg-surface/80 border border-transparent"
+       }`}
+       title={`Sort by ${label} (${isActive ? (completedSortConfig.direction === "asc" ? "Ascending" : "Descending") : "Click to sort"})`}
+     >
+       <span>{label}</span>
+       {isActive ? (
+         completedSortConfig.direction === "asc" ? (
+           <ArrowUp className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+         ) : (
+           <ArrowDown className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+         )
+       ) : (
+         <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 opacity-60 shrink-0" />
+       )}
+     </button>
+   );
+ };
 
- const comparison = String(aValue).localeCompare(String(bValue), undefined, {
- numeric: true,
- sensitivity: "base",
- });
+ const renderModeBadge = (mode?: string) => {
+   const cleanMode = (mode || "Online").toLowerCase();
+   if (cleanMode.includes("person") || cleanMode.includes("onsite") || cleanMode.includes("office")) {
+     return (
+       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+         <Building2 className="w-3.5 h-3.5" />
+         In-Person
+       </span>
+     );
+   }
+   if (cleanMode.includes("call") || cleanMode.includes("phone")) {
+     return (
+       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+         <Phone className="w-3.5 h-3.5" />
+         Call
+       </span>
+     );
+   }
+   return (
+     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20">
+       <Video className="w-3.5 h-3.5" />
+       Online
+     </span>
+   );
+ };
 
- return sortConfig.direction === "asc" ? comparison : -comparison;
- });
+ const sortInterviewList = (list: any[], config: { key: string; direction: "asc" | "desc" }) => {
+   return [...list].sort((a, b) => {
+     const aValue = a[config.key] ?? "";
+     const bValue = b[config.key] ?? "";
 
- // Show ALL non-completed interviews (Technical, HR Round, Final, Screening, etc.)
- const upcomingInterviews = sortedInterviews.filter((item) => {
- return item.status !== "Completed";
- });
+     if (config.key === "interview_date") {
+       const aTime = new Date(aValue).getTime();
+       const bTime = new Date(bValue).getTime();
+       return config.direction === "asc" ? aTime - bTime : bTime - aTime;
+     }
+     if (config.key === "overall_rating") {
+       const aNum = Number(aValue) || 0;
+       const bNum = Number(bValue) || 0;
+       return config.direction === "asc" ? aNum - bNum : bNum - aNum;
+     }
 
- const completedInterviews = sortedInterviews.filter((item) => {
- return item.status === "Completed";
- });
+     const comparison = String(aValue).localeCompare(String(bValue), undefined, {
+       numeric: true,
+       sensitivity: "base",
+     });
 
- // Limit to 3 unless "View All" is toggled
+     return config.direction === "asc" ? comparison : -comparison;
+   });
+ };
+
+ const rawUpcoming = filteredInterviews.filter((item) => item.status !== "Completed");
+ const rawCompleted = filteredInterviews.filter((item) => item.status === "Completed");
+
+ const upcomingInterviews = sortInterviewList(rawUpcoming, upcomingSortConfig);
+ const completedInterviews = sortInterviewList(rawCompleted, completedSortConfig);
+
  const visibleUpcoming = showAllUpcoming ? upcomingInterviews : upcomingInterviews.slice(0, 3);
  const visibleCompleted = showAllCompleted ? completedInterviews : completedInterviews.slice(0, 3);
 
@@ -311,318 +429,349 @@ export default function InterviewLayout() {
  />
  </div>
 
- {/* Main Layout */}
- <div className="mt-8 flex flex-col gap-6 xl:flex-row">
+  {/* Top Dashboard Row: Calendar & Right Sidebar */}
+  <div className="mt-8 flex flex-col gap-6 xl:flex-row">
+    {/* Calendar Section */}
+    <div className="flex-1">
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm dark:shadow-soft h-full flex flex-col justify-between">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-text-primary">
+              Interview Calendar
+            </h2>
+            <p className="mt-1 text-sm text-muted">
+              Manage scheduled interviews efficiently
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {hasPermission("interviews.create") && (
+              <button
+                onClick={() => setOpenModal(true)}
+                className="rounded-2xl bg-violet-600 px-5 py-3 text-sm font-medium text-white hover:bg-violet-500 transition"
+              >
+                Schedule Interview
+              </button>
+            )}
+          </div>
+        </div>
 
- {/* Left Main Content */}
- <div className="flex-1 space-y-6">
+        <InterviewCalendar
+          interviews={filteredInterviews}
+          onEventClick={(candidateId) => {
+            const interview = filteredInterviews.find(
+              (i) => i.candidate_id === candidateId
+            );
+            handleCandidateClick(candidateId, interview);
+          }}
+        />
+      </div>
+    </div>
 
- {/* Calendar Section */}
- <div className="rounded-2xl border border-border bg-card p-6 shadow-sm dark:shadow-soft">
- <div className="mb-6 flex items-center justify-between">
- <div>
- <h2 className="text-2xl font-bold text-text-primary">
- Interview Calendar
- </h2>
- <p className="mt-1 text-sm text-muted">
- Manage scheduled interviews efficiently
- </p>
- </div>
- <div className="flex items-center gap-2">
- {hasPermission("interviews.create") && (
- <button
- onClick={() => setOpenModal(true)}
- className="rounded-2xl bg-violet-600 px-5 py-3 text-sm font-medium text-white hover:bg-violet-500 transition"
- >
- Schedule Interview
- </button>
- )}
- </div>
- </div>
+    {/* Right Sidebar Widgets */}
+    <div className="w-full xl:w-[380px] space-y-6 shrink-0">
+      <InterviewStats interviews={allInterviews} />
+      <TodaysInterviews />
+      <AIRecommendations />
+    </div>
+  </div>
 
- <InterviewCalendar
- interviews={filteredInterviews}
- onEventClick={(candidateId) => {
- const interview = filteredInterviews.find(
- (i) => i.candidate_id === candidateId
- );
- handleCandidateClick(candidateId, interview);
- }}
- />
- </div>
+  {/* Bottom Full-Width Tables Section */}
+  <div className="mt-8 w-full space-y-8">
+    {/* Upcoming Interviews Table */}
+    <div className="rounded-2xl border border-border bg-card p-6 md:p-8 shadow-sm dark:shadow-soft w-full">
+      <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-text-primary">
+            Upcoming Interviews
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            Track scheduled candidate interviews (Technical & HR rounds)
+          </p>
+        </div>
+        {upcomingInterviews.length > 3 && (
+          <button
+            onClick={() => setShowAllUpcoming(!showAllUpcoming)}
+            className="text-sm text-violet-400 hover:text-violet-300 transition font-medium"
+          >
+            {showAllUpcoming ? "Show Less" : `View All (${upcomingInterviews.length})`}
+          </button>
+        )}
+      </div>
 
- {/* Upcoming Interviews */}
- <div className="rounded-2xl border border-border bg-card p-6 shadow-sm dark:shadow-soft">
- <div className="mb-6 flex items-center justify-between">
- <div>
- <h2 className="text-2xl font-bold text-text-primary">
- Upcoming Interviews
- </h2>
- <p className="mt-1 text-sm text-muted">
- Track scheduled candidate interviews (Technical & HR rounds)
- </p>
- </div>
- {upcomingInterviews.length > 3 && (
- <button
- onClick={() => setShowAllUpcoming(!showAllUpcoming)}
- className="text-sm text-violet-400 hover:text-violet-300 transition font-medium"
- >
- {showAllUpcoming ? "Show Less" : `View All (${upcomingInterviews.length})`}
- </button>
- )}
- </div>
+      <div className="overflow-x-auto w-full">
+        <table className="w-full min-w-[850px]">
+          <thead>
+            <tr className="border-b border-border text-xs text-muted">
+              <th className="pb-4 text-center font-medium">
+                {renderUpcomingSortHeader("Candidate", "candidate_name")}
+              </th>
+              <th className="pb-4 text-center font-medium">
+                {renderUpcomingSortHeader("Role", "position_title")}
+              </th>
+              <th className="pb-4 text-center font-medium">
+                {renderUpcomingSortHeader("Round", "interview_type")}
+              </th>
+              <th className="pb-4 text-center font-medium">
+                {renderUpcomingSortHeader("Date", "interview_date")}
+              </th>
+              <th className="pb-4 text-center font-medium">
+                {renderUpcomingSortHeader("Time", "interview_time")}
+              </th>
+              <th className="pb-4 text-center font-medium">
+                {renderUpcomingSortHeader("Mode", "mode")}
+              </th>
+              <th className="pb-4 text-center font-medium">
+                {renderUpcomingSortHeader("Status", "status")}
+              </th>
+              <th className="pb-4 text-center font-bold uppercase tracking-wider text-slate-400">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibleUpcoming.length > 0 ? (
+              visibleUpcoming.map((item) => (
+                <tr
+                  key={item.id}
+                  onClick={() =>
+                    handleCandidateClick(item.candidate_id, item)
+                  }
+                  className="cursor-pointer border-b border-border/50 hover:bg-surface/50 transition text-center"
+                >
+                  <td className="py-4 text-left pl-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-600 font-bold text-white shadow-xs">
+                        {item.candidate_name?.charAt(0) || "?"}
+                      </div>
+                      <div className="text-left">
+                        <p className="font-semibold text-text-primary text-sm">
+                          {item.candidate_name}
+                        </p>
+                        <p className="text-xs text-muted">
+                          Candidate
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-4 text-secondary text-sm font-medium">{item.position_title}</td>
+                  <td className="py-4 text-secondary text-sm">{item.interview_type}</td>
+                  <td className="py-4 text-secondary text-sm font-medium">{item.interview_date}</td>
+                  <td className="py-4 text-secondary text-sm">{item.interview_time}</td>
+                  <td className="py-4">
+                    {renderModeBadge(item.mode)}
+                  </td>
+                  <td className="py-4">
+                    <span
+                      className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${
+                        item.status === "Scheduled"
+                          ? "bg-violet-500/15 text-violet-400 border border-violet-500/20"
+                          : item.status === "Completed"
+                          ? "bg-green-500/15 text-green-400 border border-green-500/20"
+                          : "bg-yellow-500/15 text-yellow-400 border border-yellow-500/20"
+                      }`}
+                    >
+                      {item.status}
+                    </span>
+                  </td>
+                  <td className="py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                      {/* Join button ONLY rendered for Online mode */}
+                      {item.mode?.toLowerCase() === "online" && (
+                        <a
+                          href={item.meeting_link || "https://meet.google.com"}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition inline-flex items-center gap-1 shadow-sm"
+                          title="Join Video Meeting"
+                        >
+                          <Video className="w-3.5 h-3.5" />
+                          Join
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedInterview(item);
+                          setOpenEditModal(true);
+                        }}
+                        className="px-2.5 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                        title="Reschedule Interview"
+                      >
+                        Reschedule
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedInterview(item);
+                          setOpenFeedbackModal(true);
+                        }}
+                        className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                        title="Submit Feedback"
+                      >
+                        Feedback
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (confirm(`Are you sure you want to delete the interview for ${item.candidate_name}?`)) {
+                            await handleDeleteInterview(item.id);
+                          }
+                        }}
+                        className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold transition"
+                        title="Delete Interview"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={8} className="py-8 text-center text-muted">
+                  No upcoming interviews found
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
 
- <div className="overflow-x-auto">
- <table className="w-full">
- <thead>
- <tr className="border-b border-border text-left text-sm text-muted">
- <th className="pb-4 font-medium">
- <button
- type="button"
- onClick={() => handleSort("candidate_name")}
- className="flex items-center gap-2 hover:text-text-primary transition"
- >
- Candidate
- <span>{sortIcon("candidate_name")}</span>
- </button>
- </th>
- <th className="pb-4 font-medium">
- <button
- type="button"
- onClick={() => handleSort("position_title")}
- className="flex items-center gap-2 hover:text-text-primary transition"
- >
- Role
- <span>{sortIcon("position_title")}</span>
- </button>
- </th>
- <th className="pb-4 font-medium">
- <button
- type="button"
- onClick={() => handleSort("interview_type")}
- className="flex items-center gap-2 hover:text-text-primary transition"
- >
- Round
- <span>{sortIcon("interview_type")}</span>
- </button>
- </th>
- <th className="pb-4 font-medium">
- <button
- type="button"
- onClick={() => handleSort("interview_date")}
- className="flex items-center gap-2 hover:text-text-primary transition"
- >
- Date
- <span>{sortIcon("interview_date")}</span>
- </button>
- </th>
- <th className="pb-4 font-medium">
- <button
- type="button"
- onClick={() => handleSort("interview_time")}
- className="flex items-center gap-2 hover:text-text-primary transition"
- >
- Time
- <span>{sortIcon("interview_time")}</span>
- </button>
- </th>
- <th className="pb-4 font-medium">
- <button
- type="button"
- onClick={() => handleSort("status")}
- className="flex items-center gap-2 hover:text-text-primary transition"
- >
- Status
- <span>{sortIcon("status")}</span>
- </button>
- </th>
- <th className="pb-4 font-medium text-right pr-4">Actions</th>
- </tr>
- </thead>
- <tbody>
- {visibleUpcoming.length > 0 ? (
- visibleUpcoming.map((item) => (
- <tr
- key={item.id}
- onClick={() =>
- handleCandidateClick(item.candidate_id, item)
- }
- className="cursor-pointer border-b border-slate-900 hover:bg-surface/40 transition"
- >
- <td className="py-5">
- <div className="flex items-center gap-4">
- <div className="flex h-11 w-11 items-center justify-center rounded-full bg-violet-600 font-semibold text-white">
- {item.candidate_name?.charAt(0) || "?"}
- </div>
- <div>
- <p className="font-medium text-text-primary">
- {item.candidate_name}
- </p>
- <p className="text-sm text-muted">
- Candidate
- </p>
- </div>
- </div>
- </td>
- <td className="py-5 text-secondary">{item.position_title}</td>
- <td className="py-5 text-secondary">{item.interview_type}</td>
- <td className="py-5 text-secondary">{item.interview_date}</td>
- <td className="py-5 text-secondary">{item.interview_time}</td>
- <td className="py-5">
- <span
- className={`rounded-full px-3 py-1 text-xs font-medium ${
- item.status === "Scheduled"
- ? "bg-violet-100 text-violet-700"
- : item.status === "Completed"
- ? "bg-green-600/20 text-green-300"
- : "bg-yellow-600/20 text-yellow-300"
- }`}
- >
- {item.status}
- </span>
- </td>
- <td className="py-5 text-right pr-2" onClick={(e) => e.stopPropagation()}>
- <div className="flex items-center justify-end gap-1.5">
- <a
- href={item.meeting_link || "https://meet.google.com"}
- target="_blank"
- rel="noreferrer"
- className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition"
- title="Join Video Meeting"
- >
- Join
- </a>
- <button
- type="button"
- onClick={() => {
- setSelectedInterview(item);
- setOpenEditModal(true);
- }}
- className="px-2.5 py-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-semibold transition"
- title="Reschedule Interview"
- >
- Reschedule
- </button>
- <button
- type="button"
- onClick={() => {
- setSelectedInterview(item);
- setOpenFeedbackModal(true);
- }}
- className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition"
- title="Submit Feedback"
- >
- Feedback
- </button>
- </div>
- </td>
- </tr>
- ))
- ) : (
- <tr>
- <td colSpan={7} className="py-8 text-center text-muted">
- No upcoming interviews found
- </td>
- </tr>
- )}
- </tbody>
- </table>
- </div>
- </div>
+    {/* Completed Interviews Table */}
+    <div className="rounded-2xl border border-border bg-card p-6 md:p-8 shadow-sm dark:shadow-soft w-full">
+      <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-text-primary">
+            Completed Interviews
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            History of completed candidate interviews
+          </p>
+        </div>
+        {completedInterviews.length > 3 && (
+          <button
+            onClick={() => setShowAllCompleted(!showAllCompleted)}
+            className="text-sm text-violet-400 hover:text-violet-300 transition font-medium"
+          >
+            {showAllCompleted ? "Show Less" : `View All (${completedInterviews.length})`}
+          </button>
+        )}
+      </div>
 
- {/* Completed Interviews */}
- <div className="rounded-2xl border border-border bg-card p-6 shadow-sm dark:shadow-soft">
- <div className="mb-6 flex items-center justify-between">
- <div>
- <h2 className="text-2xl font-bold text-text-primary">
- Completed Interviews
- </h2>
- <p className="mt-1 text-sm text-muted">
- History of completed candidate interviews
- </p>
- </div>
- {completedInterviews.length > 3 && (
- <button
- onClick={() => setShowAllCompleted(!showAllCompleted)}
- className="text-sm text-violet-400 hover:text-violet-300 transition font-medium"
- >
- {showAllCompleted ? "Show Less" : `View All (${completedInterviews.length})`}
- </button>
- )}
- </div>
-
- <div className="overflow-x-auto">
- <table className="w-full">
- <thead>
- <tr className="border-b border-border text-left text-sm text-muted">
- <th className="pb-4 font-medium">Candidate</th>
- <th className="pb-4 font-medium">Role</th>
- <th className="pb-4 font-medium">Round</th>
- <th className="pb-4 font-medium">Date</th>
- <th className="pb-4 font-medium">Rating</th>
- <th className="pb-4 font-medium">Status</th>
- </tr>
- </thead>
- <tbody>
- {visibleCompleted.length > 0 ? (
- visibleCompleted.map((item) => (
- <tr
- key={item.id}
- onClick={() =>
- handleCandidateClick(item.candidate_id, item)
- }
- className="cursor-pointer border-b border-slate-900 hover:bg-surface/40 transition"
- >
- <td className="py-5">
- <div className="flex items-center gap-4">
- <div className="flex h-11 w-11 items-center justify-center rounded-full bg-green-600 font-semibold text-white">
- {item.candidate_name?.charAt(0) || "?"}
- </div>
- <div>
- <p className="font-medium text-text-primary">
- {item.candidate_name}
- </p>
- <p className="text-sm text-muted">
- Candidate
- </p>
- </div>
- </div>
- </td>
- <td className="py-5 text-secondary">{item.position_title}</td>
- <td className="py-5 text-secondary">{item.interview_type}</td>
- <td className="py-5 text-secondary">{item.interview_date}</td>
- <td className="py-5 text-secondary font-medium">
- {item.overall_rating ? `${item.overall_rating}/5` : "N/A"}
- </td>
- <td className="py-5">
- <span className="rounded-full px-3 py-1 text-xs font-medium bg-green-600/20 text-green-300">
- {item.status}
- </span>
- </td>
- </tr>
- ))
- ) : (
- <tr>
- <td colSpan={6} className="py-8 text-center text-muted">
- No completed interviews found
- </td>
- </tr>
- )}
- </tbody>
- </table>
- </div>
- </div>
-
- </div>
-
- {/* Right Sidebar */}
- <div className="w-full xl:w-[380px] space-y-6">
- <InterviewStats interviews={allInterviews} />
- <TodaysInterviews />
- <AIRecommendations />
- </div>
-
- </div>
+      <div className="overflow-x-auto w-full">
+        <table className="w-full min-w-[850px]">
+          <thead>
+            <tr className="border-b border-border text-xs text-muted">
+              <th className="pb-4 text-center font-medium">
+                {renderCompletedSortHeader("Candidate", "candidate_name")}
+              </th>
+              <th className="pb-4 text-center font-medium">
+                {renderCompletedSortHeader("Role", "position_title")}
+              </th>
+              <th className="pb-4 text-center font-medium">
+                {renderCompletedSortHeader("Round", "interview_type")}
+              </th>
+              <th className="pb-4 text-center font-medium">
+                {renderCompletedSortHeader("Date", "interview_date")}
+              </th>
+              <th className="pb-4 text-center font-medium">
+                {renderCompletedSortHeader("Mode", "mode")}
+              </th>
+              <th className="pb-4 text-center font-medium">
+                {renderCompletedSortHeader("Rating", "overall_rating")}
+              </th>
+              <th className="pb-4 text-center font-medium">
+                {renderCompletedSortHeader("Status", "status")}
+              </th>
+              <th className="pb-4 text-center font-bold uppercase tracking-wider text-slate-400">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibleCompleted.length > 0 ? (
+              visibleCompleted.map((item) => (
+                <tr
+                  key={item.id}
+                  onClick={() =>
+                    handleCandidateClick(item.candidate_id, item)
+                  }
+                  className="cursor-pointer border-b border-border/50 hover:bg-surface/50 transition text-center"
+                >
+                  <td className="py-4 text-left pl-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-600 font-bold text-white shadow-xs">
+                        {item.candidate_name?.charAt(0) || "?"}
+                      </div>
+                      <div className="text-left">
+                        <p className="font-semibold text-text-primary text-sm">
+                          {item.candidate_name}
+                        </p>
+                        <p className="text-xs text-muted">
+                          Candidate
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-4 text-secondary text-sm font-medium">{item.position_title}</td>
+                  <td className="py-4 text-secondary text-sm">{item.interview_type}</td>
+                  <td className="py-4 text-secondary text-sm font-medium">{item.interview_date}</td>
+                  <td className="py-4">
+                    {renderModeBadge(item.mode)}
+                  </td>
+                  <td className="py-4 text-secondary font-semibold text-sm">
+                    {item.overall_rating ? (
+                      <span className="inline-flex items-center gap-1 text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20 text-xs font-bold">
+                        ★ {item.overall_rating}/5
+                      </span>
+                    ) : (
+                      "N/A"
+                    )}
+                  </td>
+                  <td className="py-4">
+                    <span className="inline-block rounded-full px-3 py-1 text-xs font-semibold bg-green-500/15 text-green-400 border border-green-500/20">
+                      {item.status}
+                    </span>
+                  </td>
+                  <td className="py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => handleCandidateClick(item.candidate_id, item)}
+                        className="px-3 py-1.5 bg-secondary-surface hover:bg-surface text-secondary hover:text-text-primary text-xs font-bold rounded-xl border border-border transition shadow-xs"
+                        title="View Candidate & Scorecard"
+                      >
+                        Details
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (confirm(`Are you sure you want to delete the completed interview record for ${item.candidate_name}?`)) {
+                            await handleDeleteInterview(item.id);
+                          }
+                        }}
+                        className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold transition"
+                        title="Delete Interview Record"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={8} className="py-8 text-center text-muted">
+                  No completed interviews found
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
  {/* Schedule Modal */}
  <ScheduleInterviewModal
@@ -640,8 +789,10 @@ export default function InterviewLayout() {
  interview={selectedInterview}
  onEdit={() => setOpenEditModal(true)}
  onDelete={async () => {
- if (!selectedInterview) return;
- await handleDeleteInterview(selectedInterview.id);
+   if (!selectedInterview) return;
+   if (confirm(`Are you sure you want to delete the interview for ${(selectedInterview as any)?.candidate_name || "this candidate"}?`)) {
+     await handleDeleteInterview(selectedInterview.id);
+   }
  }}
  onFeedback={() => {
  setOpenDrawer(false);

@@ -8,20 +8,40 @@ interface BulkStageModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedCount: number;
+  currentStage?: string;
   onConfirmStage: (targetStage: string) => void;
   loading: boolean;
 }
 
-const STAGES = ["Applied", "Screening", "Interview", "Offer", "Hired", "Rejected", "Needs Pipeline"];
+const STAGES = [
+  "Applied",
+  "Screening",
+  "Technical Interview",
+  "HR Round",
+  "Offer",
+  "Hired",
+  "Rejected"
+];
 
 export function BulkStageModal({
   isOpen,
   onClose,
   selectedCount,
+  currentStage,
   onConfirmStage,
   loading,
 }: BulkStageModalProps) {
-  const [selectedStage, setSelectedStage] = useState("Screening");
+  const [selectedStage, setSelectedStage] = useState(
+    currentStage === "Applied"
+      ? "Screening"
+      : currentStage === "Screening"
+      ? "Technical Interview"
+      : currentStage === "Technical Interview"
+      ? "HR Round"
+      : currentStage === "HR Round"
+      ? "Offer"
+      : "Screening"
+  );
 
   if (!isOpen) return null;
 
@@ -48,7 +68,7 @@ export function BulkStageModal({
               <div>
                 <h3 className="text-base font-bold text-text-primary">Bulk Stage Transition</h3>
                 <p className="text-xs text-muted">
-                  Move <strong className="text-text-primary font-bold">{selectedCount}</strong> candidates to a new stage
+                  Move <strong className="text-text-primary font-bold">{selectedCount}</strong> candidate(s) {currentStage ? `from ${currentStage}` : ""} to a new stage
                 </p>
               </div>
             </div>

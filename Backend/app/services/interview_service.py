@@ -2,17 +2,76 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, BackgroundTasks
 from app.models.interview import Interview
 from app.models.candidate import Candidate
+from app.models.position import Position
+from app.models.user import User
 from app.models.pipeline_stage_history import PipelineStageHistory
 from app.models.pipeline import Pipeline
 from app.utils.notification_helper import create_notification
 from app.schemas.interview_schema import InterviewCreate, InterviewFeedback
 from app.services.google_service import create_calendar_event
 from app.services.email_service import send_interview_scheduled_email
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date, time
+
+
+def validate_interview_schedule(interview_date_str: str, interview_time_str: str):
+    """
+    Strict interview date & time validation:
+    - Must be a valid date and time.
+    - Strictly excludes Sundays (non-working days).
+    - Cannot be in the past.
+    - Strictly within business hours (09:00 AM to 06:00 PM). Night/off-hours are blocked.
+    """
+    if not interview_date_str or not interview_time_str:
+        raise HTTPException(status_code=400, detail="Interview date and time are required.")
+
+    try:
+        parsed_date = datetime.strptime(str(interview_date_str).strip(), "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Expected YYYY-MM-DD.")
+
+    # 1. Reject Sundays (weekday 6 in Python where 0=Mon, 6=Sun)
+    if parsed_date.weekday() == 6:
+        raise HTTPException(
+            status_code=400,
+            detail="Interviews cannot be scheduled on Sundays. Please choose Monday through Saturday."
+        )
+
+    # 2. Reject past dates
+    today = date.today()
+    if parsed_date < today:
+        raise HTTPException(status_code=400, detail="Interview date cannot be in the past.")
+
+    # Parse time
+    try:
+        time_clean = str(interview_time_str).strip()
+        time_parts = time_clean.split(":")
+        parsed_time = time(int(time_parts[0]), int(time_parts[1]))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid time format. Expected HH:MM.")
+
+    # 3. Reject night times / off-hours (allowed: 09:00 to 18:00)
+    start_business_hour = time(9, 0)
+    end_business_hour = time(18, 0)
+
+    if parsed_time < start_business_hour or parsed_time > end_business_hour:
+        raise HTTPException(
+            status_code=400,
+            detail="Interviews can only be scheduled during standard business hours (09:00 AM to 06:00 PM). Night times and early morning hours are not permitted."
+        )
+
+    # 4. Reject past times on today's date
+    if parsed_date == today:
+        now_time = datetime.now().time()
+        if parsed_time < now_time:
+            raise HTTPException(status_code=400, detail="Interview time cannot be in the past for today's date.")
+
 
 class InterviewService:
     @staticmethod
     def create_interview(db: Session, interview: InterviewCreate, current_user: dict, background_tasks: BackgroundTasks = None):
+        # Validate date and time strictly
+        validate_interview_schedule(interview.interview_date, interview.interview_time)
+
         if interview.interview_mode == "Online" and not interview.meeting_link:
             raise HTTPException(status_code=400, detail="Meeting link is required for online interviews")
         if interview.interview_mode == "In-Person" and not interview.location:
@@ -97,6 +156,30 @@ class InterviewService:
         candidate_name = candidate.full_name if candidate else "Candidate"
         candidate_email = candidate.email if candidate else None
         
+        position = db.query(Position).filter(Position.id == interview.position_id).first()
+        position_title = position.title if (position and position.title) else "Open Position"
+        job_description = position.description if (position and position.description) else ""
+        
+        # Dynamically fetch company from current user's profile settings (or admin profile settings)
+        company = ""
+        user_id = current_user.get("user_id") if isinstance(current_user, dict) else getattr(current_user, "id", None)
+        if user_id:
+            user_obj = db.query(User).filter(User.id == user_id).first()
+            if user_obj and user_obj.company and user_obj.company.strip():
+                company = user_obj.company.strip()
+
+        if not company:
+            admin_user = db.query(User).filter(User.company.isnot(None), User.company != "").first()
+            if admin_user and admin_user.company and admin_user.company.strip():
+                company = admin_user.company.strip()
+            elif position and position.company and position.company.strip() and position.company.lower() not in ["engineering", "sales", "marketing", "hr", "operations"]:
+                company = position.company.strip()
+            else:
+                company = "RecruitAI"
+
+        required_skills = position.required_skills if (position and position.required_skills) else ""
+        position_location = position.location if (position and position.location) else ""
+
         # Schedule Google Calendar Event if date and time exist
         if interview.interview_date and interview.interview_time:
             try:
@@ -114,10 +197,12 @@ class InterviewService:
                 if current_user.get("email"):
                     attendees.append(current_user["email"])
                 
-                summary = f"Interview: {candidate_name} - {interview.interview_type}"
-                description = f"Scheduled {interview.interview_mode} interview."
+                summary = f"Interview: {candidate_name} - {position_title} ({interview.interview_type})"
+                description = f"Scheduled {interview.interview_mode} interview for {position_title}."
                 if interview.meeting_link:
                     description += f"\nMeeting Link: {interview.meeting_link}"
+                if job_description:
+                    description += f"\n\nJob Description:\n{job_description[:500]}..."
                 
                 create_calendar_event(
                     summary=summary,
@@ -134,20 +219,25 @@ class InterviewService:
             db,
             current_user["user_id"],
             "Interview Scheduled",
-            f"Interview scheduled for {candidate_name}"
+            f"Interview scheduled for {candidate_name} ({position_title})"
         )
 
         # Send email to the candidate
         if background_tasks and candidate_email:
             background_tasks.add_task(
                 send_interview_scheduled_email,
-                candidate_email,
-                candidate_name,
-                interview.interview_type,
-                interview.interview_mode,
-                str(interview.interview_date) if interview.interview_date else "TBD",
-                str(interview.interview_time) if interview.interview_time else "TBD",
-                interview.meeting_link or interview.location or "Will be provided shortly",
+                to_email=candidate_email,
+                candidate_name=candidate_name,
+                position_title=position_title,
+                interview_type=interview.interview_type or "Interview",
+                date=str(interview.interview_date) if interview.interview_date else "TBD",
+                time=str(interview.interview_time) if interview.interview_time else "TBD",
+                mode=interview.interview_mode or "Online",
+                location=interview.meeting_link if interview.interview_mode == "Online" else (interview.location or "Will be provided shortly"),
+                job_description=job_description,
+                company=company,
+                required_skills=required_skills,
+                position_location=position_location,
             )
 
         db.refresh(new_interview)
@@ -170,6 +260,9 @@ class InterviewService:
         if not interview:
             raise HTTPException(status_code=404, detail="Interview not found")
         
+        # Validate date and time strictly
+        validate_interview_schedule(updated_interview.interview_date, updated_interview.interview_time)
+
         if updated_interview.interview_mode == "Online" and not updated_interview.meeting_link:
             raise HTTPException(status_code=400, detail="Meeting link is required for online interviews")
         if updated_interview.interview_mode == "In-Person" and not updated_interview.location:

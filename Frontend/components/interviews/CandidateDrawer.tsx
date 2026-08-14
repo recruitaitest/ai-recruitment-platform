@@ -184,15 +184,21 @@ export default function CandidateDrawer({
                 <div className="p-4 bg-violet-500/10 border border-violet-500/30 rounded-2xl space-y-3">
                   <h3 className="text-xs font-bold uppercase text-violet-400 tracking-wider">Interview Actions</h3>
                   <div className="grid grid-cols-2 gap-2">
-                    {/* Join Video Call Button */}
-                    <a
-                      href={interview?.meeting_link || "https://meet.google.com"}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow"
-                    >
-                      <Video className="w-4 h-4" /> Join Interview
-                    </a>
+                    {/* Join Video Call Button - Only for Online Mode */}
+                    {interview?.mode?.toLowerCase() === "online" ? (
+                      <a
+                        href={interview?.meeting_link || "https://meet.google.com"}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow"
+                      >
+                        <Video className="w-4 h-4" /> Join Interview
+                      </a>
+                    ) : (
+                      <div className="py-2.5 px-3 bg-surface border border-border text-muted rounded-xl text-xs font-medium flex items-center justify-center gap-1.5">
+                        <MapPin className="w-4 h-4 text-slate-400" /> {interview?.mode || "In-Person"}
+                      </div>
+                    )}
 
                     {/* Reschedule Button */}
                     <button
@@ -214,32 +220,44 @@ export default function CandidateDrawer({
                       <FileText className="w-4 h-4" /> Submit Feedback
                     </button>
 
-                    {/* Delete / Cancel Button */}
+                    {/* Delete Interview Button */}
                     <button
                       type="button"
                       onClick={onDelete}
                       className="py-2.5 px-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
                     >
-                      <Trash2 className="w-4 h-4" /> Cancel Interview
+                      <Trash2 className="w-4 h-4" /> Delete Interview
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                    <div>
-                      <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Interview Completed</h4>
-                      <p className="text-[11px] text-muted">Evaluation & scorecard feedback recorded.</p>
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                      <div>
+                        <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Interview Completed</h4>
+                        <p className="text-[11px] text-muted">Evaluation & scorecard feedback recorded.</p>
+                      </div>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("collaboration")}
-                    className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow"
-                  >
-                    View Scorecard
-                  </button>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("collaboration")}
+                      className="py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow flex items-center justify-center gap-1.5"
+                    >
+                      <FileText className="w-3.5 h-3.5" /> View Scorecard
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onDelete}
+                      className="py-2 px-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
+                      title="Delete Interview Record"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Delete Record
+                    </button>
+                  </div>
                 </div>
               )}
 

@@ -43,14 +43,34 @@ export default function EditInterviewModal({
  const currentDate = new Date().toISOString().split("T")[0];
  const currentTime = new Date().toTimeString().slice(0, 5);
 
- // Validation
- const errors = {
- date: !date,
- time: !time,
- meetingLink: mode === "Online" && !meetingLink,
- location: mode === "In-Person" && !location,
- };
- const hasErrors = Object.values(errors).some(Boolean);
+  const isSunday = (dateStr: string) => {
+    if (!dateStr) return false;
+    const parts = dateStr.split("-").map(Number);
+    if (parts.length !== 3) return false;
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    return d.getDay() === 0;
+  };
+
+  const isNightOrOffHours = (timeStr: string) => {
+    if (!timeStr) return false;
+    const [h, m] = timeStr.split(":").map(Number);
+    if (isNaN(h)) return false;
+    const totalMinutes = h * 60 + (m || 0);
+    // 09:00 AM to 06:00 PM
+    return totalMinutes < 540 || totalMinutes > 1080;
+  };
+
+  const isDateSunday = isSunday(date);
+  const isTimeOffHours = isNightOrOffHours(time);
+
+  // Validation
+  const errors = {
+    date: !date || isDateSunday,
+    time: !time || isTimeOffHours,
+    meetingLink: mode === "Online" && !meetingLink,
+    location: mode === "In-Person" && !location,
+  };
+  const hasErrors = Object.values(errors).some(Boolean);
 
   const fieldClass = (hasError: boolean) =>
     `w-full rounded-2xl border px-4 py-3 text-sm text-slate-900 dark:text-zinc-100 outline-none transition ${
@@ -61,6 +81,7 @@ export default function EditInterviewModal({
 
   const handleSave = async () => {
     setTouched(true);
+    if (hasErrors) return;
 
     try {
       const response = await fetch(
@@ -83,7 +104,10 @@ export default function EditInterviewModal({
         }
       );
 
-      if (!response.ok) throw new Error("Failed to update interview");
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || "Failed to update interview");
+      }
 
       await response.json();
 
@@ -130,7 +154,7 @@ export default function EditInterviewModal({
         {/* Banner */}
         {touched && hasErrors && (
           <div className="mx-6 mt-5 rounded-2xl bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700/40 px-4 py-3 text-xs font-medium text-amber-800 dark:text-amber-300">
-            ⚠️ Some required fields are incomplete. Please fill them in.
+            ⚠️ Please correct the invalid fields (Working days: Mon–Sat, Hours: 09:00 AM – 06:00 PM).
           </div>
         )}
 
@@ -155,9 +179,14 @@ export default function EditInterviewModal({
 
           {/* Date */}
           <div>
-            <label className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-zinc-300">
-              Date <span className="text-red-500">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-zinc-300">
+                Date <span className="text-red-500">*</span>
+              </label>
+              <span className="text-[10px] text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">
+                Mon – Sat only
+              </span>
+            </div>
             <input
               type="date"
               value={date}
@@ -165,25 +194,37 @@ export default function EditInterviewModal({
               onChange={(e) => setDate(e.target.value)}
               className={fieldClass(errors.date)}
             />
-            {touched && errors.date && (
+            {touched && isDateSunday && (
+              <p className="mt-1 text-xs text-red-500 font-medium">⚠️ Sundays are non-working days. Select Monday – Saturday.</p>
+            )}
+            {touched && !isDateSunday && !date && (
               <p className="mt-1 text-xs text-red-500">Date is required.</p>
             )}
           </div>
 
           {/* Time */}
           <div>
-            <label className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-zinc-300">
-              Time <span className="text-red-500">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-zinc-300">
+                Time <span className="text-red-500">*</span>
+              </label>
+              <span className="text-[10px] text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">
+                09:00 AM – 06:00 PM
+              </span>
+            </div>
             <input
               type="time"
               value={time}
-              min={date === currentDate ? currentTime : undefined}
+              min="09:00"
+              max="18:00"
               onChange={(e) => setTime(e.target.value)}
               className={fieldClass(errors.time)}
             />
-            {touched && errors.time && (
+            {touched && !time && (
               <p className="mt-1 text-xs text-red-500">Time is required.</p>
+            )}
+            {touched && time && isTimeOffHours && (
+              <p className="mt-1 text-xs text-red-500 font-medium">⚠️ Night/off-hours not allowed. Select 09:00 AM – 06:00 PM.</p>
             )}
           </div>
 

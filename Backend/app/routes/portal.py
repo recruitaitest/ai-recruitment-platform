@@ -83,7 +83,8 @@ def apply_to_position(
     1. Sorts application resume file into position-specific folder (`uploads/positions/{position_id}/`).
     2. Saves central candidate record with CTC, notice period, contact info.
     3. Links candidate to hiring pipeline stage.
-    4. Triggers automated acknowledgment email to candidate.
+    4. Triggers LLM resume parsing via Celery to extract accurate skills, experience, education.
+    5. Triggers automated acknowledgment email to candidate.
     """
     position = db.query(Position).filter(Position.id == position_id).first()
     if not position:
@@ -162,6 +163,7 @@ def apply_to_position(
             }
 
     # 2. Centralized Candidate Database record creation
+    #    Save with form data initially; LLM parsing will overwrite with accurate parsed data
     new_candidate = Candidate(
         full_name=full_name,
         email=email,
@@ -178,7 +180,7 @@ def apply_to_position(
         original_filename=file.filename,
         resume_text=resume_text,
         resume_hash=resume_hash,
-        status="Applied",
+        status="Processing",
         applied_position_id=position_id,
         source="Career Portal",
         folder_path=f"uploads/positions/{position_id}/"
@@ -198,11 +200,23 @@ def apply_to_position(
     db.add(new_pipeline)
     db.commit()
 
-    # Index into vector/search indices
-    index_candidate(new_candidate)
-    index_candidate_to_opensearch(new_candidate)
+    # 4. Trigger LLM Resume Parsing via Celery (overwrites form data with parsed data)
+    try:
+        from app.tasks.resume_tasks import process_resume_task
+        process_resume_task.apply_async(
+            kwargs={"candidate_id": new_candidate.id, "file_path": final_resume_path},
+            countdown=1
+        )
+    except Exception as e:
+        # If Celery is unavailable, fall back to synchronous parsing
+        print(f"Warning: Celery task dispatch failed, attempting synchronous parsing: {e}")
+        try:
+            from app.tasks.resume_tasks import process_resume_task
+            process_resume_task(new_candidate.id, final_resume_path)
+        except Exception as sync_err:
+            print(f"Warning: Synchronous parsing also failed: {sync_err}")
 
-    # 4. Trigger Automatic Multi-Channel Acknowledgment (Email, WhatsApp, SMS)
+    # 5. Trigger Automatic Multi-Channel Acknowledgment (Email, WhatsApp, SMS)
     background_tasks.add_task(
         send_multi_channel_acknowledgment,
         to_email=email,
@@ -216,3 +230,4 @@ def apply_to_position(
         "candidate_id": new_candidate.id,
         "is_duplicate": False
     }
+

@@ -37,6 +37,9 @@ def process_resume_task(candidate_id: int, file_path: str):
         if not candidate:
             return f"Candidate {candidate_id} not found."
 
+        # Check if this candidate came from the Career Portal
+        is_career_portal = (candidate.source == "Career Portal")
+
         local_file_path = get_local_path(file_path)
         
         # Extract text FIRST so we can hash the content and extract fields for duplication check
@@ -67,37 +70,40 @@ def process_resume_task(candidate_id: int, file_path: str):
         resume_hash = generate_resume_hash(text)
         
         # Check for duplicates using text hash, valid email, or valid phone (never generic fallback names)
-        from sqlalchemy import or_
-        filters = [Candidate.resume_hash == resume_hash]
-        if parsed_email and "placeholder.local" not in parsed_email.lower():
-            filters.append(Candidate.email == parsed_email)
-        if parsed_phone and len(parsed_phone.strip()) >= 7:
-            filters.append(Candidate.phone == parsed_phone)
-        if parsed_name and parsed_name.lower() not in ["extracted candidate", "unknown candidate", "processing"]:
-            filters.append(Candidate.full_name == parsed_name)
-            
-        existing = db.query(Candidate).filter(
-            Candidate.id != candidate_id,
-            or_(*filters)
-        ).first()
+        # Skip duplicate deletion for Career Portal candidates (they have pipeline entries)
+        if not is_career_portal:
+            from sqlalchemy import or_
+            filters = [Candidate.resume_hash == resume_hash]
+            if parsed_email and "placeholder.local" not in parsed_email.lower():
+                filters.append(Candidate.email == parsed_email)
+            if parsed_phone and len(parsed_phone.strip()) >= 7:
+                filters.append(Candidate.phone == parsed_phone)
+            if parsed_name and parsed_name.lower() not in ["extracted candidate", "unknown candidate", "processing"]:
+                filters.append(Candidate.full_name == parsed_name)
+                
+            existing = db.query(Candidate).filter(
+                Candidate.id != candidate_id,
+                or_(*filters)
+            ).first()
 
-        if existing:
-            # Delete the temporary placeholder since it's a duplicate
-            db.delete(candidate)
-            db.commit()
-            return f"Duplicate resume detected. Deleted placeholder."
+            if existing:
+                # Delete the temporary placeholder since it's a duplicate
+                db.delete(candidate)
+                db.commit()
+                return f"Duplicate resume detected. Deleted placeholder."
 
         candidate_name = parsed_name or "Unknown Candidate"
         filename = Path(file_path).stem
         candidate_email = parsed_email or f"unknown_{filename}@placeholder.local"
         
+        # Overwrite with LLM-parsed data (more accurate than form data)
         candidate.full_name = candidate_name
         candidate.email = candidate_email
-        candidate.phone = parsed_phone or ""
+        candidate.phone = parsed_phone or candidate.phone or ""
         candidate.skills = ", ".join(skills) if isinstance(skills, list) else (skills or "")
         candidate.education = ", ".join(education) if isinstance(education, list) else (education or "")
         candidate.experience = experience
-        candidate.location = location
+        candidate.location = location or candidate.location
         candidate.resume_hash = resume_hash
         candidate.resume_text = text
         candidate.status = "Applied"
@@ -129,3 +135,4 @@ def process_resume_task(candidate_id: int, file_path: str):
         if file_path.startswith("s3://") and 'local_file_path' in locals() and os.path.exists(local_file_path):
             os.remove(local_file_path)
         db.close()
+

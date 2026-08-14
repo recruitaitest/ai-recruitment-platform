@@ -7,6 +7,7 @@ interface PipelineHeaderProps {
   setSearchQuery: (value: string) => void;
   onAddCandidate: () => void;
   onBulkMove?: () => void;
+  showBulkMove?: boolean;
   onClearSelected?: () => void;
   selectedCount?: number;
   totalCandidates: number;
@@ -18,6 +19,7 @@ export default function PipelineHeader({
   setSearchQuery,
   onAddCandidate,
   onBulkMove,
+  showBulkMove = false,
   onClearSelected,
   selectedCount = 0,
   totalCandidates,
@@ -74,8 +76,8 @@ export default function PipelineHeader({
           />
         </div>
 
-        {/* Bulk Move Stages Button */}
-        {onBulkMove && (
+        {/* Bulk Move Stages Button - only shown when multiple candidates from a single stage are selected */}
+        {showBulkMove && onBulkMove && (
           <button
             onClick={onBulkMove}
             className="
@@ -93,10 +95,15 @@ export default function PipelineHeader({
               text-blue-400
               transition-all
               hover:bg-blue-500/20
+              shadow-sm
+              animate-in
+              fade-in
+              zoom-in-95
+              duration-200
             "
           >
             <Layers className="h-4 w-4" />
-            Bulk Move Stage
+            Bulk Move Stage ({selectedCount})
           </button>
         )}
 

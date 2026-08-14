@@ -811,27 +811,44 @@ export default function PipelineBoard() {
  updateCandidateStage(candidateId, newStage);
  };
 
- const totalPipelineRecords = candidates.length;
- const activePipelineRecords = candidates.filter(
- (candidate) =>
- candidate.stage !== "Hired" &&
- candidate.stage !== "Rejected"
- ).length;
+ const handleDeselectAll = () => {
+    setSelectedCardIds(new Set());
+  };
 
- return (
- <div className="min-h-screen bg-background p-6">
+  // Multiple candidates (>= 2) selected, and all belonging to the EXACT same stage
+  const selectedCandidatesList = useMemo(() => {
+    return candidates.filter((c) => selectedCardIds.has(c.id));
+  }, [candidates, selectedCardIds]);
 
- {/* Header */}
- <PipelineHeader
- searchQuery={searchQuery}
- setSearchQuery={setSearchQuery}
- onAddCandidate={() => setOpenCreateModal(true)}
- onBulkMove={() => setBulkStageOpen(true)}
- onClearSelected={handleClearSelected}
- selectedCount={selectedCardIds.size}
- totalCandidates={totalPipelineRecords}
- activeCandidates={activePipelineRecords}
- />
+  const selectedStages = useMemo(() => {
+    return new Set(selectedCandidatesList.map((c) => c.stage));
+  }, [selectedCandidatesList]);
+
+  const canBulkMove = selectedCandidatesList.length >= 2 && selectedStages.size === 1;
+  const currentSelectedStage = selectedStages.size === 1 ? Array.from(selectedStages)[0] : undefined;
+
+  const totalPipelineRecords = candidates.length;
+  const activePipelineRecords = candidates.filter(
+    (candidate) =>
+      candidate.stage !== "Hired" &&
+      candidate.stage !== "Rejected"
+  ).length;
+
+  return (
+    <div className="min-h-screen bg-background p-6">
+
+      {/* Header */}
+      <PipelineHeader
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        onAddCandidate={() => setOpenCreateModal(true)}
+        onBulkMove={canBulkMove ? () => setBulkStageOpen(true) : undefined}
+        showBulkMove={canBulkMove}
+        onClearSelected={handleDeselectAll}
+        selectedCount={selectedCardIds.size}
+        totalCandidates={totalPipelineRecords}
+        activeCandidates={activePipelineRecords}
+      />
 
   {error && (
   <div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3.5 text-sm font-semibold text-red-600 dark:text-red-400 flex items-center justify-between shadow-sm">
@@ -1075,30 +1092,44 @@ export default function PipelineBoard() {
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 px-5 py-3 rounded-2xl bg-slate-900/90 dark:bg-card/95 border border-blue-500/30 text-white shadow-2xl backdrop-blur-md flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4">
       <span className="text-xs font-semibold text-slate-300">
         <strong className="text-white font-bold">{selectedCardIds.size}</strong> candidate(s) selected
+        {currentSelectedStage && (
+          <span className="ml-1 text-slate-400 font-normal">in {currentSelectedStage}</span>
+        )}
       </span>
       <div className="h-4 w-px bg-slate-700" />
+      {canBulkMove ? (
+        <button
+          onClick={() => setBulkStageOpen(true)}
+          className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5"
+        >
+          Bulk Move ({selectedCardIds.size}) Stage
+        </button>
+      ) : selectedStages.size > 1 ? (
+        <span className="text-xs text-amber-400 font-medium">
+          Select from single stage to bulk move
+        </span>
+      ) : (
+        <span className="text-xs text-slate-400 font-normal">
+          Select 2+ candidates to bulk move
+        </span>
+      )}
       <button
-        onClick={() => setBulkStageOpen(true)}
-        className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5"
+        onClick={handleDeselectAll}
+        className="text-xs text-slate-400 hover:text-white transition-colors underline cursor-pointer"
       >
-        Move Selected to Stage
-      </button>
-      <button
-        onClick={() => setSelectedCardIds(new Set())}
-        className="text-xs text-slate-400 hover:text-white transition-colors"
-      >
-        Clear Selection
+        Clear
       </button>
     </div>
   )}
 
- <BulkStageModal
-   isOpen={bulkStageOpen}
-   onClose={() => setBulkStageOpen(false)}
-   selectedCount={selectedCardIds.size > 0 ? selectedCardIds.size : candidates.length}
-   onConfirmStage={handleConfirmBulkStage}
-   loading={bulkLoading}
- />
+  <BulkStageModal
+    isOpen={bulkStageOpen}
+    onClose={() => setBulkStageOpen(false)}
+    selectedCount={selectedCardIds.size > 0 ? selectedCardIds.size : candidates.length}
+    currentStage={currentSelectedStage}
+    onConfirmStage={handleConfirmBulkStage}
+    loading={bulkLoading}
+  />
  </div>
  );
 }
