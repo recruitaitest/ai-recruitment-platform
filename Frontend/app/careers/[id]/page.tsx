@@ -167,20 +167,32 @@ export default function JobApplicationPage({ params }: { params: { id: string } 
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="max-w-md w-full bg-white border border-slate-200 rounded-3xl p-8 text-center space-y-4 shadow-xl"
+          className="max-w-md w-full bg-white border border-slate-200 rounded-3xl p-8 text-center space-y-5 shadow-xl"
         >
           <div className="w-16 h-16 bg-emerald-50 border border-emerald-200 rounded-full flex items-center justify-center mx-auto text-emerald-600">
             <CheckCircle2 className="w-8 h-8" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">Application Submitted!</h2>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold text-slate-900">Application Submitted!</h2>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold">
+              <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+              AI Resume Processing Started
+            </div>
+          </div>
           <p className="text-slate-600 text-sm leading-relaxed">
             Thank you <strong className="text-slate-900">{fullName}</strong>. Your application for{" "}
-            <strong className="text-indigo-600">{position?.title}</strong> has been received. An automated acknowledgment email with your tracking link has been dispatched to <strong className="text-slate-900">{email}</strong>.
+            <strong className="text-indigo-600">{position?.title}</strong> has been received. Our AI is now processing your profile in the background, and an acknowledgment email with your tracking link has been dispatched to <strong className="text-slate-900">{email}</strong>.
           </p>
-          <div className="pt-4">
+          <div className="pt-2 flex flex-col gap-2.5">
+            <Link
+              href={`/portal/candidate?email=${encodeURIComponent(email)}`}
+              className="inline-flex items-center justify-center w-full px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-all shadow-md"
+            >
+              Track Application Progress
+            </Link>
             <Link
               href="/careers"
-              className="inline-flex items-center justify-center w-full px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-all shadow-md"
+              className="inline-flex items-center justify-center w-full px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-all"
             >
               Back to Open Careers
             </Link>

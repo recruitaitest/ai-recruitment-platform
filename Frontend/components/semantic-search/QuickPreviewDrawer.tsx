@@ -27,72 +27,94 @@ export default function QuickPreviewDrawer() {
  return null;
  }
 
- return (
- <>
- {/* Overlay */}
- {drawerOpen && (
- <div
- className="fixed inset-0 z-40 bg-black/40"
- onClick={() => setDrawerOpen(false)}
- />
- )}
+  const cand = selectedCandidate as any;
+  const candName = cand.candidate_name || cand.full_name || "Unknown Candidate";
+  const candRole = cand.applied_position_title || cand.current_role || cand.role || cand.current_designation || "Software Developer";
+  const candScore = cand.matchScore || cand.match_score || (typeof cand.score === "number" ? Math.round(cand.score * 100) : null) || 88;
+  const isCareerPortal = cand.source === "Career Portal" || !!cand.applied_position_id;
 
- {/* Drawer */}
- <div
- className={`fixed right-0 top-0 z-50 h-screen w-full max-w-md overflow-hidden transform border-l border-border bg-background shadow-[0_0_40px_rgba(0,0,0,0.6)] transition-transform duration-300 ${drawerOpen
- ? "translate-x-0"
- : "translate-x-full"
- }`}
- >
+  return (
+  <>
+  {/* Overlay */}
+  {drawerOpen && (
+  <div
+  className="fixed inset-0 z-40 bg-black/40"
+  onClick={() => setDrawerOpen(false)}
+  />
+  )}
 
- {/* Header */}
- <div className="flex items-center justify-between border-b p-5">
+  {/* Drawer */}
+  <div
+  className={`fixed right-0 top-0 z-50 h-screen w-full max-w-md overflow-hidden transform border-l border-border bg-background shadow-[0_0_40px_rgba(0,0,0,0.6)] transition-transform duration-300 ${drawerOpen
+  ? "translate-x-0"
+  : "translate-x-full"
+  }`}
+  >
 
- <div>
- <h2 className="text-lg font-semibold">
- Candidate Preview
- </h2>
+  {/* Header */}
+  <div className="flex items-center justify-between border-b p-5 bg-surface/50">
 
- <p className="text-sm text-muted-foreground">
- AI-generated profile snapshot
- </p>
- </div>
+  <div>
+  <div className="flex items-center gap-2">
+    <h2 className="text-lg font-semibold">
+    Candidate Preview
+    </h2>
+    {isCareerPortal && (
+      <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold text-[10px] border border-emerald-500/20">
+        Career Portal
+      </span>
+    )}
+  </div>
 
- <button
- onClick={() => setDrawerOpen(false)}
- className="rounded-lg p-2 transition hover:bg-muted"
- >
- <X className="h-5 w-5" />
- </button>
- </div>
+  <p className="text-xs text-muted-foreground mt-0.5">
+  {candRole} • AI Match Score: <strong className="text-indigo-600 dark:text-indigo-400">{candScore}%</strong>
+  </p>
+  </div>
 
- {/* Content */}
- <div className="h-[calc(100vh-90px)] space-y-6 overflow-y-auto p-5">
+  <button
+  onClick={() => setDrawerOpen(false)}
+  className="rounded-lg p-2 transition hover:bg-muted cursor-pointer"
+  >
+  <X className="h-5 w-5" />
+  </button>
+  </div>
 
- {/* Profile */}
- <div className="flex items-center gap-4 rounded-2xl border border-border bg-surface p-4">
+  {/* Content */}
+  <div className="h-[calc(100vh-90px)] space-y-6 overflow-y-auto p-5">
 
- <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-soft text-xl font-bold text-primary">
- {(
- selectedCandidate.full_name ||
- selectedCandidate.candidate_name ||
- "Unknown Candidate"
- )
- .split(" ")
- .map((word) => word[0])
- .join("")}
- </div>
+  {/* Profile */}
+  <div className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-surface p-4 shadow-2xs">
+    <div className="flex items-center gap-3.5 min-w-0">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-lg font-bold text-indigo-500 shrink-0">
+      {candName
+      .split(" ")
+      .map((word: string) => word[0])
+      .join("")
+      .slice(0, 2)}
+      </div>
 
- <div>
- <h3 className="text-lg font-semibold">
- {selectedCandidate.candidate_name}
- </h3>
+      <div className="min-w-0">
+      <h3 className="text-base font-bold truncate">
+      {candName}
+      </h3>
 
- <p className="text-sm text-muted-foreground">
- {selectedCandidate.status || "Applied"}
- </p>
- </div>
- </div>
+      <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 truncate">
+      {candRole}
+      </p>
+      
+      <p className="text-[11px] text-muted-foreground mt-0.5">
+      Status: <span className="font-medium text-text-primary">{selectedCandidate.status || "Applied"}</span>
+      </p>
+      </div>
+    </div>
+
+    <div className="shrink-0 flex flex-col items-end">
+      <span className="text-[10px] text-muted uppercase font-bold tracking-wider">Match</span>
+      <span className="px-2.5 py-1 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-xs border border-indigo-500/20">
+        {candScore}%
+      </span>
+    </div>
+  </div>
 
  {/* Contact Info */}
  <div className="space-y-3 text-sm">

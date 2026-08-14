@@ -209,14 +209,30 @@ export default function FloatingCopilot() {
                   ) : (
                     <ReactMarkdown
                       components={{
-                        p: ({ node, ...props }) => <p className="mb-1.5 last:mb-0" {...props} />,
-                        ul: ({ node, ...props }) => <ul className="list-disc pl-4 space-y-1 my-1.5" {...props} />,
-                        ol: ({ node, ...props }) => <ol className="list-decimal pl-4 space-y-1 my-1.5" {...props} />,
-                        li: ({ node, ...props }) => <li className="text-[11.5px]" {...props} />,
+                        h1: ({ node, ...props }) => <h1 className="text-xs font-bold text-text-primary mt-1.5 mb-1 pb-0.5 border-b border-border/50" {...props} />,
+                        h2: ({ node, ...props }) => <h2 className="text-xs font-bold text-text-primary mt-1 mb-1" {...props} />,
+                        h3: ({ node, ...props }) => <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-500 mt-1 mb-0.5" {...props} />,
+                        p: ({ node, ...props }) => <p className="mb-1.5 last:mb-0 leading-relaxed" {...props} />,
+                        ul: ({ node, ...props }) => <ul className="list-disc pl-4 space-y-1.5 my-1.5 marker:text-blue-500" {...props} />,
+                        ol: ({ node, ...props }) => <ol className="list-decimal pl-4 space-y-1.5 my-1.5 marker:text-blue-500" {...props} />,
+                        li: ({ node, ...props }) => <li className="text-[11.5px] leading-relaxed" {...props} />,
                         strong: ({ node, ...props }) => <strong className="font-semibold text-text-primary" {...props} />,
+                        code: ({ node, ...props }) => <code className="px-1 py-0.5 rounded bg-blue-500/10 text-blue-500 font-mono text-[10.5px] font-medium" {...props} />,
                       }}
                     >
-                      {m.text}
+                      {m.text
+                        ? m.text
+                            .replace(/(?:^|\n)[-•*]?\s*\**([A-Za-z\s.\'-]+)\**\s*(?:\(([^)]+)\))?:\s*Role=([^|\n]+)\|\s*Status=([^|\n]+)\|\s*Exp=([^|\n]+)\|\s*Skills=([^\n]+)/gi, (_, name, email, role, status, exp, skills) => {
+                              const trimmedSkills = skills ? skills.split(',').map((s: string) => s.trim()).filter(Boolean).slice(0, 6).join(', ') : 'Core Skills';
+                              const emailBadge = email ? ` · *${email.trim()}*` : '';
+                              return `\n\n- 👤 **${name.trim()}**${emailBadge}\n  - **Role:** ${role.trim()} | **Stage:** \`${status.trim()}\` | **Experience:** ${exp.trim()}\n  - **Key Skills:** ${trimmedSkills}`;
+                            })
+                            .replace(/(?:^|\n)\s*\d+\.\s+(\*\*[^*]+\*\*|[A-Za-z0-9\s/&_-]+:)/g, "\n\n- **$1**")
+                            .replace(/\*\*\*\*([^*]+)\*\*\*\*/g, "**$1**")
+                            .replace(/\*\*:\*\*/g, ":**")
+                            .replace(/([^\n])\s*[•●▪]\s+/g, "$1\n\n- ")
+                            .replace(/^[•●▪]\s+/gm, "- ")
+                        : ""}
                     </ReactMarkdown>
                   )}
                 </div>

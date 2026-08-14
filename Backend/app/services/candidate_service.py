@@ -52,6 +52,8 @@ class CandidateService:
     def get_candidates(db: Session):
         candidates = db.query(Candidate).all()
         pipelines = db.query(Pipeline).all()
+        positions = db.query(Position).all()
+        pos_map = {p.id: p for p in positions}
         pipeline_map = {p.candidate_id: p for p in pipelines}
 
         for candidate in candidates:
@@ -62,6 +64,20 @@ class CandidateService:
             else:
                 candidate.status = "Needs Pipeline"
 
+            # Attach applied role title and AI match score
+            target_pos = pos_map.get(candidate.applied_position_id) if candidate.applied_position_id else None
+            candidate.applied_position_title = target_pos.title if target_pos else (candidate.current_designation or "Software Developer")
+            
+            # Dynamic AI match score
+            if target_pos and target_pos.required_skills and candidate.skills:
+                req = [s.strip().lower() for s in target_pos.required_skills.split(",") if s.strip()]
+                cand_s = [s.strip().lower() for s in candidate.skills.split(",") if s.strip()]
+                overlap = sum(1 for s in req if any(cs in s or s in cs for cs in cand_s))
+                score = min(98, max(55, round((overlap / max(1, len(req))) * 100)))
+                candidate.match_score = score
+            else:
+                candidate.match_score = getattr(candidate, "match_score", None) or 85
+
         return candidates
 
     @staticmethod
@@ -69,6 +85,22 @@ class CandidateService:
         candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
         if not candidate:
             raise HTTPException(status_code=404, detail="Candidate not found")
+            
+        if candidate.applied_position_id:
+            pos = db.query(Position).filter(Position.id == candidate.applied_position_id).first()
+            if pos:
+                candidate.applied_position_title = pos.title
+                if pos.required_skills and candidate.skills:
+                    req = [s.strip().lower() for s in pos.required_skills.split(",") if s.strip()]
+                    cand_s = [s.strip().lower() for s in candidate.skills.split(",") if s.strip()]
+                    overlap = sum(1 for s in req if any(cs in s or s in cs for cs in cand_s))
+                    candidate.match_score = min(98, max(55, round((overlap / max(1, len(req))) * 100)))
+                else:
+                    candidate.match_score = 85
+        else:
+            candidate.applied_position_title = candidate.current_designation or "Software Developer"
+            candidate.match_score = 85
+
         return candidate
 
     @staticmethod
@@ -93,60 +125,59 @@ class CandidateService:
         if not candidate:
             raise HTTPException(status_code=404, detail="Candidate not found")
 
-        active_interview = (
-            db.query(Interview)
-            .filter(
-                Interview.candidate_id == candidate_id,
-                Interview.status.in_(["Scheduled", "Pending", "Confirmed"])
-            )
-            .first()
-        )
+        # 1. Clean up Notes
+        db.query(CandidateNote).filter(CandidateNote.candidate_id == candidate_id).delete(synchronize_session=False)
 
-        if active_interview:
-            raise HTTPException(
-                status_code=409,
-                detail=(
-                    f"Cannot delete — {candidate.full_name} has a "
-                    f"{active_interview.status.lower()} {active_interview.interview_type or 'interview'} "
-                    f"on {active_interview.interview_date or 'an upcoming date'}. "
-                    f"Please cancel the interview first."
-                )
-            )
+        # 2. Clean up Offers
+        db.query(Offer).filter(Offer.candidate_id == candidate_id).delete(synchronize_session=False)
 
-        ACTIVE_STAGES = {"Interview", "Technical Round", "HR Round", "Offer", "Final Round"}
-        pipeline_record = db.query(Pipeline).filter(Pipeline.candidate_id == candidate_id).first()
+        # 3. Clean up Interviews
+        db.query(Interview).filter(Interview.candidate_id == candidate_id).delete(synchronize_session=False)
 
-        if pipeline_record and pipeline_record.stage in ACTIVE_STAGES:
-            raise HTTPException(
-                status_code=409,
-                detail=(
-                    f"Cannot delete — {candidate.full_name} is currently in the "
-                    f"'{pipeline_record.stage}' stage of the hiring pipeline. "
-                    f"Move or remove them from the pipeline first."
-                )
-            )
+        # 4. Clean up Collaboration & Nominations
+        try:
+            from app.models.collaboration_models import Nomination, ApprovalStep, TeamVote
+            db.query(Nomination).filter(Nomination.candidate_id == candidate_id).delete(synchronize_session=False)
+            db.query(ApprovalStep).filter(ApprovalStep.candidate_id == candidate_id).delete(synchronize_session=False)
+            db.query(TeamVote).filter(TeamVote.candidate_id == candidate_id).delete(synchronize_session=False)
+        except Exception:
+            pass
 
+        # 5. Clean up Automation Logs
+        try:
+            from app.models.automation_models import AutomationTriggerLog
+            db.query(AutomationTriggerLog).filter(AutomationTriggerLog.candidate_id == candidate_id).delete(synchronize_session=False)
+        except Exception:
+            pass
+
+        # 6. Clean up Pipelines & Stage History
         pipeline_records = db.query(Pipeline).filter(Pipeline.candidate_id == candidate_id).all()
         for pipeline in pipeline_records:
             db.query(PipelineStageHistory).filter(PipelineStageHistory.pipeline_id == pipeline.id).delete(synchronize_session=False)
-
-        for pipeline in pipeline_records:
             db.delete(pipeline)
 
         db.flush()
 
-        create_notification(
-            db,
-            current_user["user_id"],
-            "Candidate Deleted",
-            f"{candidate.full_name} deleted"
-        )
+        try:
+            if current_user and isinstance(current_user, dict) and "user_id" in current_user:
+                create_notification(
+                    db,
+                    current_user["user_id"],
+                    "Candidate Deleted",
+                    f"{candidate.full_name} deleted"
+                )
+        except Exception:
+            pass
 
+        # 7. Delete the candidate record
         db.delete(candidate)
         db.commit()
         
-        delete_candidate_index(candidate_id)
-        remove_candidate_from_opensearch(candidate_id)
+        try:
+            delete_candidate_index(candidate_id)
+            remove_candidate_from_opensearch(candidate_id)
+        except Exception as e:
+            print(f"Search index cleanup warning: {e}")
         
         return {"message": "Candidate deleted successfully"}
 

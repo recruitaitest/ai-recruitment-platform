@@ -2,6 +2,8 @@
 
 import { X, UserPlus, Briefcase, FileText } from "lucide-react";
 import { useEffect, useState } from "react";
+import api from "@/lib/api";
+
 interface CreatePipelineModalProps {
  isOpen: boolean;
  onClose: () => void;
@@ -20,82 +22,45 @@ export default function CreatePipelineModal({
  const [notes, setNotes] = useState("");
  const [error, setError] = useState<string | null>(null);
  const [saving, setSaving] = useState(false);
+
  useEffect(() => {
+  api.get("/candidates/")
+    .then((res) => setCandidates(Array.isArray(res.data) ? res.data : []))
+    .catch((err) => console.error(err));
 
- fetch((process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + "/candidates/")
- .then((res) => res.json())
- .then((data) => setCandidates(data));
-
- fetch((process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + "/positions/")
- .then((res) => res.json())
- .then((data) => setPositions(data));
-
+  api.get("/positions/")
+    .then((res) => setPositions(Array.isArray(res.data) ? res.data : []))
+    .catch((err) => console.error(err));
  }, []);
- const createPipeline = async () => {
 
- if (!candidateId || !positionId) {
- setError(
- "Please select both a candidate and a position."
- );
- return;
- }
+  const createPipeline = async () => {
+    if (!candidateId || !positionId) {
+      setError("Please select both a candidate and a position.");
+      return;
+    }
 
- setSaving(true);
- setError(null);
+    setSaving(true);
+    setError(null);
 
- try {
+    try {
+      await api.post("/pipelines/", {
+        candidate_id: Number(candidateId),
+        position_id: Number(positionId),
+        stage: "Applied",
+        notes: notes,
+      });
 
- const response = await fetch(
- (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + "/pipelines/",
- {
- method: "POST",
-
- headers: {
- "Content-Type":
- "application/json",
- },
-
- body: JSON.stringify({
- candidate_id:
- Number(candidateId),
-
- position_id:
- Number(positionId),
-
- stage: "Applied",
-
- notes,
- }),
- }
- );
-
- if (!response.ok) {
- const data = await response.json();
- throw new Error(
- data.detail ||
- "Failed to create pipeline record"
- );
- }
-
- onClose();
-
- onSuccess();
-
- setCandidateId("");
- setPositionId("");
- setNotes("");
-
- } catch (error: any) {
-
- setError(
- error.message ||
- "Unable to create pipeline record."
- );
- } finally {
-
- setSaving(false);
- }
- };
+      onSuccess();
+      onClose();
+      setCandidateId("");
+      setPositionId("");
+      setNotes("");
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Failed to create pipeline record.");
+    } finally {
+      setSaving(false);
+    }
+  };
  if (!isOpen) return null;
  return (
 

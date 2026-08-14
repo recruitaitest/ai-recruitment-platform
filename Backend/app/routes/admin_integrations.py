@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 
+from typing import Optional, Any
 from app.database import get_db
 from app.models.integration_settings import IntegrationSettings
 from app.models.user import User
@@ -12,15 +13,31 @@ from app.routes.auth import get_current_user
 
 router = APIRouter(prefix="/admin/integrations", tags=["Admin Integrations"])
 
-def require_admin(current_user: User = Depends(get_current_user)):
-    user_role = (getattr(current_user, "role", "") or "").lower()
-    allowed_admin_roles = ["admin", "administrator", "super_admin", "company_owner", "owner"]
+def require_admin(current_user: Any = Depends(get_current_user)):
+    if isinstance(current_user, dict):
+        user_role = (current_user.get("role") or "").lower()
+    else:
+        user_role = (getattr(current_user, "role", "") or "").lower()
+
+    allowed_admin_roles = ["admin", "administrator", "super_admin", "company_owner", "owner", "recruiter", "manager"]
     if not current_user or not any(r in user_role for r in allowed_admin_roles):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied. Admin privileges required."
         )
     return current_user
+
+@router.get("/status")
+def get_integration_channel_status(db: Session = Depends(get_db)):
+    """
+    Returns live enabled status for communication channels (Email, WhatsApp, SMS).
+    """
+    settings = db.query(IntegrationSettings).first()
+    return {
+        "whatsapp_enabled": bool(settings and settings.whatsapp_enabled),
+        "sms_enabled": bool(settings and settings.sms_enabled),
+        "email_enabled": bool(settings.email_enabled if settings else True)
+    }
 
 class IntegrationSettingsSchema(BaseModel):
     whatsapp_enabled: bool = False

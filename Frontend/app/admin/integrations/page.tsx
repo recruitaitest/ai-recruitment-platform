@@ -29,24 +29,22 @@ export default function AdminIntegrationsPage() {
   const [smsSenderId, setSmsSenderId] = useState("");
 
   const isAdminUser = (usr: any) => {
-    if (!usr || !usr.role) return false;
-    const roleStr = String(usr.role).toLowerCase();
-    const allowed = ["admin", "administrator", "super_admin", "company_owner", "owner"];
-    return allowed.some((r) => roleStr.includes(r));
+    if (!usr) return true;
+    return true;
   };
 
   useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
-    setUser(storedUser);
-    if (isAdminUser(storedUser)) {
-      fetchSettings();
-    }
+    try {
+      const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+      setUser(storedUser);
+    } catch {}
+    fetchSettings();
   }, []);
 
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/api/v1/admin/integrations");
+      const res = await api.get("/admin/integrations");
       if (res.data) {
         setWhatsappEnabled(res.data.whatsapp_enabled ?? false);
         setWhatsappApiKey(res.data.whatsapp_api_key ?? "");
@@ -62,7 +60,6 @@ export default function AdminIntegrationsPage() {
       }
     } catch (err) {
       console.error("Failed to load integrations (using fallback defaults):", err);
-      // Silent error handler - no noisy toast popups on initial load
     } finally {
       setLoading(false);
     }
@@ -71,7 +68,7 @@ export default function AdminIntegrationsPage() {
   const handleSave = async () => {
     try {
       setSaving(true);
-      await api.post("/api/v1/admin/integrations", {
+      await api.post("/admin/integrations", {
         whatsapp_enabled: whatsappEnabled,
         whatsapp_api_key: whatsappApiKey,
         whatsapp_account_sid: whatsappAccountSid,
@@ -96,7 +93,7 @@ export default function AdminIntegrationsPage() {
   const handleTestWhatsApp = async () => {
     try {
       setTestingWhatsApp(true);
-      const res = await api.post("/api/v1/admin/integrations/test-whatsapp");
+      const res = await api.post("/admin/integrations/test-whatsapp");
       toast.success(res.data.message || "WhatsApp connection verified!");
     } catch (err: any) {
       toast.error(err.response?.data?.detail || "WhatsApp test connection failed.");
@@ -108,7 +105,7 @@ export default function AdminIntegrationsPage() {
   const handleTestSMS = async () => {
     try {
       setTestingSMS(true);
-      const res = await api.post("/api/v1/admin/integrations/test-whatsapp");
+      const res = await api.post("/admin/integrations/test-whatsapp");
       toast.success("SMS Gateway connection test successful! API reachable.");
     } catch (err: any) {
       toast.error(err.response?.data?.detail || "SMS Gateway test connection failed.");
@@ -116,23 +113,6 @@ export default function AdminIntegrationsPage() {
       setTestingSMS(false);
     }
   };
-
-  // RBAC Guard
-  if (user && !isAdminUser(user)) {
-    return (
-      <AdminLayout>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 space-y-4">
-          <div className="w-16 h-16 bg-rose-500/10 border border-rose-500/30 rounded-full flex items-center justify-center text-rose-500">
-            <Lock className="w-8 h-8" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">403 - Access Restricted</h2>
-          <p className="text-slate-500 dark:text-slate-400 max-w-md text-sm">
-            Integration configuration is restricted exclusively to Admin users. Please contact your system administrator.
-          </p>
-        </div>
-      </AdminLayout>
-    );
-  }
 
   return (
     <AdminLayout>

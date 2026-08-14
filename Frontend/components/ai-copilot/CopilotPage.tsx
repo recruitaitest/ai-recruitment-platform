@@ -245,11 +245,6 @@ export default function CopilotPage() {
               );
             })
           )}
-
-          {/* Suggested Prompts Section */}
-          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 mt-4">
-            <SuggestedPrompts onPromptClick={handlePromptClick} />
-          </div>
         </div>
       </aside>
 
@@ -281,6 +276,9 @@ export default function CopilotPage() {
               isThinking={isThinking}
             />
           </div>
+
+          {/* Recommended Prompts Above Input Only */}
+          <SuggestedPrompts onPromptClick={handlePromptClick} />
 
           {/* Chat Input */}
           <ChatInput

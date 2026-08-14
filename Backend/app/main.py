@@ -259,5 +259,14 @@ app.include_router(
     tags=["Copilot"]
 )
 
+from app.routes.ai_features import router as ai_features_router
+from app.routes.automation import router as automation_router
+from app.routes.collaboration import router as collaboration_router
+from app.routes.admin_integrations import router as admin_integrations_router
+from app.routes.messaging import router as messaging_router
+
 app.include_router(ai_features_router)
+app.include_router(admin_integrations_router)
 app.include_router(admin_integrations_router, prefix="/api/v1")
+app.include_router(messaging_router)
+app.include_router(messaging_router, prefix="/api/v1")

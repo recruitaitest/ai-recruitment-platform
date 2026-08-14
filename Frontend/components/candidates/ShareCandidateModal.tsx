@@ -12,7 +12,7 @@ interface Candidate {
   company: string;
   experience: number;
   skills: string[];
-  matchScore: number;
+  matchScore?: number;
 }
 
 interface ShareCandidateModalProps {

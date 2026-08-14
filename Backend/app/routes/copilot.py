@@ -10,6 +10,7 @@ from app.database import get_db
 from app.models.user import User
 from app.models.chat_session import ChatSession, ChatMessage
 from app.routes.auth import get_current_user
+from app.services.ai_features_service import process_recruiter_chat
 from app.services.copilot_agent import get_copilot_agent
 from langchain_core.messages import HumanMessage
 
@@ -142,28 +143,24 @@ async def process_chat_message(
     db.add(user_msg)
     db.commit()
 
-    # Load session message history for AI agent context
+    # Load session message history for AI context
     past_msgs = (
         db.query(ChatMessage)
         .filter(ChatMessage.session_id == session.id)
         .order_by(ChatMessage.created_at.asc())
         .all()
     )
-    langchain_messages = [HumanMessage(content=m.content) for m in past_msgs if m.role == "user"]
+    conversation_history = [
+        {"sender": m.role, "text": m.content}
+        for m in past_msgs
+    ]
 
-    # Generate response via AI Copilot agent
-    try:
-        agent = get_copilot_agent()
-        result = await agent.ainvoke({"messages": langchain_messages})
-        output_msgs = result.get("messages", [])
-        ai_response_text = ""
-        if output_msgs:
-            ai_response_text = output_msgs[-1].content
-        if not ai_response_text:
-            ai_response_text = f"I have processed your query: '{user_prompt}'. How else can I assist with your recruitment pipeline?"
-    except Exception as e:
-        print(f"Error invoking copilot agent: {e}")
-        ai_response_text = f"I received your query regarding '{user_prompt}'. Let me know if you would like me to pull matching candidates or position statistics."
+    # Generate response via the unified Live ATS Recruiter Copilot engine
+    recruiter_res = process_recruiter_chat(user_prompt, conversation_history, db)
+    ai_response_text = recruiter_res.get("response", "") if isinstance(recruiter_res, dict) else str(recruiter_res)
+
+    if not ai_response_text:
+        ai_response_text = f"I received your query regarding '{user_prompt}'. How else can I assist with your recruitment pipeline?"
 
     # Save Assistant Message to DB
     assistant_msg = ChatMessage(

@@ -60,6 +60,25 @@ def get_public_position_detail(position_id: int, db: Session = Depends(get_db)):
     }
 
 
+def parse_resume_background_job(candidate_id: int, file_path: str):
+    """
+    Executes resume parsing in background without blocking the public portal API response.
+    """
+    try:
+        from app.tasks.resume_tasks import process_resume_task
+        try:
+            # Attempt Celery async dispatch
+            process_resume_task.apply_async(
+                kwargs={"candidate_id": candidate_id, "file_path": file_path},
+                countdown=1
+            )
+        except Exception:
+            # Fall back to synchronous parsing in background thread
+            process_resume_task(candidate_id, file_path)
+    except Exception as e:
+        print(f"Error in background resume parsing for candidate {candidate_id}: {e}")
+
+
 @router.post("/positions/{position_id}/apply")
 def apply_to_position(
     position_id: int,
@@ -79,12 +98,12 @@ def apply_to_position(
     db: Session = Depends(get_db)
 ):
     """
-    Public Application Submission:
-    1. Sorts application resume file into position-specific folder (`uploads/positions/{position_id}/`).
-    2. Saves central candidate record with CTC, notice period, contact info.
-    3. Links candidate to hiring pipeline stage.
-    4. Triggers LLM resume parsing via Celery to extract accurate skills, experience, education.
-    5. Triggers automated acknowledgment email to candidate.
+    Public Application Submission (Instant Response):
+    1. Saves application resume file immediately into position folder.
+    2. Saves candidate record with 'Processing' status so candidate is immediately in database.
+    3. Links candidate to hiring pipeline stage ('Applied').
+    4. Triggers resume parsing in BACKGROUND without blocking candidate response.
+    5. Dispatches multi-channel acknowledgment notification.
     """
     position = db.query(Position).filter(Position.id == position_id).first()
     if not position:
@@ -122,7 +141,7 @@ def apply_to_position(
         except Exception as e:
             print(f"Warning: Failed to upload resume to MinIO S3: {e}")
 
-    # Extract text & generate resume hash for candidate duplicate check
+    # Extract basic text for duplicate check quickly
     resume_text = extract_text_from_resume(local_saved_path)
     resume_hash = generate_resume_hash(resume_text) if resume_text else None
 
@@ -131,7 +150,6 @@ def apply_to_position(
         existing_candidate = db.query(Candidate).filter(Candidate.resume_hash == resume_hash).first()
         if existing_candidate:
             # Candidate duplicate already exists in DB
-            # We add pipeline entry if not already in this position pipeline
             existing_pipeline = db.query(Pipeline).filter(
                 Pipeline.candidate_id == existing_candidate.id,
                 Pipeline.position_id == position_id
@@ -147,7 +165,7 @@ def apply_to_position(
                 db.add(new_pipeline)
                 db.commit()
 
-            # Schedule automated multi-channel acknowledgment (Email, WhatsApp, SMS)
+            # Schedule automated multi-channel acknowledgment
             background_tasks.add_task(
                 send_multi_channel_acknowledgment,
                 to_email=email,
@@ -159,11 +177,11 @@ def apply_to_position(
             return {
                 "message": f"Application received! Existing profile linked to '{position.title}'.",
                 "candidate_id": existing_candidate.id,
-                "is_duplicate": True
+                "is_duplicate": True,
+                "status": "Applied"
             }
 
     # 2. Centralized Candidate Database record creation
-    #    Save with form data initially; LLM parsing will overwrite with accurate parsed data
     new_candidate = Candidate(
         full_name=full_name,
         email=email,
@@ -200,23 +218,14 @@ def apply_to_position(
     db.add(new_pipeline)
     db.commit()
 
-    # 4. Trigger LLM Resume Parsing via Celery (overwrites form data with parsed data)
-    try:
-        from app.tasks.resume_tasks import process_resume_task
-        process_resume_task.apply_async(
-            kwargs={"candidate_id": new_candidate.id, "file_path": final_resume_path},
-            countdown=1
-        )
-    except Exception as e:
-        # If Celery is unavailable, fall back to synchronous parsing
-        print(f"Warning: Celery task dispatch failed, attempting synchronous parsing: {e}")
-        try:
-            from app.tasks.resume_tasks import process_resume_task
-            process_resume_task(new_candidate.id, final_resume_path)
-        except Exception as sync_err:
-            print(f"Warning: Synchronous parsing also failed: {sync_err}")
+    # 4. Schedule LLM Resume Parsing in Background (Non-blocking, candidate returns immediately)
+    background_tasks.add_task(
+        parse_resume_background_job,
+        candidate_id=new_candidate.id,
+        file_path=final_resume_path
+    )
 
-    # 5. Trigger Automatic Multi-Channel Acknowledgment (Email, WhatsApp, SMS)
+    # 5. Trigger Automatic Multi-Channel Acknowledgment in Background
     background_tasks.add_task(
         send_multi_channel_acknowledgment,
         to_email=email,
@@ -228,6 +237,7 @@ def apply_to_position(
     return {
         "message": f"Application for '{position.title}' submitted successfully!",
         "candidate_id": new_candidate.id,
-        "is_duplicate": False
+        "is_duplicate": False,
+        "status": "Processing"
     }
 

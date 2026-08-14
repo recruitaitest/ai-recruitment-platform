@@ -52,23 +52,25 @@ import { BulkStageModal } from "@/components/candidates/BulkStageModal";
 type Status = "Applied" | "Screening" | "Interview" | "Offer" | "Hired" | "Rejected" | "Needs Pipeline";
 
 interface Candidate {
- id: string;
- name: string;
- email: string;
- company: string;
- role: string;
- experience: number;
- location: string;
- skills: string[];
- status: Status;
- matchScore: number;
- source: string;
- currentCtc: string;
- expectedCtc: string;
- noticePeriod: string;
- folderPath: string;
- appliedPositionId?: number;
- avatar: string;
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  company: string;
+  role: string;
+  experience: number;
+  location: string;
+  skills: string[];
+  status: Status;
+  matchScore?: number;
+  source: string;
+  currentCtc?: string;
+  expectedCtc?: string;
+  noticePeriod?: string;
+  folderPath?: string;
+  appliedPositionId?: number;
+  appliedPositionTitle?: string;
+  avatar: string;
 }
 
 type SortKey = "name" | "skills" | "experience" | "ctc" | "status" | "source" | "";
@@ -751,7 +753,6 @@ export default function CandidatesPage() {
  headers: authHeaders(),
  });
  if (!res.ok) {
- // Read the backend's specific error message (409 = pipeline/interview block)
  let msg = "Failed to delete candidate.";
  try {
  const body = await res.json();
@@ -762,20 +763,21 @@ export default function CandidatesPage() {
  }
  setCandidates((prev) => prev.filter((c) => c.id !== deleteTarget.id));
  setDeleteTarget(null);
- showToast("Candidate deleted.", "success");
+ showToast("Candidate deleted successfully.", "success");
+ fetchCandidates();
  } catch {
  showToast("Failed to delete candidate.", "error");
  } finally {
  setModalLoading(false);
  }
- }, [deleteTarget]);
+ }, [deleteTarget, fetchCandidates]);
 
  // ── DELETE (bulk) ────────────────────────────────────────────────────────
  const handleBulkDelete = useCallback(async () => {
  setModalLoading(true);
  const ids = Array.from(selected);
  try {
- await Promise.all(
+ const responses = await Promise.all(
  ids.map((id) =>
  fetch(`${API}/candidates/${id}`, {
  method: "DELETE",
@@ -783,16 +785,21 @@ export default function CandidatesPage() {
  })
  )
  );
- setCandidates((prev) => prev.filter((c) => !selected.has(c.id)));
+ const failed = responses.filter((r) => !r.ok);
+ if (failed.length > 0) {
+ showToast(`Failed to delete ${failed.length} candidate(s).`, "error");
+ } else {
+ showToast(`${ids.length} candidate(s) deleted successfully.`, "success");
+ }
  setSelected(new Set());
  setBulkDeleteOpen(false);
- showToast(`${ids.length} candidate(s) deleted.`, "success");
+ fetchCandidates();
  } catch {
  showToast("Some deletions failed. Please retry.", "error");
  } finally {
  setModalLoading(false);
  }
- }, [selected]);
+ }, [selected, fetchCandidates]);
 
  // ── FIX 2: Use skillFilteredCandidates as the base, not raw candidates ───
  const filtered = useMemo(() => {
@@ -1299,6 +1306,7 @@ const q = search.toLowerCase().trim();
     candidateId={Number(nudgeCandidate?.id) || 1}
     candidateName={nudgeCandidate?.name || "Candidate"}
     candidatePhone={nudgeCandidate?.phone}
+    candidateEmail={nudgeCandidate?.email}
   />
 
   <ShareCandidateModal

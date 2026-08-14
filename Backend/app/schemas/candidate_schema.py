@@ -62,6 +62,8 @@ class CandidateResponse(BaseModel):
     current_designation: Optional[str] = None
     folder_path: Optional[str] = None
     applied_position_id: Optional[int] = None
+    applied_position_title: Optional[str] = None
+    match_score: Optional[int] = None
     source: Optional[str] = "Manual Upload"
     created_at: Optional[datetime] = None
 
