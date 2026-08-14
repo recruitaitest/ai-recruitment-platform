@@ -47,6 +47,4 @@ EXPOSE 3000
 
 ENV PORT 3000
 # set hostname to localhost
-ENV HOSTNAME "0.0.0.0"
-
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "if [ -f ./server.js ]; then node server.js; elif [ -f ./Frontend/server.js ]; then node ./Frontend/server.js; else find . -name server.js | head -n 1 | xargs node; fi"]
