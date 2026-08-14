@@ -185,7 +185,7 @@ export default function CandidateDrawer({
                   <h3 className="text-xs font-bold uppercase text-violet-400 tracking-wider">Interview Actions</h3>
                   <div className="grid grid-cols-2 gap-2">
                     {/* Join Video Call Button - Only for Online Mode */}
-                    {interview?.mode?.toLowerCase() === "online" ? (
+                    {((interview?.mode || interview?.interview_mode || "Online").toLowerCase() === "online") ? (
                       <a
                         href={interview?.meeting_link || "https://meet.google.com"}
                         target="_blank"
@@ -196,7 +196,7 @@ export default function CandidateDrawer({
                       </a>
                     ) : (
                       <div className="py-2.5 px-3 bg-surface border border-border text-muted rounded-xl text-xs font-medium flex items-center justify-center gap-1.5">
-                        <MapPin className="w-4 h-4 text-slate-400" /> {interview?.mode || "In-Person"}
+                        <MapPin className="w-4 h-4 text-slate-400" /> {interview?.mode || interview?.interview_mode || "In-Person"}
                       </div>
                     )}
 

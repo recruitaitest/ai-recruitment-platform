@@ -18,8 +18,10 @@ export interface Interview {
     interview_time: string;
     interview_type: string;
     interview_mode?: string;
+    mode?: string;
     meeting_link?: string | null;
     location?: string | null;
     status: string;
     feedback?: string;
+    overall_rating?: number;
 }
