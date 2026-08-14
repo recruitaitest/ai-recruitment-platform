@@ -291,7 +291,14 @@ def get_panel_feedback(candidate_id: int, db: Session = Depends(get_db)):
 
 @router.post("/votes")
 def submit_team_vote(req: VoteRequest, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    user_display = getattr(current_user, 'full_name', None) or (current_user.email.split('@')[0].replace('.', ' ').title() if getattr(current_user, 'email', None) else "Team Member")
+    if isinstance(current_user, dict):
+        email = current_user.get('email', '')
+        full_name = current_user.get('full_name') or current_user.get('name')
+    else:
+        email = getattr(current_user, 'email', '')
+        full_name = getattr(current_user, 'full_name', None) or getattr(current_user, 'name', None)
+    
+    user_display = full_name or (email.split('@')[0].replace('.', ' ').title() if email else "Team Member")
     
     existing_vote = db.query(TeamVote).filter(
         TeamVote.candidate_id == req.candidate_id,

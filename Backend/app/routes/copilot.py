@@ -46,14 +46,31 @@ def generate_auto_title(prompt: str) -> str:
         return " ".join(words).title()
     return " ".join(words[:4]).title() + "..."
 
+def get_user_id_from_auth(current_user, db: Session) -> int:
+    if not current_user:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+    if hasattr(current_user, "id") and current_user.id is not None:
+        return current_user.id
+    if isinstance(current_user, dict):
+        uid = current_user.get("user_id") or current_user.get("id") or current_user.get("sub_id")
+        if uid and str(uid).isdigit():
+            return int(uid)
+        email = current_user.get("email") or current_user.get("sub")
+        if email:
+            user = db.query(User).filter(User.email == str(email)).first()
+            if user:
+                return user.id
+    raise HTTPException(status_code=401, detail="User not authenticated")
+
 @router.get("/sessions", response_model=List[SessionResponse])
 def get_user_chat_sessions(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user = Depends(get_current_user)
 ):
+    user_id = get_user_id_from_auth(current_user, db)
     sessions = (
         db.query(ChatSession)
-        .filter(ChatSession.user_id == current_user.id)
+        .filter(ChatSession.user_id == user_id)
         .order_by(ChatSession.last_message_at.desc())
         .all()
     )
@@ -63,11 +80,12 @@ def get_user_chat_sessions(
 def get_session_messages(
     session_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user = Depends(get_current_user)
 ):
+    user_id = get_user_id_from_auth(current_user, db)
     session = (
         db.query(ChatSession)
-        .filter(ChatSession.id == session_id, ChatSession.user_id == current_user.id)
+        .filter(ChatSession.id == session_id, ChatSession.user_id == user_id)
         .first()
     )
     if not session:
@@ -85,8 +103,9 @@ def get_session_messages(
 async def process_chat_message(
     req: ChatRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user = Depends(get_current_user)
 ):
+    user_id = get_user_id_from_auth(current_user, db)
     user_prompt = req.message.strip()
     if not user_prompt:
         raise HTTPException(status_code=400, detail="Message cannot be empty")
@@ -95,7 +114,7 @@ async def process_chat_message(
     if req.session_id:
         session = (
             db.query(ChatSession)
-            .filter(ChatSession.id == req.session_id, ChatSession.user_id == current_user.id)
+            .filter(ChatSession.id == req.session_id, ChatSession.user_id == user_id)
             .first()
         )
 
@@ -104,7 +123,7 @@ async def process_chat_message(
         is_new = True
         auto_title = generate_auto_title(user_prompt)
         session = ChatSession(
-            user_id=current_user.id,
+            user_id=user_id,
             title=auto_title,
             last_message_at=datetime.utcnow()
         )
@@ -166,11 +185,12 @@ async def process_chat_message(
 def delete_chat_session(
     session_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user = Depends(get_current_user)
 ):
+    user_id = get_user_id_from_auth(current_user, db)
     session = (
         db.query(ChatSession)
-        .filter(ChatSession.id == session_id, ChatSession.user_id == current_user.id)
+        .filter(ChatSession.id == session_id, ChatSession.user_id == user_id)
         .first()
     )
     if not session:
