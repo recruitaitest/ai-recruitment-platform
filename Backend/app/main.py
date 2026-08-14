@@ -81,6 +81,9 @@ env_origins = os.getenv("CORS_ORIGINS", "")
 origins = [
     "http://localhost:3000",
     "http://localhost:5173",
+    "http://20.197.61.51:3000",
+    "http://20.197.61.51",
+    "http://ai-recruitment-platform.centralindia.cloudapp.azure.com",
     "https://ai-recruitment-platform-pi.vercel.app",
     "https://ai-recruitment-platform.vercel.app"
 ]
@@ -91,7 +94,7 @@ origins = list(set(origins))
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_origin_regex=r"https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
