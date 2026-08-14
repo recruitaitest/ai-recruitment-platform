@@ -4,6 +4,8 @@ services:
   frontend:
     build:
       context: ./Frontend
+      args:
+        - NEXT_PUBLIC_API_URL=http://20.197.61.51:8000
     ports:
       - "3000:3000"
     environment:
