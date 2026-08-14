@@ -34,5 +34,5 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-export { api };
+export { api, getBaseUrl };
 export default api;
