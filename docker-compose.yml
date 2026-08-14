@@ -10,10 +10,6 @@ services:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
     depends_on:
       - api
-    volumes:
-      - ./Frontend:/app
-      - /app/node_modules
-      - /app/.next
 
   api:
     build:
@@ -37,8 +33,6 @@ services:
       - db
       - redis
       - minio
-    volumes:
-      - ./Backend:/app
 
   worker:
     build:
