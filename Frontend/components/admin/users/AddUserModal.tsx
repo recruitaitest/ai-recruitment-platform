@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { createUser, updateUser } from "@/services/adminService";
 import { getRoles } from "@/services/adminService";
+import { toast } from "sonner";
 
 interface AddUserModalProps {
  open: boolean;
@@ -72,11 +73,11 @@ export default function AddUserModal({
 
  onClose();
  } else {
- alert(response.message);
+ toast.error(response.message);
  }
  } catch (error) {
  console.error(error);
- alert(
+ toast.error(
  editUser
  ? "Failed to update user"
  : "Failed to create user"

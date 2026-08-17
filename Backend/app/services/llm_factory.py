@@ -78,7 +78,7 @@ def get_chat_model(
                 "model": target_model,
                 "base_url": url,
                 "temperature": temperature,
-                "timeout": 5.0
+                "timeout": 45.0
             }
             if json_mode:
                 kwargs["format"] = "json"
@@ -94,10 +94,10 @@ def get_chat_model(
             
         from langchain_groq import ChatGroq
         valid_model = model_name or "llama-3.3-70b-versatile"
-        if "llama3-70b" in valid_model or "llama3-8b" in valid_model:
-            valid_model = "llama-3.3-70b-versatile"
-            
-        return ChatGroq(model=valid_model, temperature=temperature, api_key=api_key)
+        kwargs = {"model": valid_model, "temperature": temperature, "api_key": api_key}
+        if json_mode:
+            kwargs["model_kwargs"] = {"response_format": {"type": "json_object"}}
+        return ChatGroq(**kwargs)
 
     elif provider == "Gemini":
         if not api_key:
@@ -117,7 +117,10 @@ def get_chat_model(
             return None
             
         from langchain_openai import ChatOpenAI
-        return ChatOpenAI(model=model_name or "gpt-4o", temperature=temperature, api_key=api_key)
+        kwargs = {"model": model_name or "gpt-4o", "temperature": temperature, "api_key": api_key}
+        if json_mode:
+            kwargs["model_kwargs"] = {"response_format": {"type": "json_object"}}
+        return ChatOpenAI(**kwargs)
 
     elif provider == "Claude":
         if not api_key:
@@ -133,11 +136,14 @@ def get_chat_model(
             return None
             
         from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
-        llm = HuggingFaceEndpoint(
-            repo_id=model_name or "mistralai/Mixtral-8x7B-Instruct-v0.1",
-            temperature=temperature,
-            huggingfacehub_api_token=api_key,
-        )
+        endpoint_kwargs = {
+            "repo_id": model_name or "mistralai/Mixtral-8x7B-Instruct-v0.1",
+            "temperature": max(0.01, temperature) if temperature == 0.0 else temperature,
+            "huggingfacehub_api_token": api_key,
+        }
+        if json_mode:
+            endpoint_kwargs["stop_sequences"] = ["}"]
+        llm = HuggingFaceEndpoint(**endpoint_kwargs)
         return ChatHuggingFace(llm=llm)
 
     return None

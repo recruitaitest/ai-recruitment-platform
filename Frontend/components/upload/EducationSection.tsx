@@ -20,9 +20,11 @@ export default function EducationSection({
  );
  }
 
- const blocks = candidate.education
- .split(/\n\s*\n/)
- .filter((block: string) => block.trim());
+  const blocks = Array.isArray(candidate.education)
+    ? candidate.education
+    : typeof candidate.education === "string"
+    ? candidate.education.split(/\n\s*\n/).filter((block: string) => block.trim())
+    : [];
 
  return (
  <div className="rounded-2xl border border-border bg-surface p-6">

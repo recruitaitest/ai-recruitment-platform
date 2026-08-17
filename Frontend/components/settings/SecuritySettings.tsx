@@ -7,6 +7,7 @@ import {
  Eye, EyeOff, LockKeyhole, ShieldCheck,
  AlertTriangle, CheckCircle2,
 } from "lucide-react";
+import { toast } from "sonner";
 
 /* ── strength colors ── */
 function getStrength(pw: string): { score: number; label: string; color: string } {
@@ -104,7 +105,7 @@ export default function SecuritySettings() {
  );
 
  if (!response.success) {
- alert(response.message);
+ toast.error(response.message);
  return;
  }
 
@@ -119,7 +120,7 @@ export default function SecuritySettings() {
 
  } catch (error) {
  console.error(error);
- alert("Failed to update password");
+ toast.error("Failed to update password");
  }
  }
 

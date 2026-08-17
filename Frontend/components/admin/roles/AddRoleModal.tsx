@@ -4,6 +4,7 @@ import { X, Plus, Trash2, ChevronDown } from "lucide-react";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { createRole, updateRole } from "@/services/adminService";
+import { toast } from "sonner";
 
 interface AddRoleModalProps {
  open: boolean;
@@ -186,7 +187,7 @@ export default function AddRoleModal({
  const validRecruiter = recruiterPermissions.filter(p => p.resource && p.operations.length > 0);
 
  if (validAdmin.length === 0 && validRecruiter.length === 0) {
- alert("Please configure at least one complete permission (with selected resource and operations) in either the Admin or Recruiter portal.");
+ toast.error("Please configure at least one complete permission (with selected resource and operations) in either the Admin or Recruiter portal.");
  return;
  }
 

@@ -22,6 +22,66 @@ router = APIRouter(prefix="/portal", tags=["Career Portal"])
 UPLOAD_BASE_DIR = os.path.join(os.getcwd(), "uploads", "positions")
 
 
+@router.post("/parse-resume-fast")
+async def parse_resume_fast(file: UploadFile = File(...)):
+    """
+    Ultra-Fast Non-Blocking Resume Auto-Fill for Career Portal Candidates:
+    Extracts name, email, phone, skills, role, and experience to instantly pre-fill the application form.
+    """
+    try:
+        temp_dir = os.path.join(UPLOAD_BASE_DIR, "temp")
+        os.makedirs(temp_dir, exist_ok=True)
+        unique_name = f"preview_{uuid.uuid4().hex[:6]}_{file.filename}"
+        temp_path = os.path.join(temp_dir, unique_name)
+
+        content = await file.read()
+        with open(temp_path, "wb") as f:
+            f.write(content)
+
+        text = extract_text_from_resume(temp_path)
+
+        # Cleanup temp file
+        try:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+        except Exception:
+            pass
+
+        if not text or len(text.strip()) < 10:
+            return {"success": False, "data": {}}
+
+        from app.utils.resume_parser import fallback_extract_details
+        details = fallback_extract_details(text)
+
+        if details:
+            name = getattr(details, "name", None) or getattr(details, "fullName", None) or ""
+            email = getattr(details, "email", None) or ""
+            phone = getattr(details, "phone", None) or ""
+            role = getattr(details, "role", None) or getattr(details, "currentRole", None) or ""
+            totalExp = getattr(details, "totalExp", None) or getattr(details, "experienceYears", None) or 0
+            skills = getattr(details, "skills", None) or []
+            location = getattr(details, "location", None) or ""
+            linkedin_url = getattr(details, "linkedin_url", None) or getattr(details, "linkedin", None) or ""
+
+            return {
+                "success": True,
+                "data": {
+                    "full_name": name if name not in ["Extracted Candidate", "Unknown Candidate"] else "",
+                    "email": email or "",
+                    "phone": phone or "",
+                    "role": role or "",
+                    "experience": totalExp,
+                    "skills": skills,
+                    "location": location or "",
+                    "linkedin_url": linkedin_url or ""
+                }
+            }
+        return {"success": False, "data": {}}
+    except Exception as e:
+        print(f"Fast resume parsing preview error: {e}")
+        return {"success": False, "data": {}}
+
+
 @router.get("/positions")
 def get_public_positions(db: Session = Depends(get_db)):
     """

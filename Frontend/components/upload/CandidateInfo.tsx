@@ -138,8 +138,19 @@ export default function CandidateInfo({
  LinkedIn
  </p>
 
- <p className="font-medium">
- {candidate.linkedin_url || "-"}
+ <p className="font-medium break-all">
+   {candidate.linkedin_url ? (
+     <a
+       href={candidate.linkedin_url.startsWith("http") ? candidate.linkedin_url : `https://${candidate.linkedin_url}`}
+       target="_blank"
+       rel="noopener noreferrer"
+       className="text-primary hover:underline"
+     >
+       {candidate.linkedin_url.replace(/^https?:\/\/(www\.)?/, '')}
+     </a>
+   ) : (
+     "-"
+   )}
  </p>
  </div>
 

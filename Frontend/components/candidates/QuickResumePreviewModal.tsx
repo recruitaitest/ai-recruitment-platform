@@ -19,14 +19,34 @@ export function QuickResumePreviewModal({
 
   const candidateId = candidate.id || candidate.candidate_id;
   const candidateName = candidate.name || candidate.full_name || "Candidate";
-  const candidateRole = candidate.applied_position_title || candidate.role || candidate.current_designation || candidate.current_role || "Software Developer";
+  
+  // Resolve applied position title — prefer explicit applied position
+  const candidateRole =
+    candidate.appliedPositionTitle ||
+    candidate.applied_position_title ||
+    candidate.jobTitle ||
+    candidate.position_title ||
+    candidate.position?.title ||
+    candidate.current_designation ||
+    candidate.role ||
+    candidate.current_role ||
+    (candidate.application?.position?.title) ||
+    (candidate.source === "Career Portal" ? "General Application" : "Software Engineer");
+
+  // Resolve executive summary — prefer real AI-parsed summary over generic template
+  const executiveSummary =
+    candidate.summary ||
+    candidate.ai_summary ||
+    candidate.executive_summary ||
+    null;
+
   const candidateScore = candidate.matchScore || candidate.match_score || candidate.overall_score || candidate.score || 86;
-  const isCareerPortal = candidate.source === "Career Portal" || !!candidate.applied_position_id;
+  const isCareerPortal = candidate.source === "Career Portal" || !!candidate.applied_position_id || !!candidate.appliedPositionId;
   const skillsList: string[] = Array.isArray(candidate.skills)
     ? candidate.skills
     : typeof candidate.skills === "string" && candidate.skills
     ? candidate.skills.split(",").map((s: string) => s.trim()).filter(Boolean)
-    : ["Java", "Python", "REST APIs", "SQL"];
+    : [];
 
   const resumeUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/candidates/${candidateId}/resume`;
 
@@ -109,13 +129,23 @@ export function QuickResumePreviewModal({
                 </div>
                 <p className="text-xs text-muted flex items-center gap-3 flex-wrap">
                   {candidate.email && (
-                    <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" /> {candidate.email}</span>
+                    <span className="flex items-center gap-1 break-all"><Mail className="w-3.5 h-3.5 shrink-0" /> {candidate.email}</span>
                   )}
                   {candidate.company && (
                     <span className="flex items-center gap-1"><Briefcase className="w-3.5 h-3.5" /> {candidate.company}</span>
                   )}
                   {candidate.location && (
                     <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {candidate.location}</span>
+                  )}
+                  {candidate.linkedin_url && (
+                    <a
+                      href={candidate.linkedin_url.startsWith("http") ? candidate.linkedin_url : `https://${candidate.linkedin_url}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-indigo-500 hover:underline"
+                    >
+                      <Globe className="w-3.5 h-3.5" /> LinkedIn
+                    </a>
                   )}
                 </p>
               </div>
@@ -159,19 +189,27 @@ export function QuickResumePreviewModal({
             <div className="p-6 bg-white dark:bg-card border border-border rounded-xl shadow-sm text-slate-800 dark:text-slate-200 font-sans space-y-4 text-xs leading-relaxed">
               <div className="border-b pb-3 border-slate-200 dark:border-slate-800">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-slate-900 dark:text-white uppercase tracking-wide">{candidateName}</h2>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white break-words">{candidateName}</h2>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 shrink-0">
                     {candidateRole}
                   </span>
                 </div>
-                <p className="text-slate-500 mt-1">{candidate.email} | {candidate.experience || 0} Years Experience | {candidate.location || "Location Flexible"}</p>
+                <p className="text-slate-500 mt-1 break-words">{candidate.email} | {candidate.experience || 0} Years Experience | {candidate.location || "Location Flexible"}</p>
               </div>
 
               <div>
                 <h3 className="font-bold text-slate-900 dark:text-white uppercase tracking-wider text-[11px] mb-1">Executive Summary</h3>
-                <p className="text-slate-600 dark:text-slate-300">
-                  Targeting <strong className="text-indigo-600 dark:text-indigo-400">{candidateRole}</strong> with demonstrated experience in {skillsList.slice(0, 6).join(", ")}. Strong track record of project execution, problem-solving, and technical collaboration.
-                </p>
+                <div className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line text-xs">
+                  {executiveSummary ? (
+                    executiveSummary
+                  ) : skillsList.length > 0 ? (
+                    <>
+                      Targeting <strong className="text-indigo-600 dark:text-indigo-400 font-semibold">{candidateRole}</strong> with demonstrated experience in {skillsList.slice(0, 6).join(", ")}. Strong track record of technical execution, problem-solving, and cross-functional collaboration.
+                    </>
+                  ) : (
+                    <span className="text-slate-400 italic">Executive summary will be available after AI resume parsing completes.</span>
+                  )}
+                </div>
               </div>
 
               <div>

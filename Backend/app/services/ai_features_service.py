@@ -20,7 +20,8 @@ from app.schemas.ai_schemas import (
     OutreachEmailRequest, OutreachEmailResponse,
     ScorecardAutoFillRequest, ScorecardAutoFillResponse, CompetencyRating,
     RedFlagDetectionResponse, RedFlagItem,
-    SalaryBenchmarkResponse
+    SalaryBenchmarkResponse,
+    RejectionEmailDraftRequest, RejectionEmailDraftResponse
 )
 
 logger = logging.getLogger(__name__)
@@ -906,4 +907,59 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
         "portal_type": "recruiter",
         "is_refusal": False
     }
+
+
+# --- 1.15 AI Candidate Rejection Email Generator ---
+def draft_rejection_email_service(req: RejectionEmailDraftRequest) -> RejectionEmailDraftResponse:
+    company = req.company_name or "Our Organization"
+    default_subject = f"Update regarding your application for {req.position_title} at {company}"
+    default_body = f"""Dear {req.candidate_name},
+
+Thank you very much for your time, effort, and interest in the {req.position_title} position at {company}. We truly enjoyed learning about your professional journey.
+
+After thorough evaluation by our hiring team, we have decided not to move forward with your application for this specific role at this time. 
+
+Reason & Context:
+{req.rejection_reason}
+
+Please know that our talent acquisition team keeps your profile active in our talent network. Should an opportunity open that better matches your background and specialized skillset, we will gladly reach out.
+
+We wish you every success in your ongoing job search and future professional endeavors.
+
+Warm regards,
+
+Recruiting & Talent Acquisition Team
+{company}"""
+
+    try:
+        llm = get_chat_model(temperature=0.3, json_mode=True)
+        if not llm:
+            return RejectionEmailDraftResponse(subject=default_subject, body=default_body)
+
+        structured_llm = llm.with_structured_output(RejectionEmailDraftResponse)
+        prompt = f"""
+You are an empathetic, world-class Talent Acquisition Leader writing a personalized, respectful candidate rejection email.
+CANDIDATE NAME: {req.candidate_name}
+JOB POSITION: {req.position_title}
+COMPANY: {company}
+REJECTION REASON / FEEDBACK: {req.rejection_reason}
+TONE: {req.tone or 'Empathetic, Constructive, Encouraging & Professional'}
+
+Requirements:
+- Subject line should be clear and professional.
+- Address the candidate warmly by name.
+- Sincerely thank them for their time and interest.
+- Respectfully convey the decision incorporating the given context/reason in a constructive and graceful manner.
+- Encourage them to stay connected for future openings.
+- Close warmly from the Recruiting Team at {company}.
+- Return JSON strictly matching {{ "subject": "...", "body": "..." }}.
+"""
+        result = structured_llm.invoke(prompt)
+        if result and getattr(result, "body", None):
+            return result
+        return RejectionEmailDraftResponse(subject=default_subject, body=default_body)
+    except Exception as e:
+        logger.error(f"Error drafting AI rejection email: {e}")
+        return RejectionEmailDraftResponse(subject=default_subject, body=default_body)
+
 

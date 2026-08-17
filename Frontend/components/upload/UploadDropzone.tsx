@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AuthService } from "@/lib/auth";
 import { parseResume, getCandidateById } from "@/services/candidateService";
 import { toast } from "sonner";
+import { checkAiTokenAvailability, deductAiTokens, handleAiApiError } from "@/lib/aiTokenGuard";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -107,6 +108,10 @@ export default function UploadDropzone({ onSuccess, onCancel, onUploadChange }: 
 
     const handleConfirm = async () => {
         if (!validate()) return;
+
+        if (!checkAiTokenAvailability(10)) {
+            return;
+        }
 
         try {
             setSubmitError("");
@@ -216,10 +221,12 @@ export default function UploadDropzone({ onSuccess, onCancel, onUploadChange }: 
                 status: "Completed",
             });
 
+            deductAiTokens(15);
             onSuccess?.(candidate);
             resetForm();
         } catch (error: unknown) {
             console.error(error);
+            handleAiApiError(error);
 
             const message =
                 error &&

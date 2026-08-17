@@ -10,6 +10,7 @@ class CandidateCreate(BaseModel):
     skills: Optional[str] = ""
     company: Optional[str] = None
     location: Optional[str] = None
+    linkedin_url: Optional[str] = None
     education: Optional[str] = None
     experience: Optional[int] = 0
     status: Optional[str] = "Applied"
@@ -28,6 +29,7 @@ class CandidateUpdate(BaseModel):
     education: Optional[str] = None
     company: Optional[str] = None
     location: Optional[str] = None
+    linkedin_url: Optional[str] = None
     experience: Optional[int] = None
     status: Optional[str] = None
     current_ctc: Optional[str] = None
@@ -52,6 +54,7 @@ class CandidateResponse(BaseModel):
     original_filename: Optional[str] = None
     company: Optional[str] = None
     location: Optional[str] = None
+    linkedin_url: Optional[str] = None
     education: Optional[str] = None
     experience: Optional[int] = None
     status: Optional[str] = None
@@ -65,6 +68,7 @@ class CandidateResponse(BaseModel):
     applied_position_title: Optional[str] = None
     match_score: Optional[int] = None
     source: Optional[str] = "Manual Upload"
+    summary: Optional[str] = None
     created_at: Optional[datetime] = None
 
     class Config:

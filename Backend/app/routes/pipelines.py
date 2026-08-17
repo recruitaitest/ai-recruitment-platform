@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 
 from sqlalchemy.orm import Session
@@ -7,6 +8,7 @@ from app.database import get_db
 from app.models.pipeline import Pipeline
 from app.models.candidate import Candidate
 from app.models.position import Position
+from app.models.interview import Interview
 from app.schemas.pipeline_schema import (
     PipelineCreate,
     PipelineResponse
@@ -14,6 +16,9 @@ from app.schemas.pipeline_schema import (
 from app.models.pipeline_stage_history import (
     PipelineStageHistory
 )
+from app.schemas.ai_schemas import RejectCandidateRequest
+from app.services.email_service import send_email_message
+from app.utils.notification_helper import create_notification
 
 router = APIRouter()
 
@@ -197,10 +202,123 @@ def update_pipeline(
         )
         db.add(history)
 
+    # Sync interviews if rejected
+    if updated_pipeline.stage == "Rejected":
+        interviews = db.query(Interview).filter(
+            Interview.candidate_id == updated_pipeline.candidate_id
+        ).all()
+        for itw in interviews:
+            if itw.status != "Completed":
+                itw.status = "Rejected"
+                itw.recommendation = "Rejected"
+
     db.commit()
     db.refresh(pipeline)
 
     return pipeline
+
+
+@router.post("/{pipeline_id}/reject")
+@router.post("/reject")
+def reject_pipeline_candidate(
+    req: RejectCandidateRequest,
+    pipeline_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Rejects a candidate from the hiring pipeline, synchronizes interview records,
+    and optionally drafts and sends a personalized AI rejection email.
+    """
+    pipeline = None
+    if pipeline_id:
+        pipeline = db.query(Pipeline).filter(Pipeline.id == pipeline_id).first()
+    if not pipeline:
+        pipeline = db.query(Pipeline).filter(
+            Pipeline.candidate_id == req.candidate_id
+        ).first()
+        if req.position_id and pipeline:
+            pos_pipe = db.query(Pipeline).filter(
+                Pipeline.candidate_id == req.candidate_id,
+                Pipeline.position_id == req.position_id
+            ).first()
+            if pos_pipe:
+                pipeline = pos_pipe
+
+    if not pipeline:
+        raise HTTPException(status_code=404, detail="Pipeline record not found")
+
+    candidate = db.query(Candidate).filter(Candidate.id == req.candidate_id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    position = db.query(Position).filter(Position.id == pipeline.position_id).first()
+    pos_title = position.title if position else "Position"
+
+    old_stage = pipeline.stage
+    pipeline.stage = "Rejected"
+    pipeline.notes = f"Rejected: {req.rejection_reason}"
+    candidate.status = "Rejected"
+
+    if old_stage != "Rejected":
+        history = PipelineStageHistory(
+            pipeline_id=pipeline.id,
+            old_stage=old_stage,
+            new_stage="Rejected"
+        )
+        db.add(history)
+
+    # Sync all candidate non-completed interviews to Rejected
+    interviews = db.query(Interview).filter(
+        Interview.candidate_id == req.candidate_id
+    ).all()
+    for itw in interviews:
+        if itw.status != "Completed":
+            itw.status = "Rejected"
+            itw.recommendation = "Rejected"
+
+    db.commit()
+    db.refresh(pipeline)
+
+    # Send rejection email if requested
+    email_sent = False
+    if req.send_email and candidate.email and req.email_body:
+        try:
+            subject = req.email_subject or f"Update regarding your application for {pos_title}"
+            html_body = f"""
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; line-height: 1.6;">
+                <div style="margin-bottom: 24px;">
+                    <h2 style="color: #0f172a; margin: 0 0 16px 0; font-size: 20px;">Application Status Update</h2>
+                </div>
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; white-space: pre-wrap; font-size: 14px; color: #334155;">
+{req.email_body}
+                </div>
+                <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b; text-align: center;">
+                    <p>This is an automated communication from the Talent Acquisition Portal.</p>
+                </div>
+            </div>
+            """
+            email_sent = send_email_message(candidate.email, subject, html_body)
+        except Exception as e:
+            print(f"Error dispatching rejection email: {e}")
+
+    try:
+        create_notification(
+            db=db,
+            user_id=1,
+            title=f"Candidate Rejected: {candidate.full_name}",
+            message=f"{candidate.full_name} was moved to Rejected for {pos_title}. Reason: {req.rejection_reason}",
+            type="pipeline",
+            entity_id=candidate.id
+        )
+    except Exception:
+        pass
+
+    return {
+        "success": True,
+        "message": f"{candidate.full_name} moved to Rejected.",
+        "email_sent": email_sent,
+        "pipeline_id": pipeline.id
+    }
 
 
 @router.delete(

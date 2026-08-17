@@ -27,7 +27,7 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  var theme = localStorage.getItem('theme') || 'dark';
+                  var theme = localStorage.getItem('theme') || 'light';
                   var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
                   if (isDark) {
                     document.documentElement.classList.add('dark');
@@ -44,7 +44,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="gradient-bg text-text-primary min-h-screen">
+      <body className="bg-background text-text-primary min-h-screen antialiased">
         <GoogleOAuthProvider
           clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!}
         >

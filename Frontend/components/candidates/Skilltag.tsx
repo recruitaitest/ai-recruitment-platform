@@ -28,20 +28,26 @@ export function SkillTag({
 }
 
 export function SkillList({
- skills,
- max = 3,
+  skills,
+  max = 3,
 }: {
- skills: string[];
- max?: number;
+  skills?: string[] | string | null;
+  max?: number;
 }) {
- const visible = skills.slice(0, max);
- const rest = skills.length - max;
- return (
- <div className="flex flex-wrap gap-1">
- {visible.map((s) => (
- <SkillTag key={s} skill={s} />
- ))}
- {rest > 0 && (
+  const list = Array.isArray(skills)
+    ? skills
+    : typeof skills === "string"
+    ? skills.split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
+
+  const visible = list.slice(0, max);
+  const rest = list.length - max;
+  return (
+    <div className="flex flex-wrap gap-1">
+      {visible.map((s) => (
+        <SkillTag key={s} skill={s} />
+      ))}
+      {rest > 0 && (
  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-muted border border-border">
  +{rest}
  </span>

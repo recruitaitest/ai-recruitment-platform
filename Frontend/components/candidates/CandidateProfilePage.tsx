@@ -837,7 +837,7 @@ export default function CandidateProfilePage({ candidate: raw }: { candidate?: C
                         {[
                             { key: "Stage", val: <StageBadge stage={stage} /> },
                             { key: "Location", val: <span style={{ fontSize: "0.8rem" }}>{c.contact?.location || "—"}</span> },
-                            { key: "Email", val: <a href={`mailto:${c.contact?.email}`} style={{ fontSize: "0.78rem", color: "#4e7fff", textDecoration: "none" }}>{c.contact?.email}</a> },
+                            { key: "Email", val: <a href={`mailto:${c.contact?.email}`} style={{ fontSize: "0.78rem", color: "#4e7fff", textDecoration: "none", wordBreak: "break-all" }}>{c.contact?.email}</a> },
                             { key: "Phone", val: <span style={{ fontSize: "0.78rem" }}>{c.contact?.phone || "—"}</span> },
                         ].map(({ key, val }) => (
                             <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>

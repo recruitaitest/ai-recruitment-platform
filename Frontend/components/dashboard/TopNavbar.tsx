@@ -318,7 +318,10 @@ export function TopNavbar({
       if (detail?.provider) setActiveAIProvider(detail.provider)
     }
     window.addEventListener('ai-provider-changed', handleAIChange)
-    return () => window.removeEventListener('ai-provider-changed', handleAIChange)
+
+    return () => {
+      window.removeEventListener('ai-provider-changed', handleAIChange)
+    }
   }, [])
 
  const toggleTheme = () => {

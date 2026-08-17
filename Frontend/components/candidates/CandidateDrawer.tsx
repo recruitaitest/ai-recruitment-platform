@@ -44,22 +44,25 @@ export function CandidateDrawer({
  {candidate.name}
  </h3>
  <p className="text-text-secondary text-sm">
- {candidate.company} • {candidate.location}
+ {candidate.company || "Candidate"} • {candidate.location || "Remote / Unspecified"}
  </p>
  </div>
 
  {/* Skills */}
- <div className="flex flex-wrap gap-2">
- {(candidate.skills || []).map(
- (s: string) => (
- <span
- key={s.trim()}
- className="px-2 py-1 text-xs bg-secondary-surface text-text-primary rounded-md"
- >
- {s.trim()}
- </span>
- )
- )}
+ <div className="flex flex-wrap gap-2 mt-4">
+ {(Array.isArray(candidate.skills)
+   ? candidate.skills
+   : typeof candidate.skills === "string"
+   ? (candidate.skills as string).split(",").map((s) => s.trim()).filter(Boolean)
+   : []
+ ).map((s: string) => (
+   <span
+     key={s.trim()}
+     className="px-2 py-1 text-xs bg-secondary-surface text-text-primary rounded-md"
+   >
+     {s.trim()}
+   </span>
+ ))}
  </div>
 
  {/* Experience */}

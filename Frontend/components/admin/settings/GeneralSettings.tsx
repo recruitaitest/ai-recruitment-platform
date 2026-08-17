@@ -6,6 +6,7 @@ import {
   updateSettings,
   getRoles,
 } from "@/services/adminService";
+import { toast } from "sonner";
 
 export default function GeneralSettings() {
  const [formData, setFormData] = useState({
@@ -51,7 +52,7 @@ export default function GeneralSettings() {
  try {
  const response = await updateSettings(formData);
  if (response.success) {
- alert("Settings updated successfully");
+ toast.success("Settings updated successfully");
  }
  } catch (error) {
  console.error(error);

@@ -42,12 +42,12 @@ export default function ShortlistModal({
  const handleSubmit = async () => {
 
  if (!candidateId) {
- alert("Candidate ID missing");
+ toast.error("Candidate ID missing");
  return;
  }
 
  if (!selectedPosition) {
- alert("Please select a position");
+ toast.error("Please select a position");
  return;
  }
 

@@ -21,7 +21,8 @@ from app.schemas.ai_schemas import (
     ScorecardAutoFillRequest, ScorecardAutoFillResponse,
     RedFlagDetectionResponse,
     AIChatRequest, AIChatResponse,
-    SalaryBenchmarkResponse
+    SalaryBenchmarkResponse,
+    RejectionEmailDraftRequest, RejectionEmailDraftResponse
 )
 from app.services.ai_features_service import (
     generate_screening_reasoning,
@@ -38,7 +39,8 @@ from app.services.ai_features_service import (
     detect_resume_red_flags,
     fetch_salary_benchmark,
     process_recruiter_chat,
-    process_careers_chat
+    process_careers_chat,
+    draft_rejection_email_service
 )
 
 router = APIRouter(prefix="/api/ai", tags=["AI Features"])
@@ -175,3 +177,9 @@ def post_recruiter_chat(req: AIChatRequest, db: Session = Depends(get_db)):
 @router.post("/careers-chat", response_model=AIChatResponse)
 def post_careers_chat(req: AIChatRequest, db: Session = Depends(get_db)):
     return process_careers_chat(req.message, req.conversation_history or [], db)
+
+# 1.15 AI Rejection Email Generator
+@router.post("/draft-rejection-email", response_model=RejectionEmailDraftResponse)
+def post_draft_rejection_email(req: RejectionEmailDraftRequest):
+    return draft_rejection_email_service(req)
+

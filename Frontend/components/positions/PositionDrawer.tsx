@@ -4,11 +4,12 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getMatchingCandidates } from "@/services/matching";
-import { X, MapPin, Briefcase, Users, Wallet } from "lucide-react";
+import { X, MapPin, Briefcase, Users, Wallet, Sparkles, Code2 } from "lucide-react";
 import { Position } from "@/types/positon";
 import { hasPermission } from "@/utils/permissions";
 import AISourcingStrategyCard from "@/components/ai/AISourcingStrategyCard";
 import AISalaryBenchmarkWidget from "@/components/ai/AISalaryBenchmarkWidget";
+import { CandidateComparisonModal } from "@/components/candidates/CandidateComparisonModal";
 
 interface Props {
   open: boolean;
@@ -27,6 +28,7 @@ export default function PositionDrawer({
 }: Props) {
   const router = useRouter();
   const [matchingCandidates, setMatchingCandidates] = useState<any[]>([]);
+  const [comparisonOpen, setComparisonOpen] = useState(false);
 
   useEffect(() => {
     const loadMatches = async () => {
@@ -114,6 +116,37 @@ export default function PositionDrawer({
             </div>
           </div>
 
+          {/* Required Skills */}
+          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-[#161C2C] p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-blue-500" />
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Required Skills
+                </h3>
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/15 text-blue-400 border border-blue-500/25">
+                {position.skills?.length || 0} Skills
+              </span>
+            </div>
+
+            {(!position.skills || position.skills.length === 0) ? (
+              <p className="text-xs text-slate-400">No specific skills listed for this position.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {position.skills.map((skill, idx) => (
+                  <span
+                    key={`${skill}-${idx}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-white dark:bg-[#1B2337] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-2xs hover:border-blue-500/40 transition-all"
+                  >
+                    <Code2 className="w-3 h-3 text-blue-500/80 shrink-0" />
+                    {skill.trim()}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* AI Salary Benchmarks & Sourcing Strategy */}
           {position.id && (() => {
             const expString = (position.experience || "").toLowerCase();
@@ -199,6 +232,14 @@ export default function PositionDrawer({
                 View Pipeline
               </button>
 
+              <button
+                onClick={() => setComparisonOpen(true)}
+                className="w-full rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 px-5 py-3 text-sm font-semibold text-white shadow-md transition flex items-center justify-center gap-2"
+              >
+                <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                ✨ Compare Candidates with AI
+              </button>
+
               {hasPermission("positions.delete") && (
                 <button
                   onClick={onDelete}
@@ -211,6 +252,33 @@ export default function PositionDrawer({
           </div>
         </div>
       </motion.div>
+
+      <CandidateComparisonModal
+        isOpen={comparisonOpen}
+        onClose={() => setComparisonOpen(false)}
+        candidates={
+          matchingCandidates && matchingCandidates.length > 0
+            ? matchingCandidates.slice(0, 4).map((c: any) => ({
+                id: String(c.candidate_id || c.id),
+                name: c.candidate_name || c.full_name || "Candidate",
+                email: c.email || "-",
+                company: c.company || position?.title || "Company",
+                role: c.role || position?.title || "Software Engineer",
+                experience: c.experience || 3,
+                location: c.location || position?.location || "Remote",
+                skills: Array.isArray(c.skills)
+                  ? c.skills
+                  : typeof c.skills === "string"
+                  ? c.skills.split(",").map((s: string) => s.trim()).filter(Boolean)
+                  : ["React", "TypeScript"],
+                status: c.status || "Shortlisted",
+                matchScore: c.match_score || 88,
+                owner: "Recruiter",
+                avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80",
+              }))
+            : []
+        }
+      />
     </motion.div>
   );
 }

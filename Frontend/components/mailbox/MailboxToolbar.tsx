@@ -12,6 +12,7 @@ import {
  disconnectMailbox,
  syncMailbox,
 } from "@/services/mailboxService";
+import { toast } from "sonner";
 
 export default function MailboxToolbar() {
  const [loading, setLoading] = useState(false);
@@ -25,7 +26,7 @@ export default function MailboxToolbar() {
  window.location.href = data.authorization_url;
  } catch (error) {
  console.error(error);
- alert("Failed to connect mailbox.");
+ toast.error("Failed to connect mailbox.");
  } finally {
  setLoading(false);
  }
@@ -37,10 +38,10 @@ export default function MailboxToolbar() {
 
  await disconnectMailbox();
 
- alert("Mailbox disconnected.");
+ toast.success("Mailbox disconnected.");
  } catch (error) {
  console.error(error);
- alert("Failed to disconnect mailbox.");
+ toast.error("Failed to disconnect mailbox.");
  } finally {
  setLoading(false);
  }
@@ -52,12 +53,10 @@ export default function MailboxToolbar() {
 
  const result = await syncMailbox();
 
- alert(
- `Sync completed.\nSynced: ${result.synced}\nSkipped: ${result.skipped}`
- );
+ toast.success(`Sync completed. Synced: ${result.synced} | Skipped: ${result.skipped}`);
  } catch (error) {
  console.error(error);
- alert("Mailbox sync failed.");
+ toast.error("Mailbox sync failed.");
  } finally {
  setLoading(false);
  }

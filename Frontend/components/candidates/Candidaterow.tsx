@@ -64,7 +64,7 @@ export function CandidateRow({
  </Link>
  <p className="text-xs text-muted flex items-center gap-1 mt-0.5">
  <MapPin className="w-3 h-3" />
- {candidate.location}
+ {candidate.location || "Remote / Unspecified"}
  </p>
  </div>
  </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
 import { motion } from "framer-motion";
 import CreatePositionModal from "./CreatePositionModal";
 import { Plus } from "lucide-react";
@@ -13,164 +12,102 @@ import PositionStats from "./PositionStats";
 import PositionFilters from "./PositionFilters";
 import EditPositionModal from "./EditPositionModal";
 import { PositionApplicantsModal } from "./PositionApplicantsModal";
+import { PositionSkillsModal } from "./PositionSkillsModal";
 
 export default function PositionLayout() {
+  const [search, setSearch] = useState("");
+  const [openModal, setOpenModal] = useState(false);
+  const [allPositions, setAllPositions] = useState<Position[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedPosition, setSelectedPosition] = useState<Position | null>(null);
+  const [openEditModal, setOpenEditModal] = useState(false);
+  const [openDrawer, setOpenDrawer] = useState(false);
+  const [applicantsPosition, setApplicantsPosition] = useState<Position | null>(null);
+  const [skillsPosition, setSkillsPosition] = useState<Position | null>(null);
 
- const [search, setSearch] = useState("");
+  useEffect(() => {
+    fetchPositions();
+  }, []);
 
- const [openModal, setOpenModal] =
- useState(false);
+  const fetchPositions = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem("token");
+      const [positionsResponse, pipelinesResponse] = await Promise.all([
+        fetch(
+          (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000") + "/positions/",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        ),
+        fetch(
+          (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000") + "/pipelines/"
+        ),
+      ]);
 
- const [allPositions, setAllPositions] =
- useState<any[]>([]);
- const [loading, setLoading] =
- useState(true);
- const [error, setError] =
- useState<string | null>(null);
+      if (!positionsResponse.ok || !pipelinesResponse.ok) {
+        throw new Error("Failed to load positions");
+      }
 
- const [selectedPosition, setSelectedPosition] =
- useState<Position | null>(null);
+      const [positionsData, pipelinesData] = await Promise.all([
+        positionsResponse.json(),
+        pipelinesResponse.json(),
+      ]);
 
- const [openEditModal, setOpenEditModal] =
- useState(false);
+      const applicantsByPosition = pipelinesData.reduce(
+        (acc: Record<number, number>, pipeline: any) => {
+          const positionId = Number(pipeline.position_id);
+          acc[positionId] = (acc[positionId] || 0) + 1;
+          return acc;
+        },
+        {}
+      );
 
- const [openDrawer, setOpenDrawer] =
- useState(false);
+      const formattedPositions: Position[] = positionsData.map((position: any) => ({
+        id: position.id,
+        title: position.title,
+        company: position.company,
+        department: position.company || "General",
+        location: position.location,
+        description: position.description,
+        type: "Full Time",
+        experience: "Not specified",
+        salary: "Not specified",
+        openings: 1,
+        skills: position.required_skills
+          ? Array.isArray(position.required_skills)
+            ? position.required_skills
+            : typeof position.required_skills === "string"
+            ? position.required_skills.split(",").map((s: string) => s.trim()).filter(Boolean)
+            : []
+          : Array.isArray(position.skills)
+          ? position.skills
+          : [],
+        status: "Open",
+        is_published: !!position.is_published,
+        recruiter: "Recruiting Team",
+        postedDate: "",
+        applicants: applicantsByPosition[Number(position.id)] || 0,
+      }));
 
- const [applicantsPosition, setApplicantsPosition] = useState<Position | null>(null);
+      setAllPositions(formattedPositions);
+    } catch (err) {
+      console.error(err);
+      setError("Unable to load positions. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
- useEffect(() => {
-
- fetchPositions()
-
- }, []);
-
- const fetchPositions = async () => {
-
- setLoading(true);
- setError(null);
-
- try {
-
- const token =
- localStorage.getItem("token");
-
- const [positionsResponse, pipelinesResponse] =
- await Promise.all([
- fetch(
- (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + "/positions/",
- {
- headers: {
-
- Authorization:
- `Bearer ${token}`,
- },
- }
- ),
- fetch(
- (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + "/pipelines/"
- ),
- ]);
-
- if (
- !positionsResponse.ok ||
- !pipelinesResponse.ok
- ) {
- throw new Error(
- "Failed to load positions"
- );
- }
-
- const [positionsData, pipelinesData] =
- await Promise.all([
- positionsResponse.json(),
- pipelinesResponse.json(),
- ]);
-
- const applicantsByPosition =
- pipelinesData.reduce(
- (
- acc: Record<number, number>,
- pipeline: any
- ) => {
- const positionId = Number(
- pipeline.position_id
- );
-
- acc[positionId] =
- (acc[positionId] || 0) + 1;
-
- return acc;
- },
- {}
- );
-
- const formattedPositions = positionsData.map(
- (position: any) => ({
-
- id: position.id,
-
- title: position.title,
-
- company: position.company,
-
- department:
- position.company || "General",
-
- location: position.location,
-
- description:
- position.description,
-
- type: "Full Time",
-
- experience: "Not specified",
-
- salary: "Not specified",
-
- openings: 1,
-
- skills:
- position.required_skills
- ? position.required_skills.split(",")
- : [],
-
- status: "Open",
-
- is_published: !!position.is_published,
-
- recruiter: "Recruiting Team",
-
- postedDate: "",
-
- applicants:
- applicantsByPosition[
- Number(position.id)
- ] || 0,
- })
- );
-
- setAllPositions(
- formattedPositions
- );
-
- } catch (error) {
-
- console.log(error);
- setError(
- "Unable to load positions. Please try again."
- );
- } finally {
-
- setLoading(false);
- }
- };
-
- const handleTogglePublish = async (positionId: number, currentStatus: boolean) => {
+  const handleTogglePublish = async (positionId: number, currentStatus: boolean) => {
     try {
       const nextStatus = !currentStatus;
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/positions/${positionId}/publish`,
+        `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/positions/${positionId}/publish`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -189,211 +126,131 @@ export default function PositionLayout() {
     }
   };
 
- const filteredPositions =
- allPositions.filter(
- (position) =>
- position.title
- .toLowerCase()
- .includes(
- search.toLowerCase()
- )
- );
+  const filteredPositions = allPositions.filter((position) =>
+    position.title.toLowerCase().includes(search.toLowerCase())
+  );
 
- return (
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="flex-1 p-6 lg:p-8"
+    >
+      {/* Header */}
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-text-primary">
+            Positions Management
+          </h1>
+          <p className="mt-2 text-muted">
+            Manage job openings, hiring workflows, and recruitment operations
+          </p>
+        </div>
 
- <motion.div
- initial={{
- opacity: 0,
- y: 20
- }}
- animate={{
- opacity: 1,
- y: 0
- }}
- transition={{
- duration: 0.4
- }}
- className="flex-1 p-6 lg:p-8"
- >
+        {hasPermission("positions.create") && (
+          <button
+            onClick={() => setOpenModal(true)}
+            className="flex items-center gap-2 rounded-2xl bg-violet-600 px-5 py-3 text-sm font-medium text-white hover:bg-violet-500 transition"
+          >
+            <Plus className="h-5 w-5" />
+            Create Position
+          </button>
+        )}
+      </div>
 
- {/* Header */}
+      {/* Stats */}
+      <div className="mt-8">
+        <PositionStats />
+      </div>
 
- <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+      {/* Filters */}
+      <div className="mt-8">
+        <PositionFilters search={search} setSearch={setSearch} />
+      </div>
 
- <div>
+      {error && (
+        <div className="mt-6 rounded-2xl border border-red-800 bg-red-900/30 px-4 py-3 text-sm text-red-300">
+          {error}
+        </div>
+      )}
 
- <h1 className="text-3xl font-bold text-text-primary">
+      {/* Positions Table */}
+      <div className="mt-8">
+        {loading ? (
+          <div className="rounded-2xl border border-border bg-card p-6 text-muted">
+            Loading positions...
+          </div>
+        ) : (
+          <PositionTable
+            positions={filteredPositions}
+            onTogglePublish={handleTogglePublish}
+            onViewApplicants={(pos) => setApplicantsPosition(pos)}
+            onViewSkills={(pos) => setSkillsPosition(pos)}
+            onSelect={(position) => {
+              setSelectedPosition(position);
+              setOpenDrawer(true);
+            }}
+          />
+        )}
+      </div>
 
- Positions Management
+      <CreatePositionModal
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+        onCreate={(newPosition) => setAllPositions((prev) => [newPosition, ...prev])}
+      />
 
- </h1>
+      <PositionDrawer
+        open={openDrawer}
+        onClose={() => setOpenDrawer(false)}
+        position={selectedPosition}
+        onEdit={() => setOpenEditModal(true)}
+        onDelete={async () => {
+          if (!selectedPosition) return;
+          try {
+            const response = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/positions/${selectedPosition.id}`,
+              {
+                method: "DELETE",
+              }
+            );
+            if (!response.ok) {
+              throw new Error("Failed to delete position");
+            }
+            setAllPositions((prev) =>
+              prev.filter((item) => item.id !== selectedPosition.id)
+            );
+            setOpenDrawer(false);
+          } catch (err) {
+            console.error(err);
+            setError("Unable to delete position. Please try again.");
+          }
+        }}
+      />
 
- <p className="mt-2 text-muted">
+      <EditPositionModal
+        open={openEditModal}
+        onClose={() => setOpenEditModal(false)}
+        position={selectedPosition}
+        onSave={(updated) => {
+          setAllPositions((prev) =>
+            prev.map((item) => (item.id === updated.id ? updated : item))
+          );
+        }}
+      />
 
- Manage job openings,
- hiring workflows,
- and recruitment operations
+      <PositionApplicantsModal
+        isOpen={!!applicantsPosition}
+        onClose={() => setApplicantsPosition(null)}
+        position={applicantsPosition}
+      />
 
- </p>
-
- </div>
-
- {hasPermission("positions.create") && (
- <button
- onClick={() =>
- setOpenModal(true)
- }
- className="flex items-center gap-2 rounded-2xl bg-violet-600 px-5 py-3 text-sm font-medium text-white hover:bg-violet-500 transition"
- >
- <Plus className="h-5 w-5" />
- Create Position
- </button>
- )}
-
- </div>
-
- {/* Stats */}
-
- <div className="mt-8">
-
- <PositionStats />
-
- </div>
-
- {/* Filters */}
-
- <div className="mt-8">
-
- <PositionFilters
- search={search}
- setSearch={setSearch}
- />
-
- </div>
-
- {error && (
- <div className="mt-6 rounded-2xl border border-red-800 bg-red-900/30 px-4 py-3 text-sm text-red-300">
- {error}
- </div>
- )}
-
- {/* Positions Table */}
-
- <div className="mt-8">
-
- {loading ? (
- <div className="rounded-2xl border border-border bg-card p-6 text-muted">
- Loading positions...
- </div>
- ) : (
- <PositionTable
- positions={filteredPositions}
- onTogglePublish={handleTogglePublish}
- onViewApplicants={(pos) => setApplicantsPosition(pos)}
- onSelect={(position) => {
-
- setSelectedPosition(
- position
- );
-
- setOpenDrawer(true);
- }}
- />
- )}
-
- </div>
-
- <CreatePositionModal
- open={openModal}
- onClose={() =>
- setOpenModal(false)
- }
- onCreate={(newPosition) =>
- setAllPositions((prev) => [
-
- newPosition,
-
- ...prev,
- ])
- }
- />
-
- <PositionDrawer
- open={openDrawer}
- onClose={() =>
- setOpenDrawer(false)
- }
- position={selectedPosition}
- onEdit={() =>
- setOpenEditModal(true)
- }
- onDelete={async () => {
-
- if (!selectedPosition)
- return;
-
- try {
-
- const response = await fetch(
- `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/positions/${selectedPosition.id}`,
- {
- method: "DELETE",
- }
- );
-
- if (!response.ok) {
- throw new Error(
- "Failed to delete position"
- );
- }
-
- setAllPositions((prev) =>
-
- prev.filter(
- (item) =>
- item.id !==
- selectedPosition.id
- )
- );
-
- setOpenDrawer(false);
-
- } catch (error) {
-
- console.log(error);
- setError(
- "Unable to delete position. Please try again."
- );
- }
- }}
- />
-
- <EditPositionModal
- open={openEditModal}
- onClose={() =>
- setOpenEditModal(false)
- }
- position={selectedPosition}
- onSave={(updated) => {
-
- setAllPositions((prev) =>
-
- prev.map((item) =>
-
- item.id === updated.id
- ? updated
- : item
- )
- );
- }}
- />
-
- <PositionApplicantsModal
-   isOpen={!!applicantsPosition}
-   onClose={() => setApplicantsPosition(null)}
-   position={applicantsPosition}
- />
-
- </motion.div>
- );
+      <PositionSkillsModal
+        isOpen={!!skillsPosition}
+        onClose={() => setSkillsPosition(null)}
+        position={skillsPosition}
+      />
+    </motion.div>
+  );
 }

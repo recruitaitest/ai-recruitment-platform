@@ -47,7 +47,7 @@ export function RootAppShell({ children }: RootAppShellProps) {
     // Handle cross-tab/window localStorage sync
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'theme') {
-        applyTheme((e.newValue as any) || 'dark');
+        applyTheme((e.newValue as any) || 'light');
       }
     };
     window.addEventListener('storage', handleStorageChange);
@@ -55,7 +55,7 @@ export function RootAppShell({ children }: RootAppShellProps) {
     // Handle system preference changes
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleSystemChange = () => {
-      const activeTheme = localStorage.getItem('theme') || 'dark';
+      const activeTheme = localStorage.getItem('theme') || 'light';
       if (activeTheme === 'system') {
         applyTheme('system');
       }
@@ -75,7 +75,7 @@ export function RootAppShell({ children }: RootAppShellProps) {
     return (
       <>
         {children}
-        <Toaster richColors position="top-right" theme="dark" />
+        <Toaster richColors position="top-right" />
       </>
     )
   }
@@ -85,7 +85,7 @@ export function RootAppShell({ children }: RootAppShellProps) {
       <>
         {children}
         <FloatingCopilot />
-        <Toaster richColors position="top-right" theme="dark" />
+        <Toaster richColors position="top-right" />
       </>
     )
   }
@@ -94,7 +94,7 @@ export function RootAppShell({ children }: RootAppShellProps) {
     <>
       <AppLayout>{children}</AppLayout>
       <FloatingCopilot />
-      <Toaster richColors position="top-right" theme="dark" />
+      <Toaster richColors position="top-right" />
     </>
   )
 }

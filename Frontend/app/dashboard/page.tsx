@@ -88,33 +88,55 @@ export default function DashboardPage() {
 
     const fetchRecentCandidates = async (candidatesList?: any[], pipelineList?: any[], positionsList?: any[]) => {
         try {
-            const cands = candidatesList || candidates
-            const pipelines = pipelineList || []
-            const pos = positionsList || positions
-
-            // Get last 5 candidates
-            const recent = cands.slice(-5).reverse() || []
-            setRecentCandidates(recent)
-
-            // Generate activity feed from recent candidates with position lookup
-            const activities = recent.slice(0, 3).map((candidate: any, index: number) => {
-                const candidatePipeline = pipelines.find((pipeline: any) => Number(pipeline.candidate_id) === Number(candidate.id))
-                const positionTitle = candidatePipeline
-                    ? candidatePipeline.position_title || pos.find((p: any) => Number(p.id) === Number(candidatePipeline.position_id))?.title || 'a position'
-                    : 'a position'
-
-                return {
-                    id: String(candidate.id),
-                    type: 'application' as const,
-                    user: candidate.full_name,
-                    action: 'applied for',
-                    target: positionTitle,
-                    timestamp: `${index + 1} hour${index > 0 ? 's' : ''} ago`,
+            const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + '/dashboard/recent');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.recent_applicants && data.recent_applicants.length > 0) {
+                    setRecentCandidates(data.recent_applicants);
                 }
-            })
-            setActivityFeed(activities)
+                if (data.recent_activity && data.recent_activity.length > 0) {
+                    setActivityFeed(data.recent_activity);
+                    return;
+                }
+            }
+        } catch (err) {
+            console.warn("Direct /dashboard/recent fetch fallback:", err);
+        }
+
+        try {
+            const cands = candidatesList || candidates;
+            const pipelines = pipelineList || [];
+            const pos = positionsList || positions;
+
+            const recent = (cands || []).slice(-5).reverse().map((c: any) => {
+                const pipe = pipelines.find((p: any) => Number(p.candidate_id) === Number(c.id));
+                const targetPosId = c.applied_position_id || (pipe ? pipe.position_id : null);
+                const posTitle = pos.find((p: any) => Number(p.id) === Number(targetPosId))?.title || c.applied_position_title || c.current_designation || 'Software Engineer';
+                const statusVal = pipe ? pipe.stage : (c.status || 'Applied');
+                return {
+                    id: String(c.id),
+                    name: c.full_name || 'Candidate',
+                    position: posTitle,
+                    email: c.email || '-',
+                    experience: c.experience && c.experience > 0 ? `${c.experience} yrs` : 'Fresher',
+                    rating: 4.5,
+                    status: statusVal.toLowerCase(),
+                    appliedDate: c.created_at ? new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recently',
+                };
+            });
+            setRecentCandidates(recent);
+
+            const activities = recent.slice(0, 3).map((candidate: any, index: number) => ({
+                id: String(candidate.id),
+                type: 'application' as const,
+                user: candidate.name,
+                action: 'applied for',
+                target: candidate.position,
+                timestamp: `${index + 1} hour${index > 0 ? 's' : ''} ago`,
+            }));
+            setActivityFeed(activities);
         } catch (error) {
-            console.error('Error processing candidates:', error)
+            console.error('Error processing candidates:', error);
         }
     }
 
@@ -382,29 +404,20 @@ export default function DashboardPage() {
                             itemVariants={itemVariants}
                             applicants={
                                 recentCandidates && recentCandidates.length > 0
-                                    ? recentCandidates.map((candidate: any) => {
-                                        const experienceYears =
-                                            candidate.experience && candidate.experience > 0
-                                                ? `${candidate.experience}+ years`
-                                                : 'Entry level'
-
-                                        const positionName = candidate.company || 'Candidate'
-
-                                        return {
-                                            id: String(candidate.id),
-                                            name: candidate.full_name,
-                                            position: positionName,
-                                            email: candidate.email,
-                                            experience: experienceYears,
-                                            rating: 4.5,
-                                            status: (candidate.status || 'screening') as
-                                                | 'screening'
-                                                | 'interview'
-                                                | 'offer'
-                                                | 'rejected',
-                                            appliedDate: 'Recently',
-                                        }
-                                    })
+                                    ? recentCandidates.map((candidate: any) => ({
+                                        id: String(candidate.id),
+                                        name: candidate.name || candidate.full_name || 'Candidate',
+                                        position: candidate.position || candidate.applied_position_title || candidate.current_designation || 'Software Developer',
+                                        email: candidate.email || '-',
+                                        experience: typeof candidate.experience === 'string' ? candidate.experience : (candidate.experience > 0 ? `${candidate.experience} yrs` : 'Fresher'),
+                                        rating: candidate.rating || 4.5,
+                                        status: (candidate.status || 'screening').toLowerCase() as
+                                            | 'screening'
+                                            | 'interview'
+                                            | 'offer'
+                                            | 'rejected',
+                                        appliedDate: candidate.appliedDate || (candidate.created_at ? new Date(candidate.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recently'),
+                                    }))
                                     : undefined
                             }
                         />

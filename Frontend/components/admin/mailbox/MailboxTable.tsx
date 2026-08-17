@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import api from "@/lib/api";
 import ConnectMailboxModal from "@/components/mailbox/ConnectMailboxModal";
+import { toast } from "sonner";
 
 type Mailbox = {
  id: number;
@@ -27,15 +28,15 @@ export default function MailboxTable() {
  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
 
  const handleDisconnect = async (id: number) => {
- if (!confirm("Are you sure you want to disconnect this mailbox?")) return;
- try {
- await api.post(`/mailbox/disconnect`);
- const response = await api.get("/mailbox/accounts");
- setMailboxes(response.data);
- } catch (error) {
- console.error("Failed to disconnect mailbox:", error);
- alert("Failed to disconnect mailbox");
- }
+  try {
+   await api.post(`/mailbox/disconnect`);
+   const response = await api.get("/mailbox/accounts");
+   setMailboxes(response.data);
+   toast.success("Mailbox disconnected.");
+  } catch (error) {
+   console.error("Failed to disconnect mailbox:", error);
+   toast.error("Failed to disconnect mailbox");
+  }
  };
 
  useEffect(() => {

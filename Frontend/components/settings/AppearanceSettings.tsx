@@ -135,7 +135,7 @@ function ToggleOption({ icon, title, description, checked, onChange }: ToggleOpt
 }
 
 export default function AppearanceSettings() {
- const [theme, setTheme] = useState<Theme>("dark");
+ const [theme, setTheme] = useState<Theme>("light");
  const [compact, setCompact] = useState(false);
  const [animations, setAnimations] = useState(true);
  const [saved, setSaved] = useState(false);

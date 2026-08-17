@@ -60,6 +60,7 @@ export default function InterviewFilters({
  <option>All Status</option>
  <option>Scheduled</option>
  <option>Completed</option>
+ <option>Rejected</option>
  <option>Pending</option>
  </select>
 

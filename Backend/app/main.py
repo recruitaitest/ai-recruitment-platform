@@ -272,6 +272,7 @@ app.include_router(
 
 # ── Dashboard ────────────────────────────────────────────────────────────────
 app.include_router(dashboard.router)
+app.include_router(dashboard.router, prefix="/api")
 
 # ── Career Portal ────────────────────────────────────────────────────────────
 app.include_router(portal.router)

@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { updateUser } from "@/services/adminService";
 import { getRoles } from "@/services/adminService";
+import { toast } from "sonner";
 
 interface EditUserModalProps {
  editUser: any;
@@ -57,7 +58,7 @@ export default function EditUserModal({
  }
  } catch (error) {
  console.error(error);
- alert("Failed to update user");
+ toast.error("Failed to update user");
  }
  };
  useEffect(() => {

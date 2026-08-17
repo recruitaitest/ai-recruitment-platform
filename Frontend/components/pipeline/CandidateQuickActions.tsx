@@ -712,11 +712,13 @@ export default function CandidateQuickActions(props: CandidateQuickActionsProps)
  setConfirm(null);
  }}
  onPointerDown={(e) => e.stopPropagation()}
- className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-150 ${
- isOpen ? "bg-secondary-surface text-text-primary" : "text-gray-500 hover:bg-secondary-surface hover:text-text-secondary"
+ className={`flex h-7 items-center gap-1 px-2 rounded-lg transition-all duration-150 border border-transparent hover:border-border/60 ${
+ isOpen ? "bg-secondary-surface text-text-primary border-border" : "text-slate-400 hover:bg-secondary-surface hover:text-text-secondary"
  }`}
+ title="Candidate Actions Menu"
  >
- <MoreHorizontal className="h-4 w-4" />
+ <MoreHorizontal className="h-3.5 w-3.5" />
+ <span className="text-xs text-slate-400 font-medium">Menu</span>
  </button>
 
  {isOpen && (

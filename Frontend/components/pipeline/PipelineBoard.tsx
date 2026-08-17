@@ -17,11 +17,13 @@ import EditOfferModal from "../offer/EditOfferModal";
 import AddNoteModal from "./AddNoteModal";
 import CalendarModal from "./CalendarModal";
 import ConfirmScreeningModal from "./ConfirmScreeningModal";
+import RejectCandidateModal from "./RejectCandidateModal";
 import { BulkStageModal } from "../candidates/BulkStageModal";
 import { getInterviews } from "@/services/interviewService"; // ✅ Fix casing
 import { getOffers, updateOfferStatus } from "@/services/offerService";
 import api from "@/lib/api";
 import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import {
  DndContext,
  DragEndEvent,
@@ -100,6 +102,9 @@ export default function PipelineBoard() {
  const [bulkStageOpen, setBulkStageOpen] = useState(false);
  const [bulkLoading, setBulkLoading] = useState(false);
  const [selectedCardIds, setSelectedCardIds] = useState<Set<string>>(new Set());
+
+ const [rejectModalOpen, setRejectModalOpen] = useState(false);
+ const [rejectCandidate, setRejectCandidate] = useState<any>(null);
 
  const handleToggleSelectCandidate = (id: string) => {
    setSelectedCardIds((prev) => {
@@ -377,6 +382,13 @@ export default function PipelineBoard() {
       updateCandidateStage(candidateId, newStage);
       return;
     }
+
+    if (newStage === "Rejected") {
+      setRejectCandidate(candidate);
+      setRejectModalOpen(true);
+      return;
+    }
+
     updateCandidateStage(candidateId, newStage);
   };
 
@@ -388,7 +400,13 @@ export default function PipelineBoard() {
   };
 
   const handleReject = (candidateId: string) => {
-    updateCandidateStage(candidateId, "Rejected");
+    const candidate = candidates.find((c) => c.id === candidateId);
+    if (candidate) {
+      setRejectCandidate(candidate);
+      setRejectModalOpen(true);
+    } else {
+      updateCandidateStage(candidateId, "Rejected");
+    }
   };
 
   const handleRemoveCandidate = async (candidateId: string) => {
@@ -481,10 +499,10 @@ export default function PipelineBoard() {
  c => c.id === candidateId
  );
 
- if (!candidate) {
- alert("Candidate not found.");
- return;
- }
+  if (!candidate) {
+  toast.error("Candidate not found.");
+  return;
+  }
 
  // Determine expected interview type based on candidate's current pipeline stage
  const stageToType: Record<string, string[]> = {
@@ -523,12 +541,10 @@ export default function PipelineBoard() {
  );
  }
 
- if (!interview) {
- alert(
- "No matching interview found for this candidate's current stage."
- );
- return;
- }
+  if (!interview) {
+  toast.error("No matching interview found for this candidate's current stage.");
+  return;
+  }
 
  setSelectedInterview({
  ...interview,
@@ -614,10 +630,10 @@ export default function PipelineBoard() {
  if (!status) return;
  const validStatuses = ["Accepted", "Rejected", "Withdrawn"];
  const matchedStatus = validStatuses.find(s => s.toLowerCase() === status.toLowerCase());
- if (!matchedStatus) {
- alert("Invalid status. Please enter Accepted, Rejected, or Withdrawn.");
- return;
- }
+  if (!matchedStatus) {
+  toast.error("Invalid status. Please enter Accepted, Rejected, or Withdrawn.");
+  return;
+  }
  
  try {
  await updateOfferStatus(offerId, matchedStatus);
@@ -812,6 +828,15 @@ export default function PipelineBoard() {
         totalCandidates={totalPipelineRecords}
         activeCandidates={activePipelineRecords}
       />
+
+      {/* Bulk Actions Hint Banner */}
+      <div className="mt-4 px-4 py-2.5 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/70 dark:border-indigo-800/40 flex items-center justify-between text-xs text-indigo-900 dark:text-indigo-200 shadow-2xs">
+        <div className="flex items-center gap-2">
+          <span className="px-1.5 py-0.5 rounded-md bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-bold text-[11px]">💡 Tip</span>
+          <span>Select multiple candidates to bulk-move them between stages.</span>
+        </div>
+        <span className="text-[11px] text-slate-500 dark:text-slate-400">Use card checkboxes to select</span>
+      </div>
 
   {error && (
   <div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3.5 text-sm font-semibold text-red-600 dark:text-red-400 flex items-center justify-between shadow-sm">
@@ -1049,6 +1074,18 @@ export default function PipelineBoard() {
  setScreeningCandidate(null);
  }}
  />
+
+ <RejectCandidateModal
+    isOpen={rejectModalOpen}
+    onClose={() => {
+      setRejectModalOpen(false);
+      setRejectCandidate(null);
+    }}
+    candidate={rejectCandidate}
+    onRejectSuccess={async () => {
+      await fetchPipelines();
+    }}
+  />
 
   {/* Floating Selection Action Bar for Particular Selected Candidates */}
   {selectedCardIds.size > 0 && (

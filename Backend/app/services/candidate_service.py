@@ -66,7 +66,12 @@ class CandidateService:
 
             # Attach applied role title and AI match score
             target_pos = pos_map.get(candidate.applied_position_id) if candidate.applied_position_id else None
-            candidate.applied_position_title = target_pos.title if target_pos else (candidate.current_designation or "Software Developer")
+            if target_pos:
+                candidate.applied_position_title = target_pos.title
+            elif candidate.source == "Career Portal" and candidate.current_designation:
+                candidate.applied_position_title = candidate.current_designation
+            else:
+                candidate.applied_position_title = candidate.current_designation or None
             
             # Dynamic AI match score
             if target_pos and target_pos.required_skills and candidate.skills:
@@ -98,7 +103,7 @@ class CandidateService:
                 else:
                     candidate.match_score = 85
         else:
-            candidate.applied_position_title = candidate.current_designation or "Software Developer"
+            candidate.applied_position_title = candidate.current_designation or None
             candidate.match_score = 85
 
         return candidate

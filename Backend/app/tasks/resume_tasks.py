@@ -104,6 +104,8 @@ def process_resume_task(candidate_id: int, file_path: str):
         candidate.education = ", ".join(education) if isinstance(education, list) else (education or "")
         candidate.experience = experience
         candidate.location = location or candidate.location
+        candidate.linkedin_url = getattr(gemini_details, 'linkedin_url', None) or getattr(gemini_details, 'linkedin', None) or candidate.linkedin_url
+        candidate.summary = gemini_details.summary
         candidate.resume_hash = resume_hash
         candidate.resume_text = text
         candidate.status = "Applied"

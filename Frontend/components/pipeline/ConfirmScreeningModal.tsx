@@ -43,17 +43,17 @@ export default function ConfirmScreeningModal({
  animate={{ opacity: 1 }}
  exit={{ opacity: 0 }}
  onClick={onClose}
- className="fixed inset-0 z-[100] bg-surface/40 dark:bg-black/60 backdrop-blur-sm"
+ className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm"
  />
 
  <motion.div
  initial={{ opacity: 0, scale: 0.95, y: 20 }}
  animate={{ opacity: 1, scale: 1, y: 0 }}
  exit={{ opacity: 0, scale: 0.95, y: 20 }}
- className="fixed left-1/2 top-1/2 z-[100] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border dark:border-border bg-white dark:bg-card shadow-2xl"
+ className="fixed left-1/2 top-1/2 z-[100] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-surface dark:bg-[#151D2F] shadow-2xl overflow-hidden"
  >
- <div className="flex items-center justify-between border-b border-border dark:border-border px-6 py-5">
- <h2 className="text-xl font-semibold text-slate-900 dark:text-text-primary">
+ <div className="flex items-center justify-between border-b border-border px-6 py-5 bg-surface dark:bg-[#151D2F]">
+ <h2 className="text-xl font-semibold text-text-primary">
  Move to Screening
  </h2>
  <button

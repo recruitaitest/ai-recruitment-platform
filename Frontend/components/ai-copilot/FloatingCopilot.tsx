@@ -6,6 +6,7 @@ import { MessageSquare, X, Send, Sparkles, Bot, Loader2, GripVertical } from "lu
 import { usePathname } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import api from "@/lib/api";
+import { checkAiTokenAvailability, deductAiTokens, handleAiApiError } from "@/lib/aiTokenGuard";
 
 export default function FloatingCopilot() {
   const pathname = usePathname();
@@ -85,6 +86,10 @@ export default function FloatingCopilot() {
     const textToSend = overrideText || input;
     if (!textToSend.trim() || isTyping) return;
 
+    if (!checkAiTokenAvailability(1)) {
+      return;
+    }
+
     const userText = textToSend.trim();
     setMessages((prev) => [...prev, { sender: "user", text: userText }]);
     if (!overrideText) setInput("");
@@ -100,11 +105,14 @@ export default function FloatingCopilot() {
         { headers: { "X-Portal-Type": "recruiter" } }
       );
 
+      deductAiTokens(5);
+
       const botReply =
         res.data?.response ||
         "I am your Senior Recruitment Operations Assistant. How can I assist with your candidate pipeline today?";
       setMessages((prev) => [...prev, { sender: "bot", text: botReply }]);
-    } catch {
+    } catch (err: any) {
+      handleAiApiError(err);
       // Intelligent fallback if backend encounters an issue
       const lower = userText.toLowerCase();
       let botResponse =

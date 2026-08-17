@@ -318,6 +318,41 @@ export default function InterviewLayout() {
    );
  };
 
+  const renderStatusBadge = (status: string) => {
+    switch (status) {
+      case "Scheduled":
+        return (
+          <span className="inline-block rounded-full px-3 py-1 text-xs font-semibold bg-violet-500/15 text-violet-400 border border-violet-500/20">
+            Scheduled
+          </span>
+        );
+      case "Completed":
+        return (
+          <span className="inline-block rounded-full px-3 py-1 text-xs font-semibold bg-green-500/15 text-green-400 border border-green-500/20">
+            Completed
+          </span>
+        );
+      case "Rejected":
+        return (
+          <span className="inline-block rounded-full px-3 py-1 text-xs font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/20">
+            Rejected
+          </span>
+        );
+      case "Cancelled":
+        return (
+          <span className="inline-block rounded-full px-3 py-1 text-xs font-semibold bg-slate-500/15 text-slate-400 border border-slate-500/20">
+            Cancelled
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-block rounded-full px-3 py-1 text-xs font-semibold bg-yellow-500/15 text-yellow-400 border border-yellow-500/20">
+            {status || "Pending"}
+          </span>
+        );
+    }
+  };
+
  const sortInterviewList = (list: any[], config: { key: string; direction: "asc" | "desc" }) => {
    return [...list].sort((a, b) => {
      const aValue = a[config.key] ?? "";
@@ -343,11 +378,11 @@ export default function InterviewLayout() {
    });
  };
 
- const rawUpcoming = filteredInterviews.filter((item) => item.status !== "Completed");
- const rawCompleted = filteredInterviews.filter((item) => item.status === "Completed");
+  const rawUpcoming = filteredInterviews.filter((item) => item.status === "Scheduled" || item.status === "Pending");
+  const rawCompleted = filteredInterviews.filter((item) => item.status !== "Scheduled" && item.status !== "Pending");
 
- const upcomingInterviews = sortInterviewList(rawUpcoming, upcomingSortConfig);
- const completedInterviews = sortInterviewList(rawCompleted, completedSortConfig);
+  const upcomingInterviews = sortInterviewList(rawUpcoming, upcomingSortConfig);
+  const completedInterviews = sortInterviewList(rawCompleted, completedSortConfig);
 
  const visibleUpcoming = showAllUpcoming ? upcomingInterviews : upcomingInterviews.slice(0, 3);
  const visibleCompleted = showAllCompleted ? completedInterviews : completedInterviews.slice(0, 3);
@@ -561,17 +596,7 @@ export default function InterviewLayout() {
                     {renderModeBadge(item.mode)}
                   </td>
                   <td className="py-4">
-                    <span
-                      className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${
-                        item.status === "Scheduled"
-                          ? "bg-violet-500/15 text-violet-400 border border-violet-500/20"
-                          : item.status === "Completed"
-                          ? "bg-green-500/15 text-green-400 border border-green-500/20"
-                          : "bg-yellow-500/15 text-yellow-400 border border-yellow-500/20"
-                      }`}
-                    >
-                      {item.status}
-                    </span>
+                    {renderStatusBadge(item.status)}
                   </td>
                   <td className="py-4 text-center" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-center gap-1.5 flex-wrap">
@@ -730,9 +755,7 @@ export default function InterviewLayout() {
                     )}
                   </td>
                   <td className="py-4">
-                    <span className="inline-block rounded-full px-3 py-1 text-xs font-semibold bg-green-500/15 text-green-400 border border-green-500/20">
-                      {item.status}
-                    </span>
+                    {renderStatusBadge(item.status)}
                   </td>
                   <td className="py-4 text-center" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-center gap-1.5 flex-wrap">

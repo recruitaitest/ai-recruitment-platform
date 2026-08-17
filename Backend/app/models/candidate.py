@@ -18,8 +18,10 @@ class Candidate(Base):
     original_filename = Column(String, nullable=True)
     company     = Column(String, nullable=True, default=None)
     location    = Column(String, nullable=True, default=None)
+    linkedin_url = Column(String, nullable=True, default=None)
     experience  = Column(Integer, nullable=True, default=0)
     status      = Column(String, nullable=True, default="Applied")
+    summary     = Column(Text, nullable=True)
     
     current_ctc        = Column(String, nullable=True)
     expected_ctc       = Column(String, nullable=True)

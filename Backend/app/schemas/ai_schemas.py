@@ -201,3 +201,24 @@ class AIChatResponse(BaseModel):
     response: str
     portal_type: str
     is_refusal: bool = False
+
+# 1.15 AI Rejection Email Drafting & Sending
+class RejectionEmailDraftRequest(BaseModel):
+    candidate_name: str
+    position_title: str
+    rejection_reason: str
+    company_name: Optional[str] = "Our Organization"
+    tone: Optional[str] = "Empathetic & Professional"
+
+class RejectionEmailDraftResponse(BaseModel):
+    subject: str
+    body: str
+
+class RejectCandidateRequest(BaseModel):
+    candidate_id: int
+    position_id: Optional[int] = None
+    rejection_reason: str
+    email_subject: Optional[str] = None
+    email_body: Optional[str] = None
+    send_email: bool = False
+

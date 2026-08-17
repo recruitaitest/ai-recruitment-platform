@@ -6,6 +6,7 @@ import {
  getAISettings,
  updateAISettings,
 } from "@/services/adminService";
+import { toast } from "sonner";
 
 export default function AISettings() {
 
@@ -44,9 +45,7 @@ export default function AISettings() {
  if (
  response.success
  ) {
- alert(
- "AI Settings updated successfully"
- );
+ toast.success("AI Settings updated successfully");
  }
 
  } catch (error) {

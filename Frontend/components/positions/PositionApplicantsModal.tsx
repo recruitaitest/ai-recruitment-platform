@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, X, Sparkles, Search, CheckCircle2, Briefcase, Mail, Loader2 } from "lucide-react";
 import { CandidateComparisonModal } from "@/components/candidates/CandidateComparisonModal";
+import { toast } from "sonner";
 
 interface Position {
   id: number;
@@ -209,16 +210,28 @@ export function PositionApplicantsModal({
               />
             </div>
 
-            {/* Compare Button */}
-            {selected.size >= 2 && (
-              <button
-                onClick={() => setComparisonOpen(true)}
-                className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md transition flex items-center gap-1.5"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                Compare {selected.size} Selected Candidates
-              </button>
-            )}
+            {/* Prominent AI Compare Candidates Action */}
+            <button
+              onClick={() => {
+                if (selected.size >= 2) {
+                  setComparisonOpen(true);
+                } else if (filtered.length >= 2) {
+                  setSelected(new Set(filtered.slice(0, 2).map((c) => c.id)));
+                  setComparisonOpen(true);
+                } else if (filtered.length === 1) {
+                  toast.error("At least 2 candidates are needed to perform side-by-side AI comparison.");
+                } else {
+                  toast.error("No candidates available for comparison yet.");
+                }
+              }}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 via-indigo-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-white font-semibold text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]"
+              title="Compare candidates side-by-side using AI"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+              {selected.size >= 2
+                ? `✨ Compare (${selected.size}) Candidates with AI`
+                : "✨ Compare Candidates with AI"}
+            </button>
           </div>
 
           {/* Applicants Table Body */}

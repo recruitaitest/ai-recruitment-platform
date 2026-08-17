@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/Button'
 import { Input } from '@/components/Input'
 import { GoogleLogin } from "@react-oauth/google";
+import { toast } from 'sonner';
 
 export function SignupForm() {
  const [name, setName] = useState('')
@@ -76,9 +77,7 @@ export function SignupForm() {
  return
  }
 
- alert(
- "Account created successfully.\n\nPlease check your email and verify your account before signing in."
- );
+ toast.success("Account created! Please check your email to verify your account before signing in.");
 
  setName('')
  setEmail('')
