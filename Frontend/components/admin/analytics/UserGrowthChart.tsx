@@ -3,6 +3,14 @@
 import Highcharts from "highcharts";
 import HighchartsReact from "highcharts-react-official";
 
+if (typeof Highcharts === "object") {
+    Highcharts.setOptions({
+        accessibility: {
+            enabled: false
+        }
+    });
+}
+
 interface Props {
  data: {
  date: string;
@@ -33,6 +41,10 @@ export default function UserGrowthChart({
  chart: {
  type: "area",
  backgroundColor: "transparent",
+ },
+
+ accessibility: {
+ enabled: false,
  },
 
  title: {

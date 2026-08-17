@@ -6,6 +6,14 @@ import { CalendarDays, BarChart3 } from "lucide-react";
 import Highcharts from "highcharts";
 import HighchartsReact from "highcharts-react-official";
 
+if (typeof Highcharts === "object") {
+    Highcharts.setOptions({
+        accessibility: {
+            enabled: false
+        }
+    });
+}
+
 interface RecruitmentItem {
  name: string;
  value: number;
@@ -71,6 +79,10 @@ export function RecruitmentFunnel() {
  chart: {
  type: "pie",
  backgroundColor: "transparent",
+ },
+
+ accessibility: {
+ enabled: false,
  },
 
  title: {

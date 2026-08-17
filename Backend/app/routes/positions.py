@@ -20,6 +20,10 @@ router = APIRouter()
 
 
 @router.post(
+    "",
+    response_model=PositionResponse
+)
+@router.post(
     "/",
     response_model=PositionResponse
 )
@@ -41,6 +45,10 @@ def create_position(
     return new_position
 
 
+@router.get(
+    "",
+    response_model=list[PositionResponse]
+)
 @router.get(
     "/",
     response_model=list[PositionResponse]

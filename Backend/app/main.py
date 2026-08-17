@@ -68,22 +68,31 @@ from app.routes.automation import router as automation_router
 from app.routes.collaboration import router as collaboration_router
 from app.routes.admin_integrations import router as admin_integrations_router
 
-app = FastAPI(redirect_slashes=False)
+app = FastAPI()
 
 # ── Prometheus Monitoring ───────────────────────────────────────────────────
 Instrumentator().instrument(app).expose(app)
 
 # ── CORS ────────────────────────────────────────────────────────────────────
 import os
+import logging
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi import Request
 
 env_origins = os.getenv("CORS_ORIGINS", "")
 origins = [
     "http://localhost:3000",
     "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
     "http://20.197.61.51:3000",
+    "http://20.197.61.51:8000",
     "http://20.197.61.51",
     "http://ai-recruitment-platform.centralindia.cloudapp.azure.com",
+    "http://ai-recruitment-platform.centralindia.cloudapp.azure.com:3000",
+    "http://ai-recruitment-platform.centralindia.cloudapp.azure.com:8000",
+    "https://ai-recruitment-platform.centralindia.cloudapp.azure.com",
     "https://ai-recruitment-platform-pi.vercel.app",
     "https://ai-recruitment-platform.vercel.app"
 ]
@@ -100,6 +109,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logging.error(f"Unhandled server exception on {request.method} {request.url.path}: {exc}", exc_info=True)
+    origin = request.headers.get("origin", "*")
+    response = JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error", "error": str(exc)},
+    )
+    response.headers["Access-Control-Allow-Origin"] = origin if origin != "*" else "*"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Allow-Methods"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
 
 
 @app.get("/")

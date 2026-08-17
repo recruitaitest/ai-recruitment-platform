@@ -72,6 +72,7 @@ def mask_secret(secret: Optional[str]) -> Optional[str]:
     return f"••••••••{secret[-4:]}"
 
 @router.get("", response_model=IntegrationSettingsSchema)
+@router.get("/", response_model=IntegrationSettingsSchema)
 def get_integration_settings(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin)
@@ -105,6 +106,7 @@ def get_integration_settings(
     )
 
 @router.post("")
+@router.post("/")
 def update_integration_settings(
     payload: IntegrationSettingsSchema,
     db: Session = Depends(get_db),

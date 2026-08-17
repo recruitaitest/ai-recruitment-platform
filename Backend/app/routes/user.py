@@ -22,6 +22,22 @@ class ChangePasswordRequest(BaseModel):
 
 router = APIRouter()
 
+@router.get("")
+@router.get("/")
+def get_all_users(db: Session = Depends(get_db)):
+    users = db.query(User).all()
+    return [
+        {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "phone": user.phone,
+            "company": user.company,
+            "role": user.role,
+        }
+        for user in users
+    ]
+
 @router.get("/profile/{user_id}")
 def get_profile(
     user_id: int,

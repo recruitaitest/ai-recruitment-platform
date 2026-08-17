@@ -2,20 +2,28 @@ import Highcharts from 'highcharts'
 import HighchartsReact from 'highcharts-react-official'
 import { motion } from 'framer-motion'
 
+if (typeof Highcharts === 'object') {
+  Highcharts.setOptions({
+    accessibility: {
+      enabled: false
+    }
+  })
+}
+
 interface FunnelStage {
- name: string
- value: number
- color: string
+  name: string
+  value: number
+  color: string
 }
 
 interface RecruitmentFunnelProps {
- data?: FunnelStage[]
- itemVariants?: any
+  data?: FunnelStage[]
+  itemVariants?: any
 }
 
 export function RecruitmentFunnel({
- data,
- itemVariants,
+  data,
+  itemVariants,
 }: RecruitmentFunnelProps) {
   const STAGE_COLORS: Record<string, string> = {
     Sourced: '#0891b2',

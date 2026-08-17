@@ -18,6 +18,7 @@ import mimetypes
 
 router = APIRouter()
 
+@router.post("", response_model=CandidateResponse)
 @router.post("/", response_model=CandidateResponse)
 def create_candidate(
     candidate: CandidateCreate,
@@ -27,6 +28,7 @@ def create_candidate(
     return CandidateService.create_candidate(db, candidate, current_user)
 
 
+@router.get("", response_model=list[CandidateResponse])
 @router.get("/", response_model=list[CandidateResponse])
 def get_candidates(
     db: Session = Depends(get_db)

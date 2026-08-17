@@ -20,6 +20,7 @@ router = APIRouter(
     tags=["Admin Settings"]
 )
 
+@router.get("")
 @router.get("/")
 def get_settings(
     db: Session = Depends(get_db),
@@ -49,6 +50,7 @@ def get_settings(
 
     return settings
 
+@router.put("")
 @router.put("/")
 def update_settings(
     payload: PlatformSettingsUpdate,

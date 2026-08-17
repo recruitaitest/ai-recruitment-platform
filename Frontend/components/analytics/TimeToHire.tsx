@@ -15,11 +15,13 @@ import { getTimeToHire } from "@/services/analyticsService";
 
 export function TimeToHire() {
  const [hiringTimeData, setHiringTimeData] = useState<any[]>([]);
+ const [mounted, setMounted] = useState(false);
 
  useEffect(() => {
- getTimeToHire().then(data => {
- setHiringTimeData(data);
- }).catch(err => console.error(err));
+   setMounted(true);
+   getTimeToHire().then(data => {
+     setHiringTimeData(data || []);
+   }).catch(err => console.error(err));
  }, []);
 
  return (
@@ -29,7 +31,6 @@ export function TimeToHire() {
  border
  border-border
  bg-surface/90
- 
  p-5
  shadow-md dark:shadow-2xl
  "
@@ -49,9 +50,10 @@ export function TimeToHire() {
  </div>
 
  {/* Chart */}
- <div className="h-[280px]">
+ <div className="w-full h-[280px] min-h-[280px] min-w-0 relative">
 
- <ResponsiveContainer width="100%" height="100%">
+ {mounted ? (
+ <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={280}>
 
  <BarChart
  data={hiringTimeData}
@@ -106,6 +108,9 @@ export function TimeToHire() {
  </BarChart>
 
  </ResponsiveContainer>
+ ) : (
+ <div className="w-full h-[280px] rounded-xl bg-secondary-surface/40 animate-pulse" />
+ )}
 
  </div>
 

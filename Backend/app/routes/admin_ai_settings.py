@@ -165,6 +165,7 @@ def test_ai_connection(
 
 
 @router.get("")
+@router.get("/")
 def get_ai_settings(
     db: Session = Depends(get_db)
 ):
@@ -189,6 +190,7 @@ def get_ai_settings(
     return settings
 
 @router.put("")
+@router.put("/")
 def update_ai_settings(
     payload: AISettingsUpdate,
     db: Session = Depends(get_db),

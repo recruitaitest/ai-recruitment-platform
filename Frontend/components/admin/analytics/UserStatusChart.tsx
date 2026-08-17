@@ -3,6 +3,14 @@
 import Highcharts from "highcharts";
 import HighchartsReact from "highcharts-react-official";
 
+if (typeof Highcharts === "object") {
+    Highcharts.setOptions({
+        accessibility: {
+            enabled: false
+        }
+    });
+}
+
 interface Props {
  data: {
  name: string;
@@ -18,6 +26,10 @@ export default function UserStatusChart({
  chart: {
  type: "pie",
  backgroundColor: "transparent",
+ },
+
+ accessibility: {
+ enabled: false,
  },
 
  title: {

@@ -2,12 +2,24 @@
 import Highcharts from "highcharts";
 import HighchartsReact from "highcharts-react-official";
 
+if (typeof Highcharts === "object") {
+    Highcharts.setOptions({
+        accessibility: {
+            enabled: false
+        }
+    });
+}
+
 import { useEffect, useState } from "react";
 import { getHiringTrends } from "@/services/analyticsService";
 const chartOptions = {
     chart: {
         type: "spline",
         backgroundColor: "transparent",
+    },
+
+    accessibility: {
+        enabled: false,
     },
 
     title: {

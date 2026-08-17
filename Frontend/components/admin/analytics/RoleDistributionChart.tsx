@@ -3,6 +3,14 @@
 import Highcharts from "highcharts";
 import HighchartsReact from "highcharts-react-official";
 
+if (typeof Highcharts === "object") {
+    Highcharts.setOptions({
+        accessibility: {
+            enabled: false
+        }
+    });
+}
+
 interface Props {
  data: {
  role: string;
@@ -39,6 +47,7 @@ export default function RoleDistributionChart({
  },
 
  accessibility: {
+ enabled: false,
  point: {
  valueSuffix: "%",
  },

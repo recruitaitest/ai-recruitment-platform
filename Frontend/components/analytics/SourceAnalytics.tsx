@@ -12,8 +12,11 @@ import { getTopSkills } from "@/services/analyticsService";
 
 export function SourceAnalytics() {
  const [sourceData, setSourceData] = useState<any[]>([]);
+ const [mounted, setMounted] = useState(false);
+
  useEffect(() => {
- loadTopSkills();
+   setMounted(true);
+   loadTopSkills();
  }, []);
 
  const loadTopSkills = async () => {
@@ -29,11 +32,11 @@ export function SourceAnalytics() {
   "var(--danger)",
   ];
 
- const total = (Object.values(data) as number[]).reduce(
+ const total = (Object.values(data || {}) as number[]).reduce(
  (sum: number, value: number) => sum + value,
  0
  );
- const formattedData = Object.entries(data as Record<string, number>)
+ const formattedData = Object.entries((data || {}) as Record<string, number>)
  .slice(0, 6)
  .map(([skill, count], index) => ({
  source: skill,
@@ -60,7 +63,6 @@ export function SourceAnalytics() {
  border
  border-border
  bg-surface/90
- 
  p-6
  shadow-md dark:shadow-2xl
  "
@@ -83,9 +85,10 @@ export function SourceAnalytics() {
  <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-4 items-center">
 
  {/* Chart */}
- <div className="relative h-[360px]">
+ <div className="relative w-full h-[360px] min-h-[360px] min-w-0">
 
- <ResponsiveContainer width="100%" height="100%">
+ {mounted ? (
+ <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={360}>
 
  <PieChart>
 
@@ -112,6 +115,9 @@ export function SourceAnalytics() {
  </PieChart>
 
  </ResponsiveContainer>
+ ) : (
+ <div className="w-full h-[360px] rounded-xl bg-secondary-surface/40 animate-pulse" />
+ )}
 
  {/* Center */}
  <div
