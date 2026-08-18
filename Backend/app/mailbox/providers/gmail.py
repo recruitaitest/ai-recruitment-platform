@@ -45,6 +45,11 @@ RESUME_EXTENSIONS = (
 class GmailProvider(BaseMailProvider):
 
     def _create_flow(self):
+        redirect_uri = os.getenv("GMAIL_REDIRECT_URI", "http://localhost:8000/mailbox/oauth/callback")
+        if "20.197.61.51" in redirect_uri:
+            redirect_uri = redirect_uri.replace("http://20.197.61.51", "https://ai-recruitment-platform.centralindia.cloudapp.azure.com")
+            redirect_uri = redirect_uri.replace("https://20.197.61.51", "https://ai-recruitment-platform.centralindia.cloudapp.azure.com")
+
         flow = Flow.from_client_config(
             {
                 "web": {
@@ -52,12 +57,12 @@ class GmailProvider(BaseMailProvider):
                     "client_secret": os.getenv("GMAIL_CLIENT_SECRET"),
                     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                     "token_uri": "https://oauth2.googleapis.com/token",
-                    "redirect_uris": [os.getenv("GMAIL_REDIRECT_URI")],
+                    "redirect_uris": [redirect_uri],
                 }
             },
             scopes=SCOPES,
         )
-        flow.redirect_uri = os.getenv("GMAIL_REDIRECT_URI")
+        flow.redirect_uri = redirect_uri
         return flow
 
     def connect(self):
