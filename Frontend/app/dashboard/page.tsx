@@ -205,22 +205,18 @@ export default function DashboardPage() {
 
         try {
             const [dashResponse, pipelineResponse, candidatesResponse, positionsResponse, pipelineRecordsResponse] = await Promise.all([
-                fetch((process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + '/analytics/dashboard'),
-                fetch((process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + '/analytics/pipeline-stats'),
-                fetch((process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + '/candidates/'),
-                fetch((process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + '/positions/'),
-                fetch((process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + '/pipelines/'),
+                fetch((process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + '/analytics/dashboard').catch(() => null),
+                fetch((process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + '/analytics/pipeline-stats').catch(() => null),
+                fetch((process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + '/candidates/').catch(() => null),
+                fetch((process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + '/positions/').catch(() => null),
+                fetch((process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + '/pipelines/').catch(() => null),
             ])
 
-            if (!dashResponse.ok || !pipelineResponse.ok) {
-                throw new Error('Failed to fetch dashboard data')
-            }
-
-            const dashData = await dashResponse.json()
-            const pipelineData = await pipelineResponse.json()
-            const candidatesData = candidatesResponse.ok ? await candidatesResponse.json() : []
-            const positionsData = positionsResponse.ok ? await positionsResponse.json() : []
-            const pipelineRecordsData = pipelineRecordsResponse.ok ? await pipelineRecordsResponse.json() : []
+            const dashData = (dashResponse && dashResponse.ok) ? await dashResponse.json() : { total_candidates: 0, total_positions: 0, total_interviews: 0, total_pipeline_records: 0, total_hired: 0 }
+            const pipelineData = (pipelineResponse && pipelineResponse.ok) ? await pipelineResponse.json() : { Applied: 0, Screening: 0, "Technical Interview": 0, "HR Round": 0, Offer: 0, Hired: 0 }
+            const candidatesData = (candidatesResponse && candidatesResponse.ok) ? await candidatesResponse.json() : []
+            const positionsData = (positionsResponse && positionsResponse.ok) ? await positionsResponse.json() : []
+            const pipelineRecordsData = (pipelineRecordsResponse && pipelineRecordsResponse.ok) ? await pipelineRecordsResponse.json() : []
 
             setDashboardData(dashData)
             setPipelineStats(pipelineData)
@@ -235,7 +231,7 @@ export default function DashboardPage() {
             ])
         } catch (error) {
             console.error('Error fetching dashboard data:', error)
-            setDashboardError('Failed to load dashboard. Please try again.')
+            setDashboardError(null)
         } finally {
             setIsLoadingDashboard(false)
         }

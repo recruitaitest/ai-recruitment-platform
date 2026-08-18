@@ -50,40 +50,45 @@ class CandidateService:
 
     @staticmethod
     def get_candidates(db: Session):
-        candidates = db.query(Candidate).all()
-        pipelines = db.query(Pipeline).all()
-        positions = db.query(Position).all()
-        pos_map = {p.id: p for p in positions}
-        pipeline_map = {p.candidate_id: p for p in pipelines}
+        try:
+            candidates = db.query(Candidate).all()
+            pipelines = db.query(Pipeline).all()
+            positions = db.query(Position).all()
+            pos_map = {p.id: p for p in positions}
+            pipeline_map = {p.candidate_id: p for p in pipelines}
 
-        for candidate in candidates:
-            if candidate.id in pipeline_map:
-                candidate.status = pipeline_map[candidate.id].stage
-                if not candidate.applied_position_id:
-                    candidate.applied_position_id = pipeline_map[candidate.id].position_id
-            else:
-                candidate.status = "Needs Pipeline"
+            for candidate in candidates:
+                if candidate.id in pipeline_map:
+                    candidate.status = pipeline_map[candidate.id].stage
+                    if not candidate.applied_position_id:
+                        candidate.applied_position_id = pipeline_map[candidate.id].position_id
+                else:
+                    candidate.status = "Needs Pipeline"
 
-            # Attach applied role title and AI match score
-            target_pos = pos_map.get(candidate.applied_position_id) if candidate.applied_position_id else None
-            if target_pos:
-                candidate.applied_position_title = target_pos.title
-            elif candidate.source == "Career Portal" and candidate.current_designation:
-                candidate.applied_position_title = candidate.current_designation
-            else:
-                candidate.applied_position_title = candidate.current_designation or None
-            
-            # Dynamic AI match score
-            if target_pos and target_pos.required_skills and candidate.skills:
-                req = [s.strip().lower() for s in target_pos.required_skills.split(",") if s.strip()]
-                cand_s = [s.strip().lower() for s in candidate.skills.split(",") if s.strip()]
-                overlap = sum(1 for s in req if any(cs in s or s in cs for cs in cand_s))
-                score = min(98, max(55, round((overlap / max(1, len(req))) * 100)))
-                candidate.match_score = score
-            else:
-                candidate.match_score = getattr(candidate, "match_score", None) or 85
+                # Attach applied role title and AI match score
+                target_pos = pos_map.get(candidate.applied_position_id) if candidate.applied_position_id else None
+                if target_pos:
+                    candidate.applied_position_title = target_pos.title
+                elif candidate.source == "Career Portal" and candidate.current_designation:
+                    candidate.applied_position_title = candidate.current_designation
+                else:
+                    candidate.applied_position_title = candidate.current_designation or None
+                
+                # Dynamic AI match score
+                if target_pos and target_pos.required_skills and candidate.skills:
+                    req = [s.strip().lower() for s in target_pos.required_skills.split(",") if s.strip()]
+                    cand_s = [s.strip().lower() for s in candidate.skills.split(",") if s.strip()]
+                    overlap = sum(1 for s in req if any(cs in s or s in cs for cs in cand_s))
+                    score = min(98, max(55, round((overlap / max(1, len(req))) * 100)))
+                    candidate.match_score = score
+                else:
+                    candidate.match_score = getattr(candidate, "match_score", None) or 85
 
-        return candidates
+            return candidates or []
+        except Exception as e:
+            import logging
+            logging.error(f"Error in get_candidates: {e}", exc_info=True)
+            return []
 
     @staticmethod
     def get_candidate(db: Session, candidate_id: int):

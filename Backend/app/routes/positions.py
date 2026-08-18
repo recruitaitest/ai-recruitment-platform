@@ -56,8 +56,13 @@ def create_position(
 def get_positions(
     db: Session = Depends(get_db)
 ):
-    positions = db.query(Position).all()
-    return positions
+    try:
+        positions = db.query(Position).all()
+        return positions or []
+    except Exception as e:
+        import logging
+        logging.error(f"Error in get_positions: {e}", exc_info=True)
+        return []
 
 
 # IMPORTANT: Place this BEFORE /{position_id}

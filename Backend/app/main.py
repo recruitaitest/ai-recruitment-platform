@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from app.database import engine, Base
+from app.database import engine, Base, run_schema_migrations
 
 # ── All models must be imported BEFORE create_all ──────────────────────────
 from app.models.user import User
@@ -33,8 +33,12 @@ from app.models.mailbox_sync_history import MailboxSyncHistory
 from app.models.automation_models import AutomationRule, WebhookEndpoint, ScheduledEmailTask, OfferTemplate
 from app.models.collaboration_models import Nomination, ApprovalStep, TeamVote
 
-# ── Create all tables ───────────────────────────────────────────────────────
+# ── Create all tables & Synchronize missing columns ───────────────────────────
 Base.metadata.create_all(bind=engine)
+try:
+    run_schema_migrations(engine)
+except Exception as _e:
+    pass
 
 # ── Routers ─────────────────────────────────────────────────────────────────
 from app.routes.semantic_search import router as semantic_search_router

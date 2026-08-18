@@ -112,81 +112,90 @@ def get_cv_analytics(db: Session = Depends(get_db)):
     - Number of CVs received for each position
     - Number of CVs routed to each position folder
     """
-    # 1. Total CVs received per day (Last 7 days)
-    today = datetime.utcnow().date()
-    daily_stats = []
-    
-    candidates = db.query(Candidate).all()
-    
-    # Calculate daily trend
-    dates_map = {}
-    for i in range(6, -1, -1):
-        day_str = (today - timedelta(days=i)).strftime("%Y-%m-%d")
-        dates_map[day_str] = 0
+    try:
+        today = datetime.utcnow().date()
+        daily_stats = []
+        
+        candidates = db.query(Candidate).all()
+        
+        # Calculate daily trend
+        dates_map = {}
+        for i in range(6, -1, -1):
+            day_str = (today - timedelta(days=i)).strftime("%Y-%m-%d")
+            dates_map[day_str] = 0
 
-    for c in candidates:
-        if c.created_at:
-            day_str = c.created_at.strftime("%Y-%m-%d")
-            if day_str in dates_map:
+        for c in candidates:
+            if getattr(c, "created_at", None):
+                day_str = c.created_at.strftime("%Y-%m-%d")
+                if day_str in dates_map:
+                    dates_map[day_str] += 1
+            else:
+                day_str = today.strftime("%Y-%m-%d")
                 dates_map[day_str] += 1
-        else:
-            # Fallback if created_at was null before migration
-            day_str = today.strftime("%Y-%m-%d")
-            dates_map[day_str] += 1
 
-    daily_trend = [{"date": k, "count": v} for k, v in dates_map.items()]
+        daily_trend = [{"date": k, "count": v} for k, v in dates_map.items()]
 
-    # 2. Number of CVs received for each position
-    from app.models.pipeline import Pipeline
-    positions = db.query(Position).all()
-    position_map = {p.id: p.title for p in positions}
-    pipelines = db.query(Pipeline).all()
-    cand_pipeline_map = {p.candidate_id: p.position_id for p in pipelines}
-    
-    by_position_counts = {}
-    for p_id in position_map:
-        by_position_counts[p_id] = 0
+        # 2. Number of CVs received for each position
+        from app.models.pipeline import Pipeline
+        positions = db.query(Position).all()
+        position_map = {p.id: p.title for p in positions}
+        pipelines = db.query(Pipeline).all()
+        cand_pipeline_map = {p.candidate_id: p.position_id for p in pipelines}
+        
+        by_position_counts = {}
+        for p_id in position_map:
+            by_position_counts[p_id] = 0
 
-    unassigned_count = 0
-    for c in candidates:
-        target_pos_id = c.applied_position_id or cand_pipeline_map.get(c.id)
-        if target_pos_id in by_position_counts:
-            by_position_counts[target_pos_id] += 1
-        else:
-            unassigned_count += 1
+        unassigned_count = 0
+        for c in candidates:
+            target_pos_id = getattr(c, "applied_position_id", None) or cand_pipeline_map.get(c.id)
+            if target_pos_id in by_position_counts:
+                by_position_counts[target_pos_id] += 1
+            else:
+                unassigned_count += 1
 
-    by_position = [
-        {
-            "position_id": p_id,
-            "position_title": position_map[p_id],
-            "cv_count": count
+        by_position = [
+            {
+                "position_id": p_id,
+                "position_title": position_map[p_id],
+                "cv_count": count
+            }
+            for p_id, count in by_position_counts.items()
+        ]
+        if unassigned_count > 0 or len(by_position) == 0:
+            by_position.append({
+                "position_id": 0,
+                "position_title": "General Pool / Unassigned",
+                "cv_count": unassigned_count
+            })
+
+        # 3. Number of CVs routed to each position folder
+        folder_counts = {}
+        for c in candidates:
+            target_pos_id = getattr(c, "applied_position_id", None) or cand_pipeline_map.get(c.id)
+            folder = getattr(c, "folder_path", None) or (f"uploads/positions/{target_pos_id}/" if target_pos_id else "uploads/general/")
+            pos_title = position_map.get(target_pos_id, "General Storage")
+            if folder not in folder_counts:
+                folder_counts[folder] = {"folder": folder, "position_title": pos_title, "count": 0}
+            folder_counts[folder]["count"] += 1
+
+        by_folder = list(folder_counts.values())
+
+        return {
+            "daily_trend": daily_trend,
+            "by_position": by_position,
+            "by_folder": by_folder
         }
-        for p_id, count in by_position_counts.items()
-    ]
-    if unassigned_count > 0 or len(by_position) == 0:
-        by_position.append({
-            "position_id": 0,
-            "position_title": "General Pool / Unassigned",
-            "cv_count": unassigned_count
-        })
-
-    # 3. Number of CVs routed to each position folder
-    folder_counts = {}
-    for c in candidates:
-        target_pos_id = c.applied_position_id or cand_pipeline_map.get(c.id)
-        folder = c.folder_path or (f"uploads/positions/{target_pos_id}/" if target_pos_id else "uploads/general/")
-        pos_title = position_map.get(target_pos_id, "General Storage")
-        if folder not in folder_counts:
-            folder_counts[folder] = {"folder": folder, "position_title": pos_title, "count": 0}
-        folder_counts[folder]["count"] += 1
-
-    by_folder = list(folder_counts.values())
-
-    return {
-        "daily_trend": daily_trend,
-        "by_position": by_position,
-        "by_folder": by_folder
-    }
+    except Exception as e:
+        import logging
+        logging.error(f"Error in get_cv_analytics: {e}", exc_info=True)
+        today = datetime.utcnow().date()
+        daily_trend = [{"date": (today - timedelta(days=i)).strftime("%Y-%m-%d"), "count": 0} for i in range(6, -1, -1)]
+        return {
+            "daily_trend": daily_trend,
+            "by_position": [{"position_id": 0, "position_title": "General Pool / Unassigned", "cv_count": 0}],
+            "by_folder": []
+        }
 
 @router.get("/system-health")
 def get_system_health(db: Session = Depends(get_db)):

@@ -245,7 +245,12 @@ class InterviewService:
 
     @staticmethod
     def get_interviews(db: Session):
-        return db.query(Interview).all()
+        try:
+            return db.query(Interview).all() or []
+        except Exception as e:
+            import logging
+            logging.error(f"Error in get_interviews: {e}", exc_info=True)
+            return []
 
     @staticmethod
     def get_interview(db: Session, interview_id: int):

@@ -11,6 +11,7 @@ from app.services.interview_service import InterviewService
 
 router = APIRouter()
 
+@router.post("", response_model=InterviewResponse)
 @router.post("/", response_model=InterviewResponse)
 def create_interview(
     interview: InterviewCreate,
@@ -21,6 +22,7 @@ def create_interview(
     return InterviewService.create_interview(db, interview, current_user, background_tasks)
 
 
+@router.get("", response_model=list[InterviewResponse])
 @router.get("/", response_model=list[InterviewResponse])
 def get_interviews(
     db: Session = Depends(get_db)

@@ -92,35 +92,37 @@ def create_pipeline(
 def get_pipelines(
     db: Session = Depends(get_db)
 ):
-    pipelines = db.query(Pipeline).all()
+    try:
+        pipelines = db.query(Pipeline).all()
+        result = []
+        for pipeline in pipelines:
+            candidate = db.query(Candidate).filter(
+                Candidate.id == pipeline.candidate_id
+            ).first()
 
-    result = []
+            position = db.query(Position).filter(
+                Position.id == pipeline.position_id
+            ).first()
 
-    for pipeline in pipelines:
+            result.append({
+                "id": pipeline.id,
+                "candidate_id": pipeline.candidate_id,
+                "candidate_name":
+                    candidate.full_name
+                    if candidate else "Unknown",
+                "position_id": pipeline.position_id,
+                "position_title":
+                    position.title
+                    if position else "Unknown",
+                "stage": pipeline.stage,
+                "notes": pipeline.notes
+            })
 
-        candidate = db.query(Candidate).filter(
-            Candidate.id == pipeline.candidate_id
-        ).first()
-
-        position = db.query(Position).filter(
-            Position.id == pipeline.position_id
-        ).first()
-
-        result.append({
-            "id": pipeline.id,
-            "candidate_id": pipeline.candidate_id,
-            "candidate_name":
-                candidate.full_name
-                if candidate else "Unknown",
-            "position_id": pipeline.position_id,
-            "position_title":
-                position.title
-                if position else "Unknown",
-            "stage": pipeline.stage,
-            "notes": pipeline.notes
-        })
-
-    return result
+        return result
+    except Exception as e:
+        import logging
+        logging.error(f"Error in get_pipelines: {e}", exc_info=True)
+        return []
 
 
 @router.get(
