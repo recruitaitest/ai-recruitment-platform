@@ -30,6 +30,38 @@ def get_interviews(
     return InterviewService.get_interviews(db)
 
 
+@router.get("/panel-roles")
+@router.get("/panel-roles/")
+def get_panel_roles(db: Session = Depends(get_db)):
+    from app.models.role import Role
+    roles = db.query(Role).all()
+    return [
+        {
+            "id": r.id,
+            "name": r.name,
+            "permissions": r.permissions,
+            "description": r.description
+        }
+        for r in roles
+    ]
+
+
+@router.get("/interviewers")
+@router.get("/interviewers/")
+def get_interviewers(db: Session = Depends(get_db)):
+    from app.models.user import User
+    users = db.query(User).filter(User.is_active == True).all()
+    return [
+        {
+            "id": u.id,
+            "name": u.name or u.email.split("@")[0],
+            "email": u.email,
+            "role": u.role,
+        }
+        for u in users
+    ]
+
+
 @router.get("/{interview_id}", response_model=InterviewResponse)
 def get_interview(
     interview_id: int,

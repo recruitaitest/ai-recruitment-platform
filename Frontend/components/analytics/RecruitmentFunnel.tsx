@@ -182,27 +182,6 @@ export function RecruitmentFunnel() {
  stages
  </p>
  </div>
-
- <button
- className="
- flex
- items-center
- gap-3
- rounded-2xl
- border
- border-border
- bg-secondary-surface
- px-5
- py-3
- text-base
- text-text-primary
- hover:bg-secondary-surface
- transition
- "
- >
- <CalendarDays className="w-5 h-5" />
- Last 30 Days
- </button>
  </div>
 
  {/* Main Content */}

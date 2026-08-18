@@ -25,6 +25,24 @@ class AutomationRule(Base):
     auto_tagging_enabled = Column(Boolean, default=True)
     auto_archive_inactive_days = Column(Integer, default=60) # 0 to disable
 
+    # Stage email notifications
+    stage_email_applied = Column(Boolean, default=True)
+    stage_email_interview = Column(Boolean, default=True)
+    stage_email_offer = Column(Boolean, default=True)
+    stage_email_rejection = Column(Boolean, default=True)
+
+    # Stage WhatsApp notifications
+    stage_whatsapp_applied = Column(Boolean, default=True)
+    stage_whatsapp_interview = Column(Boolean, default=True)
+    stage_whatsapp_offer = Column(Boolean, default=True)
+    stage_whatsapp_rejection = Column(Boolean, default=False)
+
+    # Stage SMS notifications
+    stage_sms_applied = Column(Boolean, default=True)
+    stage_sms_interview = Column(Boolean, default=True)
+    stage_sms_offer = Column(Boolean, default=True)
+    stage_sms_rejection = Column(Boolean, default=False)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -5,7 +5,7 @@ import { Sidebar } from "@/components/dashboard/Sidebar";
 import { AuthService } from "@/lib/auth";
 import { useRouter, usePathname } from "next/navigation";
 import AdminNavbar from "./AdminNavbar";
-import { hasPermission } from "@/utils/permissions";
+import { hasPermission, isHiringManagerUser } from "@/utils/permissions";
 
 export default function AdminLayout({
  children,
@@ -50,6 +50,12 @@ function AdminLayoutContent({
  if (!authenticated) {
  AuthService.logout();
  router.push("/login");
+ return;
+ }
+
+ if (isHiringManagerUser()) {
+ setIsAuthorized(false);
+ router.replace("/portal/hiring-manager?tab=candidates");
  return;
  }
 

@@ -117,6 +117,8 @@ export interface CandidateQuickActionsProps {
  onRemoveCandidate?: (candidateId: string) => void;
 }
 
+import { hasPermission } from "@/utils/permissions";
+
 // ─── Permission Gates ─────────────────────────────────────────────────────────
 
 const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
@@ -138,9 +140,19 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
  ],
 };
 
+const WRITE_ACTIONS = [
+  "move_to_screening", "schedule_interview", "reschedule_interview",
+  "submit_feedback", "generate_offer", "send_offer", "resend_offer",
+  "edit_offer", "withdraw_offer", "mark_hired", "reject", "restore", "remove_candidate"
+];
+
 function can(role: UserRole | undefined, action: string): boolean {
- if (!role) return true; // no role = unrestricted (dev mode)
- return ROLE_PERMISSIONS[role]?.includes(action) ?? false;
+  if (WRITE_ACTIONS.includes(action)) {
+    const hasWriteAccess = hasPermission("pipelines.update") || hasPermission("pipelines.manage") || hasPermission("pipeline.edit") || hasPermission("candidates.update");
+    if (!hasWriteAccess) return false;
+  }
+  if (!role) return true; // no role = unrestricted (dev mode)
+  return ROLE_PERMISSIONS[role]?.includes(action) ?? false;
 }
 
 // ─── Stage Icon Map ───────────────────────────────────────────────────────────

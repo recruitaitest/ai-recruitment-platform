@@ -65,6 +65,29 @@ export const hasPermission = (
     return permissions.includes(permission);
 };
 
+export const isHiringManagerUser = (): boolean => {
+    if (typeof window === "undefined") {
+        return false;
+    }
+
+    const user = JSON.parse(
+        localStorage.getItem("user") || "{}"
+    );
+
+    const userRoleStr = String(user.role || "").toLowerCase();
+    const userPermsStr = Array.isArray(user.permissions)
+        ? user.permissions.join(",").toLowerCase()
+        : typeof user.permissions === "string"
+        ? user.permissions.toLowerCase()
+        : "";
+
+    return (
+        userRoleStr.includes("hiring manager") ||
+        userPermsStr.includes("type:hiring_manager") ||
+        userPermsStr.includes("hiring_manager")
+    );
+};
+
 export const hasAdminPortalAccess = (): boolean => {
     if (typeof window === "undefined") {
         return false;
@@ -80,6 +103,10 @@ export const hasAdminPortalAccess = (): boolean => {
         user.role === "SUPER_ADMIN"
     ) {
         return true;
+    }
+
+    if (isHiringManagerUser()) {
+        return false;
     }
 
     const basePermissions = user.permissions || [];
@@ -117,6 +144,10 @@ export const hasRecruiterPortalAccess = (): boolean => {
         user.role === "SUPER_ADMIN"
     ) {
         return true;
+    }
+
+    if (isHiringManagerUser()) {
+        return false;
     }
 
     const basePermissions = user.permissions || [];

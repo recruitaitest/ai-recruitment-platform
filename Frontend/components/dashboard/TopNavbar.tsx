@@ -23,6 +23,7 @@ import {
  Command,
  HelpCircle,
  Bot,
+ Building,
 } from 'lucide-react'
 import { CommandPalette } from '@/components/common/CommandPalette'
 import { KeyboardShortcutsModal } from '@/components/common/KeyboardShortcutsModal'
@@ -97,6 +98,17 @@ export function TopNavbar({
  const [shortcutsOpen, setShortcutsOpen] = useState(false)
  const [activeAIProvider, setActiveAIProvider] = useState<string | null>(null)
  const canManageAI = hasPermission("ai_settings.manage", true)
+
+ const hmHeading = React.useMemo(() => {
+   const uRole = String((user as any)?.role || '').trim()
+   if (uRole) {
+     if (uRole.toLowerCase().startsWith('hiring manager')) {
+       return uRole
+     }
+     return `Hiring Manager ${uRole}`
+   }
+   return 'Hiring Manager Full Stack Developer'
+ }, [user])
 
  // Global Keyboard Shortcuts (Ctrl+K, ?, Sequence shortcuts g c, g p, g j, g i, g a)
  useEffect(() => {
@@ -278,14 +290,29 @@ export function TopNavbar({
  return () => document.removeEventListener('mousedown', handleClickOutside)
  }, [])
 
- useEffect(() => {
- const portal = localStorage.getItem('portal')
+  useEffect(() => {
+    const portal = localStorage.getItem('portal')
+    const storedUser = JSON.parse(localStorage.getItem('user') || '{}') as StoredUser
+    const userRole = String((storedUser as any)?.role || '').toLowerCase()
+    const userPerms = Array.isArray((storedUser as any)?.permissions)
+      ? (storedUser as any).permissions.join(',').toLowerCase()
+      : typeof (storedUser as any)?.permissions === 'string'
+      ? (storedUser as any).permissions.toLowerCase()
+      : ''
 
- if (portal === 'admin') {
- setCurrentRole('Admin')
- } else {
- setCurrentRole('Recruiter')
- }
+    const isHM =
+      portal === 'hiring_manager' ||
+      userRole.includes('hiring manager') ||
+      userPerms.includes('type:hiring_manager') ||
+      userPerms.includes('hiring_manager')
+
+    if (portal === 'admin') {
+      setCurrentRole('Admin')
+    } else if (isHM) {
+      setCurrentRole('Hiring Manager')
+    } else {
+      setCurrentRole('Recruiter')
+    }
 
  const loadUser = () => {
  const storedUser = JSON.parse(localStorage.getItem('user') || '{}') as StoredUser
@@ -295,10 +322,18 @@ export function TopNavbar({
  }
  }
 
- loadUser()
+    loadUser();
 
- window.addEventListener('user-updated', loadUser)
- return () => window.removeEventListener('user-updated', loadUser)
+    const interval = setInterval(() => {
+      const u = JSON.parse(localStorage.getItem('user') || '{}') as StoredUser;
+      if (u?.id) fetchNotifications(u.id);
+    }, 10000);
+
+    window.addEventListener('user-updated', loadUser);
+    return () => {
+      window.removeEventListener('user-updated', loadUser);
+      clearInterval(interval);
+    };
  }, [])
 
  useEffect(() => {
@@ -456,6 +491,23 @@ export function TopNavbar({
  className="sticky top-0 z-50 flex h-[72px] items-center border-b border-border bg-surface px-6"
  >
  <div className="flex w-full items-center justify-between gap-4">
+ {currentRole === 'Hiring Manager' ? (
+ <div className="flex items-center gap-3">
+ <div className="p-2 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white shadow-xs flex items-center justify-center">
+ <Building className="w-5 h-5" />
+ </div>
+ <div>
+ <div className="flex items-center gap-2">
+ <h1 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
+ {hmHeading}
+ </h1>
+ <span className="px-2.5 py-0.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-[10px] rounded-full border border-indigo-500/20">
+ Department Assessment
+ </span>
+ </div>
+ </div>
+ </div>
+ ) : (
  <div className="relative max-w-sm flex-1 transition-all duration-base ease-standard focus-within:max-w-md" ref={searchRef}>
  <div className="relative flex items-center">
  <input
@@ -548,80 +600,102 @@ export function TopNavbar({
  </div>
  )}
  </div>
-
- <div className="flex items-center gap-3">
-
- {/* AI Agent Badge */}
- {activeAIProvider && (
- canManageAI ? (
- <button
- onClick={() => router.push('/admin/ai')}
- title="Click to change AI provider"
- className="hidden md:flex items-center gap-2 rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-600 dark:text-violet-400 transition-all hover:bg-violet-500/20 hover:border-violet-400/50 hover:scale-[1.02] active:scale-95"
- >
- <span className="relative flex h-2 w-2 flex-shrink-0">
- <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
- <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500" />
- </span>
- <Bot className="w-3.5 h-3.5" />
- AI Agent: {activeAIProvider}
- </button>
- ) : (
- <div
- title="Active AI Agent"
- className="hidden md:flex items-center gap-2 rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-600 dark:text-violet-400"
- >
- <span className="relative flex h-2 w-2 flex-shrink-0">
- <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
- <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500" />
- </span>
- <Bot className="w-3.5 h-3.5" />
- AI Agent: {activeAIProvider}
- </div>
- )
  )}
 
-    {/* Command Palette Trigger Button */}
-    <button
-      onClick={() => setCommandPaletteOpen(true)}
-      type="button"
-      className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border bg-white text-xs font-semibold text-text-primary hover:bg-surface-hover dark:border-border dark:bg-secondary-surface transition-all"
-    >
-      <Command className="w-3.5 h-3.5 text-blue-500" />
-      <span>Quick Actions</span>
-      <kbd className="px-1.5 py-0.5 text-[10px] bg-slate-100 dark:bg-surface border border-border rounded text-muted">
-        Ctrl+K
-      </kbd>
-    </button>
+        <div className="flex items-center gap-3">
+          {currentRole !== 'Hiring Manager' && (
+            <>
+              {/* AI Agent Badge */}
+              {activeAIProvider && (
+                canManageAI ? (
+                  <button
+                    onClick={() => router.push('/admin/ai')}
+                    title="Click to change AI provider"
+                    className="hidden md:flex items-center gap-2 rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-600 dark:text-violet-400 transition-all hover:bg-violet-500/20 hover:border-violet-400/50 hover:scale-[1.02] active:scale-95"
+                  >
+                    <span className="relative flex h-2 w-2 flex-shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500" />
+                    </span>
+                    <Bot className="w-3.5 h-3.5" />
+                    AI Agent: {activeAIProvider}
+                  </button>
+                ) : (
+                  <div
+                    title="Active AI Agent"
+                    className="hidden md:flex items-center gap-2 rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-600 dark:text-violet-400"
+                  >
+                    <span className="relative flex h-2 w-2 flex-shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500" />
+                    </span>
+                    <Bot className="w-3.5 h-3.5" />
+                    AI Agent: {activeAIProvider}
+                  </div>
+                )
+              )}
 
-    {/* Keyboard Shortcuts Help Button */}
-    <button
-      onClick={() => setShortcutsOpen(true)}
-      type="button"
-      title="Keyboard Shortcuts (?)"
-      className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-white text-muted transition-all hover:bg-surface-hover hover:scale-[1.02] active:scale-95 dark:border-border dark:bg-secondary-surface dark:text-primary"
-    >
-      <Keyboard className="h-4 w-4" />
-    </button>
+              {/* Command Palette Trigger Button */}
+              <button
+                onClick={() => setCommandPaletteOpen(true)}
+                type="button"
+                className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border bg-white text-xs font-semibold text-text-primary hover:bg-surface-hover dark:border-border dark:bg-secondary-surface transition-all"
+              >
+                <Command className="w-3.5 h-3.5 text-blue-500" />
+                <span>Quick Actions</span>
+                <kbd className="px-1.5 py-0.5 text-[10px] bg-slate-100 dark:bg-surface border border-border rounded text-muted">
+                  Ctrl+K
+                </kbd>
+              </button>
 
- <button
- onClick={toggleTheme}
- type="button"
- className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-white text-muted transition-all duration-base ease-standard focus-ring hover:bg-surface-hover hover:scale-[1.02] active:scale-95 dark:border-border dark:bg-secondary-surface dark:text-primary dark:hover:bg-surface-hover"
- >
- <div className="relative flex h-4 w-4 items-center justify-center">
- <Sun className={`absolute h-4 w-4 transition-all duration-base ease-standard ${isDark ? 'rotate-90 opacity-0' : 'rotate-0 opacity-100'}`} />
- <Moon className={`absolute h-4 w-4 transition-all duration-base ease-standard ${isDark ? 'rotate-0 opacity-100' : '-rotate-90 opacity-0'}`} />
- </div>
- </button>
+              {/* Keyboard Shortcuts Help Button */}
+              <button
+                onClick={() => setShortcutsOpen(true)}
+                type="button"
+                title="Keyboard Shortcuts (?)"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-white text-muted transition-all hover:bg-surface-hover hover:scale-[1.02] active:scale-95 dark:border-border dark:bg-secondary-surface dark:text-primary"
+              >
+                <Keyboard className="h-4 w-4" />
+              </button>
+            </>
+          )}
 
- <NotificationsPanel
- notifications={notifications}
- onDismiss={handleDismissNotification}
- onMarkAsRead={handleMarkAsRead}
- showBadge={true}
- itemVariants={item}
- />
+          {/* Theme Toggle Button */}
+          {currentRole === 'Hiring Manager' ? (
+            <button
+              onClick={toggleTheme}
+              type="button"
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition flex items-center gap-1.5 text-xs font-semibold"
+              title="Toggle Theme"
+            >
+              {isDark ? (
+                <Sun className="w-4 h-4 text-amber-400" />
+              ) : (
+                <Moon className="w-4 h-4 text-indigo-600" />
+              )}
+              <span className="capitalize hidden sm:inline">{isDark ? 'Dark' : 'Light'} Mode</span>
+            </button>
+          ) : (
+            <button
+              onClick={toggleTheme}
+              type="button"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-white text-muted transition-all duration-base ease-standard focus-ring hover:bg-surface-hover hover:scale-[1.02] active:scale-95 dark:border-border dark:bg-secondary-surface dark:text-primary dark:hover:bg-surface-hover"
+            >
+              <div className="relative flex h-4 w-4 items-center justify-center">
+                <Sun className={`absolute h-4 w-4 transition-all duration-base ease-standard ${isDark ? 'rotate-90 opacity-0' : 'rotate-0 opacity-100'}`} />
+                <Moon className={`absolute h-4 w-4 transition-all duration-base ease-standard ${isDark ? 'rotate-0 opacity-100' : '-rotate-90 opacity-0'}`} />
+              </div>
+            </button>
+          )}
+
+          {/* Notifications Panel - visible for all roles including Hiring Manager */}
+          <NotificationsPanel
+            notifications={notifications}
+            onDismiss={handleDismissNotification}
+            onMarkAsRead={handleMarkAsRead}
+            showBadge={true}
+            itemVariants={item}
+          />
 
  <div className="relative">
  <button
@@ -646,14 +720,14 @@ export function TopNavbar({
  </div>
 
  <div className="hidden items-center gap-2 sm:flex">
- <div className="text-right">
- <p className="text-sm font-medium text-primary dark:text-primary">
- {userEmail?.split('@')[0] || user?.name || 'User'}
- </p>
- <p className="text-xs text-muted dark:text-muted">
- {currentRole}
- </p>
- </div>
+            <div className="text-right">
+              <p className="text-sm font-medium text-primary dark:text-primary">
+                {userEmail?.split('@')[0] || user?.name || 'User'}
+              </p>
+              <p className="text-xs text-muted dark:text-muted">
+                {currentRole === 'Hiring Manager' ? (user as any)?.role || 'Hiring Manager' : currentRole}
+              </p>
+            </div>
 
  <ChevronDown
  className={`h-4 w-4 text-muted transition-transform dark:text-muted ${
@@ -699,21 +773,21 @@ export function TopNavbar({
  Admin
  </button>
 
- <button
- type="button"
- onClick={() => {
- localStorage.setItem('portal', 'recruiter')
- setCurrentRole('Recruiter')
- setShowProfileMenu(false)
- router.replace('/dashboard')
- router.refresh()
- }}
- className={`w-full rounded px-2 py-2 text-left text-sm ${currentRole === 'Recruiter' ? 'text-primary bg-primary/5' : 'text-text-primary'} hover:bg-slate-100 dark:hover:bg-secondary-surface`}
- >
- Recruiter
- </button>
- </div>
- )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    localStorage.setItem('portal', 'recruiter')
+                    setCurrentRole('Recruiter')
+                    setShowProfileMenu(false)
+                    router.replace('/dashboard')
+                    router.refresh()
+                  }}
+                  className={`w-full rounded px-2 py-2 text-left text-sm ${currentRole === 'Recruiter' ? 'text-primary bg-primary/5 font-bold' : 'text-text-primary'} hover:bg-slate-100 dark:hover:bg-secondary-surface`}
+                >
+                  Recruiter
+                </button>
+              </div>
+            )}
 
  <button
  type="button"

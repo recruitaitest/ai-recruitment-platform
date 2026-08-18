@@ -96,6 +96,10 @@ class InterviewService:
             interview_mode=interview.interview_mode,
             meeting_link=interview.meeting_link,
             location=interview.location,
+            location_link=getattr(interview, 'location_link', None),
+            panel_role=getattr(interview, 'panel_role', None),
+            interviewer_name=getattr(interview, 'interviewer_name', None),
+            notes=getattr(interview, 'notes', None),
             status=interview.status,
             feedback=interview.feedback,
             overall_rating=interview.overall_rating,
@@ -215,15 +219,74 @@ class InterviewService:
             except Exception as e:
                 print(f"Failed to trigger Google Calendar sync: {e}")
         
-        create_notification(
-            db,
-            current_user["user_id"],
-            "Interview Scheduled",
-            f"Interview scheduled for {candidate_name} ({position_title})"
-        )
+        notified_user_ids = set()
+        if current_user and current_user.get("user_id"):
+            create_notification(
+                db,
+                current_user["user_id"],
+                "Interview Scheduled",
+                f"Interview scheduled for {candidate_name} ({position_title}) on {interview.interview_date} at {interview.interview_time}"
+            )
+            notified_user_ids.add(current_user["user_id"])
 
-        # Send email to the candidate
-        if background_tasks and candidate_email:
+        # Notify assigned interviewer (Hiring Manager)
+        if getattr(interview, 'interviewer_name', None):
+            try:
+                from app.models.user import User
+                from sqlalchemy import or_
+                interviewer_users = db.query(User).filter(
+                    or_(
+                        User.name == interview.interviewer_name,
+                        User.email == interview.interviewer_name,
+                        User.name.ilike(f"%{interview.interviewer_name}%")
+                    )
+                ).all()
+
+                for u in interviewer_users:
+                    if u.id not in notified_user_ids:
+                        create_notification(
+                            db,
+                            u.id,
+                            "New Interview Assigned",
+                            f"You have been assigned to conduct a {interview.interview_type} for {candidate_name} ({position_title}) on {interview.interview_date} at {interview.interview_time} ({interview.interview_mode})."
+                        )
+                        notified_user_ids.add(u.id)
+            except Exception as e:
+                print(f"Failed to notify interviewer user: {e}")
+
+        # Notify users matching panel role if not already notified
+        if getattr(interview, 'panel_role', None):
+            try:
+                from app.models.user import User
+                panel_users = db.query(User).filter(
+                    (User.role == interview.panel_role) |
+                    (User.role.ilike(f"%{interview.panel_role}%"))
+                ).all()
+
+                for u in panel_users:
+                    if u.id not in notified_user_ids:
+                        create_notification(
+                            db,
+                            u.id,
+                            "Interview Scheduled",
+                            f"New interview scheduled for {candidate_name} ({position_title}) under role [{interview.panel_role}] on {interview.interview_date} at {interview.interview_time}."
+                        )
+                        notified_user_ids.add(u.id)
+            except Exception as e:
+                print(f"Failed to notify panel role users: {e}")
+
+        # Check automation rule for Interview Stage notification
+        send_email_enabled = True
+        try:
+            from app.models.automation_models import AutomationRule
+            rule = db.query(AutomationRule).first()
+            if rule and rule.stage_email_interview is False:
+                send_email_enabled = False
+        except Exception:
+            pass
+
+        # Send email to the candidate if enabled
+        if background_tasks and candidate_email and send_email_enabled:
             background_tasks.add_task(
                 send_interview_scheduled_email,
                 to_email=candidate_email,
@@ -233,7 +296,7 @@ class InterviewService:
                 date=str(interview.interview_date) if interview.interview_date else "TBD",
                 time=str(interview.interview_time) if interview.interview_time else "TBD",
                 mode=interview.interview_mode or "Online",
-                location=interview.meeting_link if interview.interview_mode == "Online" else (interview.location or "Will be provided shortly"),
+                location=interview.meeting_link if interview.interview_mode == "Online" else (getattr(interview, 'location_link', None) or interview.location or "Will be provided shortly"),
                 job_description=job_description,
                 company=company,
                 required_skills=required_skills,
@@ -246,7 +309,27 @@ class InterviewService:
     @staticmethod
     def get_interviews(db: Session):
         try:
-            return db.query(Interview).all() or []
+            interviews = db.query(Interview).all() or []
+            candidate_ids = {i.candidate_id for i in interviews if i.candidate_id}
+            position_ids = {i.position_id for i in interviews if i.position_id}
+
+            candidates_map = {}
+            if candidate_ids:
+                from app.models.candidate import Candidate
+                cands = db.query(Candidate.id, Candidate.full_name).filter(Candidate.id.in_(candidate_ids)).all()
+                candidates_map = {c.id: c.full_name for c in cands}
+
+            positions_map = {}
+            if position_ids:
+                from app.models.position import Position
+                poses = db.query(Position.id, Position.title).filter(Position.id.in_(position_ids)).all()
+                positions_map = {p.id: p.title for p in poses}
+
+            for i in interviews:
+                setattr(i, 'candidate_name', candidates_map.get(i.candidate_id))
+                setattr(i, 'position_title', positions_map.get(i.position_id))
+
+            return interviews
         except Exception as e:
             import logging
             logging.error(f"Error in get_interviews: {e}", exc_info=True)
@@ -257,6 +340,16 @@ class InterviewService:
         interview = db.query(Interview).filter(Interview.id == interview_id).first()
         if not interview:
             raise HTTPException(status_code=404, detail="Interview not found")
+        if interview.candidate_id:
+            from app.models.candidate import Candidate
+            cand = db.query(Candidate.full_name).filter(Candidate.id == interview.candidate_id).first()
+            if cand:
+                setattr(interview, 'candidate_name', cand.full_name)
+        if interview.position_id:
+            from app.models.position import Position
+            pos = db.query(Position.title).filter(Position.id == interview.position_id).first()
+            if pos:
+                setattr(interview, 'position_title', pos.title)
         return interview
 
     @staticmethod
@@ -281,6 +374,10 @@ class InterviewService:
         interview.interview_mode = updated_interview.interview_mode
         interview.meeting_link = updated_interview.meeting_link
         interview.location = updated_interview.location
+        interview.location_link = getattr(updated_interview, 'location_link', None)
+        interview.panel_role = getattr(updated_interview, 'panel_role', None)
+        interview.interviewer_name = getattr(updated_interview, 'interviewer_name', None)
+        interview.notes = getattr(updated_interview, 'notes', None)
         interview.status = updated_interview.status
         interview.feedback = updated_interview.feedback
 
@@ -334,9 +431,57 @@ class InterviewService:
         interview = db.query(Interview).filter(Interview.id == interview_id).first()
         if not interview:
             raise HTTPException(status_code=404, detail="Interview not found")
+        
+        cand_id = interview.candidate_id
+        pos_id = interview.position_id
+
         db.delete(interview)
+        db.flush()
+
+        # Check remaining interviews for this candidate
+        remaining_interviews = db.query(Interview).filter(
+            Interview.candidate_id == cand_id,
+            Interview.position_id == pos_id
+        ).all()
+
+        pipeline = db.query(Pipeline).filter(
+            Pipeline.candidate_id == cand_id,
+            Pipeline.position_id == pos_id
+        ).first()
+
+        candidate = db.query(Candidate).filter(Candidate.id == cand_id).first()
+
+        if pipeline and pipeline.stage in ["Technical Interview", "HR Round", "Interview"]:
+            if not remaining_interviews:
+                # Find previous stage before interview was scheduled
+                prev_history = db.query(PipelineStageHistory).filter(
+                    PipelineStageHistory.pipeline_id == pipeline.id,
+                    PipelineStageHistory.new_stage.in_(["Technical Interview", "HR Round", "Interview"])
+                ).order_by(PipelineStageHistory.id.desc()).first()
+
+                revert_stage = prev_history.old_stage if (prev_history and prev_history.old_stage) else "Screening"
+                old_stage = pipeline.stage
+                pipeline.stage = revert_stage
+                if candidate:
+                    candidate.status = revert_stage
+
+                history = PipelineStageHistory(
+                    pipeline_id=pipeline.id,
+                    old_stage=old_stage,
+                    new_stage=revert_stage
+                )
+                db.add(history)
+            else:
+                # If another interview is still scheduled, keep it in sync with that interview's type
+                last_intv = remaining_interviews[-1]
+                itype = (last_intv.interview_type or "").lower()
+                target_stage = "Technical Interview" if "technical" in itype else ("HR Round" if "hr" in itype else "Screening")
+                pipeline.stage = target_stage
+                if candidate:
+                    candidate.status = target_stage
+
         db.commit()
-        return {"message": "Interview deleted successfully"}
+        return {"message": "Interview deleted successfully and pipeline stage synchronized"}
 
     @staticmethod
     def submit_feedback(db: Session, interview_id: int, feedback_data: InterviewFeedback):

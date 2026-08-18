@@ -33,6 +33,7 @@ interface Props {
 export default function OfferDrawer({ open, onClose, offerId, onEdit, onDelete, onRefresh }: Props) {
  const [offer, setOffer] = useState<any>(null);
  const [loading, setLoading] = useState(false);
+ const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
  const loadData = async () => {
  if (!offerId) return;
@@ -107,26 +108,27 @@ export default function OfferDrawer({ open, onClose, offerId, onEdit, onDelete, 
  };
 
  return (
- <AnimatePresence>
- {open && (
- <>
- {/* Backdrop */}
- <motion.div
- initial={{ opacity: 0 }}
- animate={{ opacity: 1 }}
- exit={{ opacity: 0 }}
- onClick={onClose}
- className="fixed inset-0 z-50 bg-black/40 dark:bg-black/60 backdrop-blur-sm"
- />
+    <>
+      <AnimatePresence>
+        {open && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onClose}
+              className="fixed inset-0 z-50 bg-black/40 dark:bg-black/60 backdrop-blur-sm"
+            />
 
- {/* Drawer */}
- <motion.div
- initial={{ x: "100%" }}
- animate={{ x: 0 }}
- exit={{ x: "100%" }}
- transition={{ type: "tween", ease: "circOut", duration: 0.3 }}
- className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-border bg-surface shadow-2xl"
- >
+            {/* Drawer */}
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "tween", ease: "circOut", duration: 0.3 }}
+              className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-border bg-surface shadow-2xl"
+            >
  {/* Header */}
  <div className="flex shrink-0 items-center justify-between border-b border-border dark:border-border px-6 py-5 bg-slate-50/80 dark:bg-surface">
  <div>
@@ -337,12 +339,8 @@ export default function OfferDrawer({ open, onClose, offerId, onEdit, onDelete, 
  <input type="file" accept="application/pdf" className="hidden" onChange={handleFileChange} />
  </label>
  <button 
- onClick={() => {
- if(window.confirm("Are you sure you want to delete this offer?")) {
- onDelete(offer.id);
- onClose();
- }
- }}
+ type="button"
+ onClick={() => setDeleteConfirmOpen(true)}
  className="flex items-center justify-center rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 p-2.5 text-red-600 dark:text-red-400 transition hover:bg-red-100 dark:hover:bg-red-500/20"
  title="Delete Offer"
  >
@@ -355,5 +353,50 @@ export default function OfferDrawer({ open, onClose, offerId, onEdit, onDelete, 
  </>
  )}
  </AnimatePresence>
+
+ {/* Delete Offer Confirmation Modal */}
+ {deleteConfirmOpen && (
+   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+     <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl space-y-4">
+       <div className="flex items-center gap-3">
+         <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
+           <Trash2 className="w-6 h-6" />
+         </div>
+         <div>
+           <h3 className="text-lg font-bold text-text-primary">Delete Offer</h3>
+           <p className="text-xs text-muted">This will delete this candidate offer permanently.</p>
+         </div>
+       </div>
+
+       <p className="text-sm text-secondary bg-secondary-surface/50 p-3 rounded-xl border border-border">
+         Are you sure you want to delete this offer for <strong className="text-text-primary">{offer?.candidate_name || "this candidate"}</strong>?
+       </p>
+
+       <div className="flex items-center justify-end gap-3 pt-2">
+         <button
+           type="button"
+           onClick={() => setDeleteConfirmOpen(false)}
+           className="px-4 py-2 rounded-xl border border-border bg-surface-hover text-sm font-medium text-text-secondary hover:bg-border transition"
+         >
+           Cancel
+         </button>
+         <button
+           type="button"
+           onClick={() => {
+             if (offer?.id) {
+               onDelete(offer.id);
+               setDeleteConfirmOpen(false);
+               onClose();
+             }
+           }}
+           className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition shadow-md"
+         >
+           Delete Offer
+         </button>
+       </div>
+     </div>
+   </div>
+ )}
+ </>
  );
 }

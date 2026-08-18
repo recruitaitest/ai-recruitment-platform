@@ -19,10 +19,12 @@ import {
     Lock,
     FileText,
     Zap,
-    Share2
+    Share2,
+    Building,
+    Award
 } from 'lucide-react'
-import { useState, useEffect } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { AuthService } from '@/lib/auth'
 import { getAISettings } from '@/services/adminService'
 import { hasPermission } from "@/utils/permissions";
@@ -57,13 +59,14 @@ function Tooltip({ label, visible }: { label: string; visible: boolean }) {
     )
 }
 
-export function Sidebar({
+function SidebarInner({
     isExpanded = false,
     onToggle,
     userEmail,
 }: SidebarProps) {
     const router = useRouter()
     const pathname = usePathname()
+    const searchParams = useSearchParams()
     const [hoveredItem, setHoveredItem] = useState<string | null>(null)
     const [user, setUser] = useState<any>(null)
     const [portal, setPortal] = useState<'recruiter' | 'admin'>('recruiter')
@@ -302,12 +305,54 @@ export function Sidebar({
             : []),
     ]
 
+    const userPermsStr = Array.isArray(user?.permissions)
+        ? user.permissions.join(",").toLowerCase()
+        : typeof user?.permissions === "string"
+        ? user.permissions.toLowerCase()
+        : "";
+
+    const userRoleStr = String(user?.role || "").toLowerCase();
+
+    const isHiringManager =
+        userRoleStr.includes("hiring manager") ||
+        userPermsStr.includes("type:hiring_manager") ||
+        userPermsStr.includes("hiring_manager");
+
+    const hiringManagerNavItems: NavItem[] = [
+        {
+            id: 'assigned-candidates',
+            label: 'Assigned Candidates',
+            icon: <Users className="w-5 h-5 text-indigo-400" />,
+            href: '/portal/hiring-manager?tab=candidates',
+        },
+        {
+            id: 'assigned-interviews',
+            label: 'My Assigned Interviews',
+            icon: <CalendarDays className="w-5 h-5 text-blue-400" />,
+            href: '/portal/hiring-manager?tab=interviews',
+        },
+        {
+            id: 'completed-scorecards',
+            label: 'Completed Scorecards',
+            icon: <Award className="w-5 h-5 text-emerald-400" />,
+            href: '/portal/hiring-manager?tab=scorecards',
+        },
+        {
+            id: 'settings',
+            label: 'Profile Settings',
+            icon: <Settings className="w-5 h-5" />,
+            href: '/settings',
+        },
+    ];
+
     const navItems =
         role === 'PENDING'
             ? pendingNavItems
-            : portal === 'admin'
-                ? adminNavItems
-                : recruiterNavItems
+            : isHiringManager
+                ? hiringManagerNavItems
+                : portal === 'admin'
+                    ? adminNavItems
+                    : recruiterNavItems
 
     const handleLogout = () => {
         AuthService.logout()
@@ -318,7 +363,7 @@ export function Sidebar({
 
     return (
         <aside
-            className={`fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-border bg-surface transition-all duration-base ease-standard overflow-x-hidden ${isExpanded ? 'w-60' : 'w-20'
+            className={`fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-border bg-surface transition-[width] duration-300 ease-in-out overflow-x-hidden ${isExpanded ? 'w-60' : 'w-20'
                 }`}
         >
             {/* Top section: Profile */}
@@ -360,7 +405,23 @@ export function Sidebar({
             {/* Nav items */}
             <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden p-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 {navItems.map((item) => {
-                    const isActive = pathname === item.href
+                    const checkIsActive = () => {
+                        if (item.href.includes('?')) {
+                            const [itemPath, itemQuery] = item.href.split('?')
+                            if (pathname !== itemPath) return false
+
+                            const params = new URLSearchParams(itemQuery)
+                            const targetTab = params.get('tab')
+                            const activeTab = searchParams?.get('tab') || 'candidates'
+                            return targetTab === activeTab
+                        }
+
+                        if (pathname === item.href) return true
+                        if (item.href !== '/' && item.href !== '/dashboard' && pathname.startsWith(item.href)) return true
+                        return false
+                    }
+
+                    const isActive = checkIsActive()
 
                     return (
                         <div
@@ -442,5 +503,15 @@ export function Sidebar({
                 </button>
             </div>
         </aside>
+    )
+}
+
+export function Sidebar(props: SidebarProps) {
+    return (
+        <Suspense fallback={
+            <aside className={`fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-border bg-surface ${props.isExpanded ? 'w-60' : 'w-20'}`} />
+        }>
+            <SidebarInner {...props} />
+        </Suspense>
     )
 }

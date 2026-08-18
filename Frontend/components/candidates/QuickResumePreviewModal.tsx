@@ -131,7 +131,7 @@ export function QuickResumePreviewModal({
                   {candidate.email && (
                     <span className="flex items-center gap-1 break-all"><Mail className="w-3.5 h-3.5 shrink-0" /> {candidate.email}</span>
                   )}
-                  {candidate.company && (
+                  {candidate.company && candidate.company !== "Not Assigned" && candidate.company.trim() !== "" && (
                     <span className="flex items-center gap-1"><Briefcase className="w-3.5 h-3.5" /> {candidate.company}</span>
                   )}
                   {candidate.location && (

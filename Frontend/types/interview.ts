@@ -21,6 +21,10 @@ export interface Interview {
     mode?: string;
     meeting_link?: string | null;
     location?: string | null;
+    location_link?: string | null;
+    panel_role?: string | null;
+    interviewer_name?: string | null;
+    notes?: string | null;
     status: string;
     feedback?: string;
     overall_rating?: number;

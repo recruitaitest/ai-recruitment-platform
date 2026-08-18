@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import ShortlistModal from "@/components/semantic-search/ShortlistModal";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 import AICandidateSummaryCard from "@/components/ai/AICandidateSummaryCard";
 import AIRedFlagsWidget from "@/components/ai/AIRedFlagsWidget";
 import AIDuplicateCandidateAlert from "@/components/ai/AIDuplicateCandidateAlert";
@@ -365,23 +366,172 @@ function EducationTab({ education }: { education: string }) {
         <div style={S.card}><EmptyState icon="ti-school-off" message="No education details recorded." /></div>
     );
 
-    const blocks = education.split(/\n\s*\n/).filter((b) => b.trim());
+    // Intelligently parse raw education text into structured records
+    const parseEducationItems = (raw: string) => {
+        let text = raw.trim();
+        // Normalize separators: replace semicolons and bullet points with double newlines
+        text = text.replace(/;\s*/g, "\n\n").replace(/[•·]\s*/g, "\n\n");
+
+        // If string contains multiple entries separated by ", " with college/university/year markers
+        let segments = text.split(/\n\s*\n|\n/).map(s => s.trim()).filter(Boolean);
+        
+        if (segments.length === 1 && segments[0].length > 40) {
+            // Split on comma/period followed by college / school / university / year boundary
+            const splitted = segments[0].split(/(?<=\d{4}|%|\))\s*,\s*(?=[A-Z])/);
+            if (splitted.length > 1) {
+                segments = splitted.map(s => s.trim()).filter(Boolean);
+            }
+        }
+
+        return segments.map((item, idx) => {
+            let title = "";
+            let institution = "";
+            let years = "";
+            let score = "";
+            let remaining = item;
+
+            // 1. Extract Years (e.g. 2023 – 2027, 2021 - 2023, 2020)
+            const yearMatch = remaining.match(/\b(20\d{2}\s*(?:–|-|to)\s*(?:20\d{2}|Present|current)|\b20\d{2}\b)/i);
+            if (yearMatch) {
+                years = yearMatch[0].replace(/-/g, " – ").trim();
+                remaining = remaining.replace(yearMatch[0], "").trim();
+            }
+
+            // 2. Extract Grade / Percentage / CGPA (e.g. 94%, 8.5 CGPA, 9.2/10)
+            const scoreMatch = remaining.match(/(\d{1,2}(?:\.\d{1,2})?\s*%)|((?:CGPA|GPA|Grade)\s*:?\s*\d+(?:\.\d+)?(?:\s*\/\s*10)?)/i);
+            if (scoreMatch) {
+                score = scoreMatch[0].trim();
+                remaining = remaining.replace(scoreMatch[0], "").trim();
+            }
+
+            // 3. Extract Degree keywords (B. Tech, B.E., Intermediate, M.Tech, etc.)
+            const degreeMatch = item.match(/\b(B\.?\s*Tech(?:nology)?|M\.?\s*Tech(?:nology)?|B\.?\s*E\.?|B\.?\s*Sc|M\.?\s*Sc|B\.?\s*C\.?\s*A|M\.?\s*C\.?\s*A|B\.?\s*Com|MBA|Intermediate|High\s*School|Secondary|Higher\s*Secondary|Diploma|Bachelor(?:'s)?(?:\s+of\s+[\w\s]+)?|Master(?:'s)?(?:\s+of\s+[\w\s]+)?)/i);
+            if (degreeMatch) {
+                title = degreeMatch[0].trim();
+            }
+
+            // 4. Extract Institution if present
+            const instMatch = item.match(/\b([A-Z][A-Za-z0-9\s\.\,\&]+(?:University|College|Institute|School|Academy|Campus|Polytechnic|Junior\s*College))\b/i);
+            if (instMatch) {
+                institution = instMatch[0].trim();
+            }
+
+            // Clean up trailing and leading punctuation from remaining string
+            const cleanRemaining = remaining.replace(/^[\,\.\-\:\s]+|[\,\.\-\:\s]+$/g, "").trim();
+
+            if (!title && institution) {
+                title = institution;
+                institution = cleanRemaining !== institution ? cleanRemaining : "";
+            } else if (!title) {
+                title = cleanRemaining || item;
+            } else if (!institution && cleanRemaining && cleanRemaining !== title) {
+                institution = cleanRemaining;
+            }
+
+            return {
+                id: idx,
+                raw: item,
+                title: title || item,
+                institution: institution || (title !== item ? cleanRemaining : ""),
+                years: years || "",
+                score: score || ""
+            };
+        });
+    };
+
+    const parsedItems = parseEducationItems(education);
 
     return (
         <div style={S.card}>
-            <div style={S.cardTitle}><i className="ti ti-school" style={{ fontSize: 16 }} />Education</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {blocks.map((block, i) => (
-                    <div key={i} style={{
-                        borderRadius: 14, border: "1px solid rgba(255,255,255,0.07)",
-                        background: "var(--bg-darker)", padding: "18px 20px",
-                    }}>
-                        <pre style={{
-                            margin: 0, whiteSpace: "pre-line", color: "var(--text-root)",
-                            fontFamily: "inherit", fontSize: "0.9rem", lineHeight: 1.8,
-                        }}>
-                            {block}
-                        </pre>
+            <div style={{ ...S.cardTitle, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <i className="ti ti-school" style={{ fontSize: 18, color: "#4e7fff" }} />
+                    <span>Academic &amp; Educational Background</span>
+                </div>
+                <span style={{ fontSize: "0.75rem", padding: "2px 8px", borderRadius: 999, background: "rgba(78, 127, 255, 0.1)", color: "#4e7fff", fontWeight: 600 }}>
+                    {parsedItems.length} {parsedItems.length === 1 ? "Record" : "Records"}
+                </span>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {parsedItems.map((item) => (
+                    <div 
+                        key={item.id} 
+                        style={{
+                            borderRadius: 14, 
+                            border: "1px solid rgba(255,255,255,0.08)",
+                            background: "var(--bg-darker)", 
+                            padding: "16px 20px",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 8,
+                            position: "relative"
+                        }}
+                    >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <div style={{ 
+                                    width: 36, 
+                                    height: 36, 
+                                    borderRadius: 10, 
+                                    background: "rgba(78, 127, 255, 0.12)", 
+                                    color: "#4e7fff", 
+                                    display: "flex", 
+                                    alignItems: "center", 
+                                    justifyContent: "center",
+                                    flexShrink: 0
+                                }}>
+                                    <i className="ti ti-certificate" style={{ fontSize: 18 }} />
+                                </div>
+                                <div>
+                                    <h4 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "var(--text-root)" }}>
+                                        {item.title}
+                                    </h4>
+                                    {item.institution && (
+                                        <p style={{ margin: "3px 0 0", fontSize: "0.82rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}>
+                                            <i className="ti ti-building" style={{ fontSize: 13, opacity: 0.7 }} />
+                                            {item.institution}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                {item.years && (
+                                    <span style={{ 
+                                        fontSize: "0.75rem", 
+                                        fontWeight: 600, 
+                                        padding: "4px 10px", 
+                                        borderRadius: 8, 
+                                        background: "rgba(255,255,255,0.05)", 
+                                        border: "1px solid rgba(255,255,255,0.1)",
+                                        color: "var(--text-root)" 
+                                    }}>
+                                        🗓 {item.years}
+                                    </span>
+                                )}
+                                {item.score && (
+                                    <span style={{ 
+                                        fontSize: "0.75rem", 
+                                        fontWeight: 700, 
+                                        padding: "4px 10px", 
+                                        borderRadius: 8, 
+                                        background: "rgba(16, 185, 129, 0.12)", 
+                                        border: "1px solid rgba(16, 185, 129, 0.25)",
+                                        color: "#10b981" 
+                                    }}>
+                                        🎯 {item.score}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Fallback raw display if parser only found single string */}
+                        {!item.institution && !item.years && !item.score && (
+                            <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
+                                {item.raw}
+                            </p>
+                        )}
                     </div>
                 ))}
             </div>
@@ -638,18 +788,22 @@ export default function CandidateProfilePage({ candidate: raw }: { candidate?: C
     const router = useRouter();
     const searchParams = useSearchParams();
     const [shortlistModalOpen, setShortlistModalOpen] = useState(false);
+    const [deleteConfirmModalOpen, setDeleteConfirmModalOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const handleDelete = async () => {
         if (!c.id) return;
-        if (!window.confirm("Are you sure you want to delete this candidate?")) return;
-        
+        setIsDeleting(true);
         try {
             await api.delete(`/candidates/${c.id}`);
             toast.success("Candidate deleted successfully");
+            setDeleteConfirmModalOpen(false);
             router.push('/candidates');
         } catch (error) {
             console.error("Error deleting candidate:", error);
             toast.error("Failed to delete candidate");
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -705,6 +859,24 @@ export default function CandidateProfilePage({ candidate: raw }: { candidate?: C
     const [emailModalOpen, setEmailModalOpen] = useState(false);
     const [screeningModalOpen, setScreeningModalOpen] = useState(false);
 
+    const isHiringManager = useMemo(() => {
+        try {
+            if (typeof window === "undefined") return false;
+            const portal = localStorage.getItem("portal");
+            if (portal === "hiring_manager") return true;
+            const u = JSON.parse(localStorage.getItem("user") || "{}");
+            const roleStr = String(u?.role || "").toLowerCase();
+            const permsStr = Array.isArray(u?.permissions)
+                ? u.permissions.join(",").toLowerCase()
+                : typeof u?.permissions === "string"
+                ? u.permissions.toLowerCase()
+                : "";
+            return roleStr.includes("hiring manager") || permsStr.includes("hiring_manager") || permsStr.includes("type:hiring_manager");
+        } catch {
+            return false;
+        }
+    }, []);
+
     return (
         <div className="candidate-profile-page" style={S.root}>
             <ThemeStyles />
@@ -717,24 +889,34 @@ export default function CandidateProfilePage({ candidate: raw }: { candidate?: C
                     Candidate Info
                 </div>
                 <nav style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                    <button type="button" className="px-3.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium text-xs shadow-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition" onClick={() => router.push("/candidates")}>
-                        ← All Candidates
+                    <button
+                        type="button"
+                        className="px-3.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium text-xs shadow-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+                        onClick={() => router.push(isHiringManager ? "/portal/hiring-manager" : "/candidates")}
+                    >
+                        {isHiringManager ? "← Back to Portal" : "← All Candidates"}
                     </button>
-                    <button type="button" className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-md transition" onClick={() => setEmailModalOpen(true)}>
-                        ✨ Email Candidate
-                    </button>
-                    <button type="button" className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md transition" onClick={() => setShortlistModalOpen(true)}>
-                        ⭐ Shortlist
-                    </button>
+                    {!isHiringManager && (
+                        <button type="button" className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-md transition" onClick={() => setEmailModalOpen(true)}>
+                            ✨ Email Candidate
+                        </button>
+                    )}
+                    {!isHiringManager && (
+                        <button type="button" className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md transition" onClick={() => setShortlistModalOpen(true)}>
+                            ⭐ Shortlist
+                        </button>
+                    )}
                     <button type="button" className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-md transition" onClick={() => setNoteModal(true)}>
                         ＋ Add Note
                     </button>
                     <a href={resumeUrl || "#"} target="_blank" rel="noreferrer" className="px-3.5 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs shadow-md transition inline-flex items-center gap-1" style={{ textDecoration: "none", pointerEvents: resumeUrl ? "auto" : "none", opacity: resumeUrl ? 1 : 0.5 }}>
                         ↓ Resume
                     </a>
-                    <button type="button" className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs shadow-md transition" onClick={handleDelete}>
-                        🗑️ Delete
-                    </button>
+                    {!isHiringManager && (
+                        <button type="button" className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs shadow-md transition" onClick={handleDelete}>
+                            🗑️ Delete
+                        </button>
+                    )}
                 </nav>
             </header>
 
@@ -760,12 +942,16 @@ export default function CandidateProfilePage({ candidate: raw }: { candidate?: C
                             <StageBadge stage={stage} />
                         </div>
                         <div style={{ display: "flex", gap: 10 }}>
-                            <button type="button" className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm shadow-lg transition flex items-center gap-1.5" onClick={() => setEmailModalOpen(true)}>
-                                ✨ Draft Email with AI
-                            </button>
-                            <button type="button" className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm shadow-lg transition flex items-center gap-1.5" onClick={() => setShortlistModalOpen(true)}>
-                                ⭐ Shortlist
-                            </button>
+                            {!isHiringManager && (
+                                <button type="button" className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm shadow-lg transition flex items-center gap-1.5" onClick={() => setEmailModalOpen(true)}>
+                                    ✨ Draft Email with AI
+                                </button>
+                            )}
+                            {!isHiringManager && (
+                                <button type="button" className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm shadow-lg transition flex items-center gap-1.5" onClick={() => setShortlistModalOpen(true)}>
+                                    ⭐ Shortlist
+                                </button>
+                            )}
                             <button type="button" className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm shadow-lg transition flex items-center gap-1.5" onClick={() => setNoteModal(true)}>
                                 📝 Add Note
                             </button>
@@ -874,6 +1060,45 @@ export default function CandidateProfilePage({ candidate: raw }: { candidate?: C
                     onClose={() => setEmailModalOpen(false)}
                     candidateId={c.id}
                 />
+            )}
+
+            {/* Delete Candidate Confirmation Modal */}
+            {deleteConfirmModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500">
+                                <Trash2 className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Delete Candidate</h3>
+                                <p className="text-xs text-slate-500">This will remove this candidate record and all applications.</p>
+                            </div>
+                        </div>
+
+                        <p className="text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700/50">
+                            Are you sure you want to delete <strong className="text-slate-900 dark:text-white">{c.name}</strong>?
+                        </p>
+
+                        <div className="flex items-center justify-end gap-3 pt-2">
+                            <button
+                                type="button"
+                                onClick={() => setDeleteConfirmModalOpen(false)}
+                                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                disabled={isDeleting}
+                                onClick={handleDelete}
+                                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition shadow-md disabled:opacity-50"
+                            >
+                                {isDeleting ? "Deleting..." : "Delete Candidate"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

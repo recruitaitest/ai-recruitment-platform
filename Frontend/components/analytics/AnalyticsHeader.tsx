@@ -1,6 +1,4 @@
-"use client";
-
-import { CalendarDays, Download } from "lucide-react";
+import { Download } from "lucide-react";
 
 export function AnalyticsHeader() {
     return (
@@ -20,23 +18,14 @@ export function AnalyticsHeader() {
 
             {/* Right Section */}
             <div className="flex items-center gap-3">
-
-                {/* Date Filter */}
-                <button
-                    className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium hover:bg-gray-100 dark:hover:bg-zinc-800 transition"
-                >
-                    <CalendarDays className="w-4 h-4" />
-                    Last 30 Days
-                </button>
-
                 {/* Export Button */}
                 <button
-                    className="flex items-center gap-2 rounded-xl bg-black text-white keep-white dark:bg-white dark:text-black px-4 py-2 text-sm font-medium hover:opacity-90 transition"
+                    onClick={() => window.print()}
+                    className="flex items-center gap-2 rounded-xl bg-black text-white keep-white dark:bg-white dark:text-black px-4 py-2 text-sm font-medium hover:opacity-90 transition shadow-sm"
                 >
                     <Download className="w-4 h-4" />
                     Export Report
                 </button>
-
             </div>
         </div>
     );

@@ -14,19 +14,20 @@ import { hasPermission } from "@/utils/permissions";
 export default function UsersTable() {
   const [users, setUsers] = useState<any[]>([]);
   const [editingUser, setEditingUser] = useState<any>(null);
+  const [deleteConfirmUser, setDeleteConfirmUser] = useState<any | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleDelete = async (userId: number) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this user?"
-    );
-
-    if (!confirmed) return;
-
+  const confirmDelete = async () => {
+    if (!deleteConfirmUser) return;
+    setIsDeleting(true);
     try {
-      await deleteUser(userId);
+      await deleteUser(deleteConfirmUser.id);
+      setDeleteConfirmUser(null);
       fetchUsers();
     } catch (error) {
       console.error(error);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -151,16 +152,12 @@ export default function UsersTable() {
 
                       {hasPermission("users.delete") && (
                         <button
-                          onClick={() => handleDelete(user.id)}
+                          onClick={() => setDeleteConfirmUser(user)}
                           className="rounded-lg p-2 text-muted transition hover:bg-secondary-surface hover:text-red-400"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       )}
-
-                      <button className="rounded-lg p-2 text-muted transition hover:bg-secondary-surface hover:text-text-primary">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </button>
                     </div>
                   </td>
                 </motion.tr>
@@ -176,6 +173,45 @@ export default function UsersTable() {
           onClose={() => setEditingUser(null)}
           onUserUpdated={fetchUsers}
         />
+      )}
+
+      {/* Delete User Confirmation Modal */}
+      {deleteConfirmUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-text-primary">Delete User</h3>
+                <p className="text-xs text-muted">This action will remove the user account permanently.</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-secondary bg-secondary-surface/50 p-3 rounded-xl border border-border">
+              Are you sure you want to delete user <strong className="text-text-primary">{deleteConfirmUser.name || deleteConfirmUser.email}</strong>?
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmUser(null)}
+                className="px-4 py-2 rounded-xl border border-border bg-surface-hover text-sm font-medium text-text-secondary hover:bg-border transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={confirmDelete}
+                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition shadow-md disabled:opacity-50"
+              >
+                {isDeleting ? "Deleting..." : "Delete User"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

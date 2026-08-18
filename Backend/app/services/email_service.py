@@ -181,16 +181,61 @@ class EmailService:
         return send_email_message(to_email, subject, html_content)
 
     @staticmethod
-    def send_verification_email(to_email: str, token: str, user_name: str = "User") -> bool:
+    def send_verification_email(to_email: str, token_or_name: str = "User", link_or_token: str = "") -> bool:
         subject = "Verify Your Account - Recruit AI"
-        verification_link = f"http://ai-recruitment-platform.centralindia.cloudapp.azure.com/verify-email?token={token}"
+        frontend_url = os.getenv("FRONTEND_URL", "http://ai-recruitment-platform.centralindia.cloudapp.azure.com")
+
+        # Handle various argument order invocations (e.g. auth.py passing (email, name, link))
+        if link_or_token and link_or_token.startswith("http"):
+            verification_link = link_or_token
+            user_name = token_or_name or "User"
+        elif token_or_name and token_or_name.startswith("http"):
+            verification_link = token_or_name
+            user_name = link_or_token or "User"
+        else:
+            token = link_or_token or token_or_name
+            user_name = "User" if token_or_name == token else token_or_name
+            verification_link = f"{frontend_url}/verify-email?token={token}"
+
+        # Clean name if placeholder
+        if user_name.startswith("http") or not user_name.strip():
+            user_name = "there"
+
         html_content = f"""
         <html>
-            <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; padding: 20px;">
-                <h2>Hello {user_name},</h2>
-                <p>Please verify your email address by clicking the link below:</p>
-                <p><a href="{verification_link}" style="background-color: #4f46e5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Verify Email</a></p>
-                <p>If you did not sign up for Recruit AI, you can ignore this email.</p>
+            <body style="font-family: 'Segoe UI', Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
+                <div style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 32px 24px; border-radius: 14px 14px 0 0; color: white; text-align: center;">
+                    <div style="font-size: 28px; margin-bottom: 8px;">✨</div>
+                    <h2 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">Verify Your Email Address</h2>
+                    <p style="margin: 8px 0 0 0; font-size: 14px; opacity: 0.9;">Welcome to RecruitAI Management Platform</p>
+                </div>
+                
+                <div style="background: #ffffff; padding: 32px 28px; border-radius: 0 0 14px 14px; border: 1px solid #e2e8f0; border-top: none; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <p style="font-size: 16px; margin-top: 0; color: #0f172a;">Hi <strong>{user_name}</strong>,</p>
+                    <p style="font-size: 14px; color: #475569; line-height: 1.6;">
+                        Thank you for signing up for <strong>RecruitAI</strong>. To activate your account and start managing recruitment pipelines, please verify your email address by clicking the button below:
+                    </p>
+                    
+                    <div style="margin: 28px 0; text-align: center;">
+                        <a href="{verification_link}" style="background-color: #4f46e5; color: #ffffff; padding: 14px 32px; text-decoration: none; font-weight: 700; font-size: 14px; border-radius: 10px; display: inline-block; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);">
+                            Verify Email Address
+                        </a>
+                    </div>
+
+                    <div style="margin-top: 24px; padding: 14px; background-color: #f1f5f9; border-radius: 8px; font-size: 12px; color: #64748b;">
+                        <p style="margin: 0;">If the button above does not work, copy and paste this URL into your browser:</p>
+                        <p style="margin: 6px 0 0; word-break: break-all; color: #4f46e5;">{verification_link}</p>
+                    </div>
+
+                    <p style="margin-top: 24px; font-size: 13px; color: #94a3b8;">
+                        If you did not create an account on RecruitAI, please disregard this email.
+                    </p>
+                    
+                    <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #f1f5f9; font-size: 13px; color: #334155;">
+                        Warm regards,<br/>
+                        <strong>The RecruitAI Team</strong>
+                    </div>
+                </div>
             </body>
         </html>
         """
@@ -265,15 +310,73 @@ class EmailService:
 
         subject = f"Interview Scheduled: {position_title} ({round_display}) - {company}"
         
-        # Format location / meeting link
+        # Format mode, location, and meeting link
+        mode_str = mode or "Online"
+        mode_lower = mode_str.lower()
         meeting_link_html = ""
-        if mode and mode.lower() == "online" and location and location.startswith("http"):
+
+        if "in-person" in mode_lower or "in person" in mode_lower:
+            mode_row = """
+                <tr style="border-bottom: 1px solid #edf2f7;">
+                    <td style="padding: 10px 0; color: #6b7280; width: 35%;"><strong>Mode:</strong></td>
+                    <td style="padding: 10px 0; color: #111827; font-weight: 600;">🏢 In-Person</td>
+                </tr>
+            """
+            map_url = location if (location and location.startswith("http")) else ""
+            display_loc = location if not (location and location.startswith("http")) else "Office / Company Venue"
+            
+            loc_action_html = ""
+            if map_url:
+                loc_action_html = f"""<br/><a href="{map_url}" style="display: inline-block; margin-top: 6px; color: #4f46e5; font-size: 13px; font-weight: 600; text-decoration: underline;">📍 Open in Google Maps</a>"""
+
+            details_specific_row = f"""
+                <tr>
+                    <td style="padding: 10px 0; color: #6b7280;"><strong>Location:</strong></td>
+                    <td style="padding: 10px 0; color: #111827; font-weight: 500;">
+                        {display_loc}
+                        {loc_action_html}
+                    </td>
+                </tr>
+            """
+            if map_url:
+                meeting_link_html = f"""
+                <div style="margin-top: 20px; text-align: center;">
+                    <a href="{map_url}" style="background-color: #059669; color: #ffffff; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(5, 150, 105, 0.2);">
+                        📍 View Location on Google Maps
+                    </a>
+                </div>
+                """
+
+        elif "phone" in mode_lower:
+            mode_row = """
+                <tr>
+                    <td style="padding: 10px 0; color: #6b7280; width: 35%;"><strong>Mode:</strong></td>
+                    <td style="padding: 10px 0; color: #111827; font-weight: 600;">📞 Phone Call</td>
+                </tr>
+            """
+            details_specific_row = ""
+
+        else: # Online / Video Call
+            mode_row = """
+                <tr style="border-bottom: 1px solid #edf2f7;">
+                    <td style="padding: 10px 0; color: #6b7280; width: 35%;"><strong>Mode:</strong></td>
+                    <td style="padding: 10px 0; color: #111827; font-weight: 600;">🎥 Online (Video Call)</td>
+                </tr>
+            """
+            join_link = location or "https://meet.google.com"
+            details_specific_row = f"""
+                <tr>
+                    <td style="padding: 10px 0; color: #6b7280;"><strong>Meeting Link:</strong></td>
+                    <td style="padding: 10px 0; color: #4f46e5; font-weight: 500; word-break: break-all;">
+                        <a href="{join_link}" style="color: #4f46e5; text-decoration: underline;">{join_link}</a>
+                    </td>
+                </tr>
+            """
             meeting_link_html = f"""
-            <div style="margin-top: 15px; text-align: center;">
-                <a href="{location}" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);">
+            <div style="margin-top: 20px; text-align: center;">
+                <a href="{join_link}" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);">
                     🎥 Join Online Interview
                 </a>
-                <p style="margin-top: 8px; font-size: 12px; color: #6b7280;">Meeting Link: <a href="{location}" style="color: #4f46e5;">{location}</a></p>
             </div>
             """
 
@@ -334,14 +437,8 @@ class EmailService:
                                 <td style="padding: 8px 0; color: #6b7280;"><strong>Time:</strong></td>
                                 <td style="padding: 8px 0; color: #4f46e5; font-weight: 600;">{time}</td>
                             </tr>
-                            <tr style="border-bottom: 1px solid #edf2f7;">
-                                <td style="padding: 8px 0; color: #6b7280;"><strong>Mode:</strong></td>
-                                <td style="padding: 8px 0; color: #111827;">{mode}</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 8px 0; color: #6b7280;"><strong>Location / Link:</strong></td>
-                                <td style="padding: 8px 0; color: #111827;">{location or 'Will be provided shortly'}</td>
-                            </tr>
+                            {mode_row}
+                            {details_specific_row}
                         </table>
                         {meeting_link_html}
                     </div>
@@ -459,21 +556,37 @@ def send_multi_channel_acknowledgment(to_email: str, phone: Optional[str], candi
         print(f"[Email Dispatch] Sending application acknowledgment email to {to_email}...")
         EmailService.send_acknowledgment_email(to_email=to_email, candidate_name=candidate_name, position_title=position_title)
 
+    # Query AutomationRule for stage settings
+    wa_allowed = True
+    sms_allowed = True
+    try:
+        from app.models.automation_models import AutomationRule
+        from app.database import SessionLocal
+        _db = SessionLocal()
+        rule = _db.query(AutomationRule).first()
+        _db.close()
+        if rule:
+            if rule.stage_whatsapp_applied is not None:
+                wa_allowed = rule.stage_whatsapp_applied
+            if rule.stage_sms_applied is not None:
+                sms_allowed = rule.stage_sms_applied
+    except Exception:
+        pass
+
     # 2. WhatsApp Acknowledgment Message
-    if settings and settings.whatsapp_enabled and phone and len(str(phone).strip()) >= 7:
+    if wa_allowed and phone and len(str(phone).strip()) >= 7:
         try:
-            print(f"[WhatsApp Gateway] Dispatching WhatsApp application acknowledgment to {candidate_name} ({phone})...")
+            from app.services.notification_service import NotificationService
             msg = f"Hello {candidate_name}! Your application for '{position_title}' has been successfully received by our recruitment team."
-            print(f"[WhatsApp Gateway SUCCESS] To: {phone} | Content: '{msg}'")
+            NotificationService.send_whatsapp(recipient_phone=str(phone).strip(), message_body=msg)
         except Exception as wa_err:
             print(f"[WhatsApp Gateway Warning] Failed to send WhatsApp message: {wa_err}")
 
     # 3. SMS Gateway Acknowledgment Message
-    if settings and settings.sms_enabled and phone and len(str(phone).strip()) >= 7:
+    if sms_allowed and phone and len(str(phone).strip()) >= 7:
         try:
-            provider = settings.sms_provider or "SMS Gateway"
-            print(f"[{provider}] Dispatching SMS application acknowledgment to {candidate_name} ({phone})...")
+            from app.services.notification_service import NotificationService
             msg = f"RecruitAI: Hi {candidate_name}, your application for '{position_title}' was received successfully!"
-            print(f"[{provider} SUCCESS] To: {phone} | Content: '{msg}'")
+            NotificationService.send_sms(recipient_phone=str(phone).strip(), message_body=msg)
         except Exception as sms_err:
             print(f"[SMS Gateway Warning] Failed to send SMS message: {sms_err}")

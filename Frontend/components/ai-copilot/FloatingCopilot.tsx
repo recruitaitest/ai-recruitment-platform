@@ -67,12 +67,38 @@ export default function FloatingCopilot() {
     setIsOpen(true);
   };
 
+  const [isHiringManager, setIsHiringManager] = useState(false);
+
   useEffect(() => {
-    // Check if user is logged in
+    // Check if user is logged in and role
     if (typeof window !== "undefined") {
       const user = localStorage.getItem("user");
       const token = localStorage.getItem("token");
       setIsLoggedIn(Boolean(user || token));
+
+      const portal = localStorage.getItem("portal");
+      const u = JSON.parse(user || "{}");
+      const roleStr = String(u?.role || "").toLowerCase();
+      const permsStr = Array.isArray(u?.permissions)
+        ? u.permissions.join(",").toLowerCase()
+        : typeof u?.permissions === "string"
+        ? u.permissions.toLowerCase()
+        : "";
+      const isHM =
+        portal === "hiring_manager" ||
+        roleStr.includes("hiring manager") ||
+        permsStr.includes("hiring_manager") ||
+        permsStr.includes("type:hiring_manager");
+      setIsHiringManager(isHM);
+
+      if (isHM) {
+        setMessages([
+          {
+            sender: "bot",
+            text: "Hello! 👋 I am your AI Department Hiring Assistant. Ask me about evaluating candidate skills, technical assessment questions, scorecard grading criteria, or interview guidelines!",
+          },
+        ]);
+      }
     }
   }, [pathname]);
 
@@ -95,38 +121,86 @@ export default function FloatingCopilot() {
     if (!overrideText) setInput("");
     setIsTyping(true);
 
+    // Restricted check for Hiring Managers
+    if (isHiringManager) {
+      const lowerQuery = userText.toLowerCase();
+      const restrictedKeywords = [
+        "delete candidate",
+        "delete user",
+        "edit role",
+        "create role",
+        "add role",
+        "billing",
+        "subscription",
+        "system settings",
+        "edit permissions",
+        "modify permissions",
+        "offer letter template",
+        "delete position",
+      ];
+      if (restrictedKeywords.some((k) => lowerQuery.includes(k))) {
+        deductAiTokens(1);
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: "bot",
+            text: "🔒 **Access Restricted**: This administrative operation requires Administrator or Recruiter privileges. As a Hiring Manager, you have access to review assigned candidates, assess candidate profiles, conduct technical interviews, and submit scorecards.",
+          },
+        ]);
+        setIsTyping(false);
+        return;
+      }
+    }
+
     try {
       const res = await api.post(
         "/api/ai/recruiter-chat",
         {
           message: userText,
           conversation_history: messages.map((m) => ({ sender: m.sender, text: m.text })),
+          role_type: isHiringManager ? "hiring_manager" : "recruiter",
         },
-        { headers: { "X-Portal-Type": "recruiter" } }
+        { headers: { "X-Portal-Type": isHiringManager ? "hiring_manager" : "recruiter" } }
       );
 
       deductAiTokens(5);
 
       const botReply =
         res.data?.response ||
-        "I am your Senior Recruitment Operations Assistant. How can I assist with your candidate pipeline today?";
+        (isHiringManager
+          ? "I am your AI Hiring Operations Assistant. How can I assist with your candidate technical reviews and interview assessments today?"
+          : "I am your Senior Recruitment Operations Assistant. How can I assist with your candidate pipeline today?");
       setMessages((prev) => [...prev, { sender: "bot", text: botReply }]);
     } catch (err: any) {
       handleAiApiError(err);
       // Intelligent fallback if backend encounters an issue
       const lower = userText.toLowerCase();
-      let botResponse =
-        "Hello! I am your Recruitment Operations Assistant. You can ask me about candidate search, job positions, or pipeline statistics.";
+      let botResponse = isHiringManager
+        ? "Hello! I am your Department Hiring Assistant. You can ask me about candidate skill assessment, technical interview questions, or scorecard grading rubrics."
+        : "Hello! I am your Recruitment Operations Assistant. You can ask me about candidate search, job positions, or pipeline statistics.";
 
-      if (lower.includes("upload") || lower.includes("resume") || lower.includes("parse")) {
-        botResponse =
-          "📄 **How to Upload & Parse Resumes:**\n1. Go to the **Resume Upload** page (`/resume-upload`).\n2. Drag & drop PDF/DOCX resumes.\n3. The AI engine parses skills, experience, and contact details automatically!";
-      } else if (lower.includes("position") || lower.includes("job") || lower.includes("role")) {
-        botResponse =
-          "💼 **Job Positions & AI Description Generator:**\n1. Go to **Positions** (`/positions`).\n2. Click **'Create Position'** to generate job descriptions using AI.\n3. Toggle **'Publish'** to make positions visible on the Careers Portal!";
-      } else if (lower.includes("search") || lower.includes("find") || lower.includes("skill")) {
-        botResponse =
-          "🔍 **Semantic AI Candidate Search:**\n1. Go to **Semantic Search** (`/semantic-search`).\n2. Type natural queries like *'React developers with 3+ years experience'*.\n3. Our vector search engine scores and ranks candidates instantly!";
+      if (isHiringManager) {
+        if (lower.includes("interview") || lower.includes("question") || lower.includes("technical")) {
+          botResponse =
+            "🎯 **Technical Interview Evaluation Tips:**\n1. **Core Problem Solving:** Present real-world architecture scenarios and observe how the candidate reasons through edge cases.\n2. **Code Quality:** Evaluate modularity, error handling, and clean documentation.\n3. **Communication:** Check how clearly they explain trade-offs and design decisions.";
+        } else if (lower.includes("scorecard") || lower.includes("grade") || lower.includes("feedback")) {
+          botResponse =
+            "📋 **Scorecard Grading Guidelines:**\n1. Use a **1–5 ⭐ scale** across Technical Stack, Communication, and Problem Solving.\n2. Provide specific notes on strengths and areas for improvement.\n3. Submit your final recommendation: **Pass (Recommend Hire)**, **Hold**, or **Fail**.";
+        } else if (lower.includes("candidate") || lower.includes("resume") || lower.includes("experience")) {
+          botResponse =
+            "👥 **Candidate Review Process:**\n1. Open the **Assigned Candidates** tab.\n2. Click on any candidate card to view their full profile and verified skills.\n3. Check their verified resume and experience timeline before conducting the interview.";
+        }
+      } else {
+        if (lower.includes("upload") || lower.includes("resume") || lower.includes("parse")) {
+          botResponse =
+            "📄 **How to Upload & Parse Resumes:**\n1. Go to the **Resume Upload** page (`/resume-upload`).\n2. Drag & drop PDF/DOCX resumes.\n3. The AI engine parses skills, experience, and contact details automatically!";
+        } else if (lower.includes("position") || lower.includes("job") || lower.includes("role")) {
+          botResponse =
+            "💼 **Job Positions & AI Description Generator:**\n1. Go to **Positions** (`/positions`).\n2. Click **'Create Position'** to generate job descriptions using AI.\n3. Toggle **'Publish'** to make positions visible on the Careers Portal!";
+        } else if (lower.includes("search") || lower.includes("find") || lower.includes("skill")) {
+          botResponse =
+            "🔍 **Semantic AI Candidate Search:**\n1. Go to **Semantic Search** (`/semantic-search`).\n2. Type natural queries like *'React developers with 3+ years experience'*.\n3. Our vector search engine scores and ranks candidates instantly!";
+        }
       }
       setMessages((prev) => [...prev, { sender: "bot", text: botResponse }]);
     } finally {
@@ -162,13 +236,13 @@ export default function FloatingCopilot() {
           >
             <GripVertical className="w-3.5 h-3.5 text-blue-200 opacity-60" />
             <Bot className="w-5 h-5" />
-            <span>Ask AI Copilot</span>
+            <span>{isHiringManager ? "Ask Hiring Assistant" : "Ask AI Copilot"}</span>
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
           </button>
         </motion.div>
       )}
 
-      {/* Floating Chat Modal (Same UI structure as Career Portal Chatbot) */}
+      {/* Floating Chat Modal */}
       {isOpen && (
         <div className="fixed bottom-6 right-6 z-50 w-80 md:w-96 rounded-3xl border border-border bg-surface shadow-2xl overflow-hidden flex flex-col h-[520px]">
           {/* Header */}
@@ -179,9 +253,14 @@ export default function FloatingCopilot() {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-text-primary flex items-center gap-1.5">
-                  AI Recruiter Copilot <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                  {isHiringManager ? "AI Hiring Assistant" : "AI Recruiter Copilot"}{" "}
+                  <Sparkles className="w-3.5 h-3.5 text-blue-400" />
                 </h3>
-                <p className="text-[10px] text-muted">Recruiter Portal Mode &bull; Live ATS Context</p>
+                <p className="text-[10px] text-muted">
+                  {isHiringManager
+                    ? "Hiring Manager Review Mode • Department Context"
+                    : "Recruiter Portal Mode • Live ATS Context"}
+                </p>
               </div>
             </div>
 
@@ -264,24 +343,49 @@ export default function FloatingCopilot() {
 
           {/* Quick Prompts Bar */}
           <div className="px-3 py-2 border-t border-border bg-surface flex items-center gap-1.5 overflow-x-auto text-[10px]">
-            <button
-              onClick={() => handleSend("Search candidates with Python and React skills")}
-              className="px-2.5 py-1 rounded-full bg-secondary-surface border border-border text-muted hover:text-text-primary whitespace-nowrap"
-            >
-              Search Candidates
-            </button>
-            <button
-              onClick={() => handleSend("Show me pipeline stage overview")}
-              className="px-2.5 py-1 rounded-full bg-secondary-surface border border-border text-muted hover:text-text-primary whitespace-nowrap"
-            >
-              Pipeline Overview
-            </button>
-            <button
-              onClick={() => handleSend("How to upload and parse resumes?")}
-              className="px-2.5 py-1 rounded-full bg-secondary-surface border border-border text-muted hover:text-text-primary whitespace-nowrap"
-            >
-              Upload Help
-            </button>
+            {isHiringManager ? (
+              <>
+                <button
+                  onClick={() => handleSend("What are good technical interview questions for evaluating problem solving?")}
+                  className="px-2.5 py-1 rounded-full bg-secondary-surface border border-border text-muted hover:text-text-primary whitespace-nowrap"
+                >
+                  Technical Questions
+                </button>
+                <button
+                  onClick={() => handleSend("What criteria should I evaluate on an interview scorecard?")}
+                  className="px-2.5 py-1 rounded-full bg-secondary-surface border border-border text-muted hover:text-text-primary whitespace-nowrap"
+                >
+                  Scorecard Rubric
+                </button>
+                <button
+                  onClick={() => handleSend("How to assess cultural fit and technical depth in a 45-minute interview?")}
+                  className="px-2.5 py-1 rounded-full bg-secondary-surface border border-border text-muted hover:text-text-primary whitespace-nowrap"
+                >
+                  Evaluation Tips
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => handleSend("Search candidates with Python and React skills")}
+                  className="px-2.5 py-1 rounded-full bg-secondary-surface border border-border text-muted hover:text-text-primary whitespace-nowrap"
+                >
+                  Search Candidates
+                </button>
+                <button
+                  onClick={() => handleSend("Show me pipeline stage overview")}
+                  className="px-2.5 py-1 rounded-full bg-secondary-surface border border-border text-muted hover:text-text-primary whitespace-nowrap"
+                >
+                  Pipeline Overview
+                </button>
+                <button
+                  onClick={() => handleSend("How to upload and parse resumes?")}
+                  className="px-2.5 py-1 rounded-full bg-secondary-surface border border-border text-muted hover:text-text-primary whitespace-nowrap"
+                >
+                  Upload Help
+                </button>
+              </>
+            )}
           </div>
 
           {/* Input Bar */}
@@ -296,7 +400,11 @@ export default function FloatingCopilot() {
                   handleSend();
                 }
               }}
-              placeholder="Ask AI Copilot... (Shift+Enter for newline)"
+              placeholder={
+                isHiringManager
+                  ? "Ask Hiring Assistant... (Shift+Enter for newline)"
+                  : "Ask AI Copilot... (Shift+Enter for newline)"
+              }
               className="flex-1 px-3 py-2 bg-surface border border-border rounded-xl text-xs text-text-primary outline-none focus:ring-1 focus:ring-blue-500/40 resize-none max-h-24 overflow-y-auto leading-relaxed"
             />
             <button

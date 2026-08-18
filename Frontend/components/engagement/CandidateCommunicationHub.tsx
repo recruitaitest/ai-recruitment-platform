@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { MessageSquare, Mail, PhoneCall, Clock, Send, ShieldCheck, Sparkles } from "lucide-react";
 import api from "@/lib/api";
+import { toast } from "sonner";
 
 interface MessageItem {
   id: number;
@@ -18,6 +19,7 @@ export function CandidateCommunicationHub({ candidateId }: { candidateId: number
   const [activeChannel, setActiveChannel] = useState<"all" | "email" | "whatsapp" | "sms">("all");
   const [newText, setNewText] = useState("");
   const [sendChannel, setSendChannel] = useState<"whatsapp" | "email" | "sms">("whatsapp");
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     fetchTimeline();
@@ -61,24 +63,35 @@ export function CandidateCommunicationHub({ candidateId }: { candidateId: number
   };
 
   const handleSendMessage = async () => {
-    if (!newText.trim()) return;
+    if (!newText.trim() || isSending) return;
 
-    const msgObj: MessageItem = {
-      id: Date.now(),
-      channel: sendChannel,
-      direction: "outbound",
-      content: `[${sendChannel.toUpperCase()}] ${newText}`,
-      timestamp: "Just now",
-      sender: "Recruiter",
-    };
-
-    setMessages((prev) => [...prev, msgObj]);
+    setIsSending(true);
+    const pendingText = newText;
     setNewText("");
 
     try {
-      await api.post(`/candidates/${candidateId}/notes`, { content: msgObj.content });
-    } catch {
-      // silent log
+      const res = await api.post("/messaging/dispatch", {
+        candidate_id: candidateId,
+        channel: sendChannel,
+        message: pendingText,
+      });
+
+      const msgObj: MessageItem = {
+        id: Date.now(),
+        channel: sendChannel,
+        direction: "outbound",
+        content: `[${sendChannel.toUpperCase()}] ${pendingText}`,
+        timestamp: "Just now",
+        sender: "Recruiter",
+      };
+
+      setMessages((prev) => [...prev, msgObj]);
+      toast.success(res.data?.message || `${sendChannel.toUpperCase()} delivered successfully!`);
+    } catch (err: any) {
+      const detail = err.response?.data?.detail || `${sendChannel.toUpperCase()} service is not connected. Configure credentials in Settings > Integrations.`;
+      toast.error(`⚠️ ${detail}`);
+    } finally {
+      setIsSending(false);
     }
   };
 

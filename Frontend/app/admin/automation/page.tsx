@@ -14,21 +14,17 @@ import {
   Sliders, 
   ShieldAlert, 
   Power,
-  Webhook
+  MessageCircle,
+  MessageSquare
 } from "lucide-react";
 import { 
   getAutomationRules, 
   updateAutomationRules, 
-  getWebhooks, 
-  createWebhook, 
-  deleteWebhook,
-  archiveInactivePositionsApi,
   AutomationRule,
-  WebhookEndpoint
 } from "@/services/automationService";
 
 export default function AdminAutomationPage() {
-  const [activeTab, setActiveTab] = useState<"rules" | "emails" | "offers" | "webhooks">("rules");
+  const [activeTab, setActiveTab] = useState<"rules" | "emails" | "whatsapp" | "sms">("rules");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -39,20 +35,26 @@ export default function AdminAutomationPage() {
     is_active: true,
     auto_advance_enabled: true,
     auto_advance_score_threshold: 80,
-    target_advance_stage: "Interview",
+    target_advance_stage: "Screening",
     auto_reject_enabled: true,
     auto_reject_score_cutoff: 40,
     rejection_delay_hours: 24,
     rejection_email_template: "",
     auto_tagging_enabled: true,
-    auto_archive_inactive_days: 60
+    auto_archive_inactive_days: 60,
+    stage_email_applied: true,
+    stage_email_interview: true,
+    stage_email_offer: true,
+    stage_email_rejection: true,
+    stage_whatsapp_applied: true,
+    stage_whatsapp_interview: true,
+    stage_whatsapp_offer: true,
+    stage_whatsapp_rejection: false,
+    stage_sms_applied: true,
+    stage_sms_interview: true,
+    stage_sms_offer: true,
+    stage_sms_rejection: false
   });
-
-  // Webhooks state
-  const [webhooks, setWebhooks] = useState<WebhookEndpoint[]>([]);
-  const [newWebhookName, setNewWebhookName] = useState("");
-  const [newWebhookUrl, setNewWebhookUrl] = useState("");
-  const [selectedEvents, setSelectedEvents] = useState<string[]>(["new_candidate", "stage_changed", "offer_accepted"]);
 
   useEffect(() => {
     fetchInitialData();
@@ -61,12 +63,8 @@ export default function AdminAutomationPage() {
   const fetchInitialData = async () => {
     setLoading(true);
     try {
-      const [rulesData, webhooksData] = await Promise.all([
-        getAutomationRules().catch(() => null),
-        getWebhooks().catch(() => [])
-      ]);
+      const rulesData = await getAutomationRules().catch(() => null);
       if (rulesData) setRules(rulesData);
-      if (webhooksData) setWebhooks(webhooksData);
     } catch (err) {
       console.error("Failed to load automation settings:", err);
     } finally {
@@ -97,44 +95,6 @@ export default function AdminAutomationPage() {
       showToast(`Master Automation switched ${saved.is_active ? "ON" : "OFF"}!`, saved.is_active ? "success" : "error");
     } catch (err) {
       showToast("Failed to update Master Automation state.", "error");
-    }
-  };
-
-  const handleCreateWebhook = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newWebhookName || !newWebhookUrl) return;
-    try {
-      const created = await createWebhook({
-        name: newWebhookName,
-        target_url: newWebhookUrl,
-        is_active: true,
-        subscribed_events: selectedEvents
-      });
-      setWebhooks((prev) => [...prev, created]);
-      setNewWebhookName("");
-      setNewWebhookUrl("");
-      showToast("Webhook endpoint added successfully!", "success");
-    } catch (err) {
-      showToast("Failed to add webhook endpoint.", "error");
-    }
-  };
-
-  const handleDeleteWebhook = async (id: number) => {
-    try {
-      await deleteWebhook(id);
-      setWebhooks((prev) => prev.filter((w) => w.id !== id));
-      showToast("Webhook endpoint removed.", "success");
-    } catch (err) {
-      showToast("Failed to delete webhook.", "error");
-    }
-  };
-
-  const handleArchiveJobs = async () => {
-    try {
-      const res = await archiveInactivePositionsApi();
-      showToast(res.message, "success");
-    } catch (err) {
-      showToast("Failed to archive inactive jobs.", "error");
     }
   };
 
@@ -188,14 +148,6 @@ export default function AdminAutomationPage() {
           </div>
 
           <button
-            onClick={handleArchiveJobs}
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-text-primary border border-border rounded-xl bg-surface hover:bg-secondary-surface transition-all shadow-sm cursor-pointer"
-          >
-            <Clock className="w-3.5 h-3.5 text-amber-500" />
-            Archive Inactive Jobs
-          </button>
-
-          <button
             onClick={handleSaveRules}
             disabled={saving}
             className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-primary hover:bg-primary-hover rounded-xl shadow-md transition-all disabled:opacity-50 cursor-pointer"
@@ -222,8 +174,8 @@ export default function AdminAutomationPage() {
         {[
           { id: "rules", label: "Pipeline & Rejection Rules", icon: Sliders },
           { id: "emails", label: "Automated Stage Emails", icon: Mail },
-          { id: "offers", label: "Offer Letter Templates", icon: FileText },
-          { id: "webhooks", label: "Webhooks & Zapier", icon: Webhook },
+          { id: "whatsapp", label: "Automated Stage WhatsApp", icon: MessageCircle },
+          { id: "sms", label: "Automated Stage SMS", icon: MessageSquare },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -284,11 +236,9 @@ export default function AdminAutomationPage() {
                 <select
                   value={rules.target_advance_stage}
                   onChange={(e) => setRules({ ...rules, target_advance_stage: e.target.value })}
-                  className="w-full p-3 rounded-xl border border-slate-300 dark:border-border bg-white dark:bg-bg text-slate-900 dark:text-text-primary font-bold text-xs shadow-sm hover:border-blue-500 focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 outline-none cursor-pointer transition-all"
+                  className="w-full p-3 rounded-xl border border-slate-300 dark:border-border bg-white dark:bg-bg text-slate-900 dark:text-text-primary font-bold text-xs shadow-sm outline-none cursor-default"
                 >
-                  <option value="Screening" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white font-medium py-1">Screening Stage</option>
-                  <option value="Interview" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white font-medium py-1">Technical Interview</option>
-                  <option value="Offer" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white font-medium py-1">Offer Stage</option>
+                  <option value="Screening" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white font-medium py-1">Screening Round</option>
                 </select>
               </div>
             </div>
@@ -351,99 +301,202 @@ export default function AdminAutomationPage() {
       {/* ── TAB 2: AUTOMATED STAGE EMAILS ────────────────────────────────────── */}
       {activeTab === "emails" && (
         <div className="p-6 rounded-2xl border border-border bg-surface shadow-sm space-y-6">
-          <h3 className="text-sm font-bold text-text-primary">Automated Stage Email Notifications</h3>
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500">
+              <Mail className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-text-primary">Automated Stage Email Notifications</h3>
+              <p className="text-xs text-muted">Configure candidate automated email delivery per hiring stage.</p>
+            </div>
+          </div>
 
           <div className="space-y-4">
             {[
-              { stage: "Applied", desc: "Send instant application receipt email when candidate applies or resume is parsed." },
-              { stage: "Interview", desc: "Send automated interview invitation with schedule details and round expectations." },
-              { stage: "Offer", desc: "Send preliminary offer congrats message." },
-            ].map(({ stage, desc }) => (
-              <div key={stage} className="flex items-center justify-between p-4 rounded-xl border border-border bg-secondary-surface/40">
+              {
+                id: "applied",
+                stage: "Applied",
+                desc: "Send instant application receipt email when candidate applies or resume is parsed.",
+                checked: rules.stage_email_applied ?? true,
+                setter: (val: boolean) => setRules({ ...rules, stage_email_applied: val })
+              },
+              {
+                id: "interview",
+                stage: "Interview",
+                desc: "Send automated interview invitation with schedule details and round expectations.",
+                checked: rules.stage_email_interview ?? true,
+                setter: (val: boolean) => setRules({ ...rules, stage_email_interview: val })
+              },
+              {
+                id: "offer",
+                stage: "Offer",
+                desc: "Send preliminary offer congrats message.",
+                checked: rules.stage_email_offer ?? true,
+                setter: (val: boolean) => setRules({ ...rules, stage_email_offer: val })
+              },
+              {
+                id: "rejection",
+                stage: "Rejection",
+                desc: "Send polite rejection email notification when candidate is not selected or below cutoff.",
+                checked: rules.stage_email_rejection ?? true,
+                setter: (val: boolean) => setRules({ ...rules, stage_email_rejection: val })
+              },
+            ].map(({ id, stage, desc, checked, setter }) => (
+              <div key={id} className="flex items-center justify-between p-4 rounded-xl border border-border bg-secondary-surface/40">
                 <div>
-                  <h4 className="text-xs font-bold text-text-primary">{stage} Stage Notification</h4>
+                  <h4 className="text-xs font-bold text-text-primary">{stage} Stage Email Notification</h4>
                   <p className="text-xs text-muted mt-0.5">{desc}</p>
                 </div>
-                <input type="checkbox" defaultChecked className="w-4 h-4 accent-primary cursor-pointer" />
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) => setter(e.target.checked)}
+                  className="w-4 h-4 accent-primary cursor-pointer"
+                />
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* ── TAB 3: OFFER LETTER TEMPLATES ─────────────────────────────────────── */}
-      {activeTab === "offers" && (
-        <div className="p-6 rounded-2xl border border-border bg-surface shadow-sm space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-sm font-bold text-text-primary">Offer Letter PDF Templates</h3>
-              <p className="text-xs text-muted">Auto-populates candidate name, position, offered CTC, and joining date.</p>
+      {/* ── TAB 3: AUTOMATED STAGE WHATSAPP ──────────────────────────────────── */}
+      {activeTab === "whatsapp" && (
+        <div className="p-6 rounded-2xl border border-border bg-surface shadow-sm space-y-6">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500">
+                <MessageCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-text-primary">Automated WhatsApp Stage Notifications</h3>
+                <p className="text-xs text-muted">Send automated real-time candidate updates directly to WhatsApp.</p>
+              </div>
             </div>
+            <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+              <MessageCircle className="w-3 h-3" /> Twilio / Meta Sandbox Ready
+            </span>
           </div>
 
-          <div className="p-4 rounded-xl border border-border bg-secondary-surface/40 font-mono text-xs text-muted leading-relaxed">
-            <p className="text-primary font-bold mb-2">// Default Offer Template Placeholders:</p>
-            <p className="font-semibold text-text-primary">{"{{candidate_name}} • {{position_title}} • {{offered_ctc}} • {{joining_date}} • {{location}}"}</p>
+          <div className="space-y-4">
+            {[
+              {
+                id: "wa_applied",
+                stage: "Applied",
+                desc: "Send instant WhatsApp confirmation when candidate submits resume on Career Portal.",
+                checked: rules.stage_whatsapp_applied ?? true,
+                setter: (val: boolean) => setRules({ ...rules, stage_whatsapp_applied: val })
+              },
+              {
+                id: "wa_interview",
+                stage: "Interview",
+                desc: "Send interview schedule, time, and Google Meet/Teams link directly to candidate WhatsApp.",
+                checked: rules.stage_whatsapp_interview ?? true,
+                setter: (val: boolean) => setRules({ ...rules, stage_whatsapp_interview: val })
+              },
+              {
+                id: "wa_offer",
+                stage: "Offer",
+                desc: "Send preliminary job offer congrats alert with next steps to candidate WhatsApp.",
+                checked: rules.stage_whatsapp_offer ?? true,
+                setter: (val: boolean) => setRules({ ...rules, stage_whatsapp_offer: val })
+              },
+              {
+                id: "wa_rejection",
+                stage: "Rejection",
+                desc: "Send respectful status closure update via WhatsApp.",
+                checked: rules.stage_whatsapp_rejection ?? false,
+                setter: (val: boolean) => setRules({ ...rules, stage_whatsapp_rejection: val })
+              },
+            ].map(({ id, stage, desc, checked, setter }) => (
+              <div key={id} className="flex items-center justify-between p-4 rounded-xl border border-border bg-secondary-surface/40">
+                <div>
+                  <h4 className="text-xs font-bold text-text-primary">{stage} Stage WhatsApp Notification</h4>
+                  <p className="text-xs text-muted mt-0.5">{desc}</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) => setter(e.target.checked)}
+                  className="w-4 h-4 accent-emerald-500 cursor-pointer"
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-xs text-muted space-y-1">
+            <p className="font-semibold text-emerald-600 dark:text-emerald-400">💡 No Personal Number Required for WhatsApp:</p>
+            <p>You can use Twilio&apos;s free WhatsApp Sandbox (+1 415 523 8886) or Meta Developer Test Numbers without exposing your personal phone number.</p>
           </div>
         </div>
       )}
 
-      {/* ── TAB 4: WEBHOOKS & ZAPIER ─────────────────────────────────────────── */}
-      {activeTab === "webhooks" && (
-        <div className="space-y-6">
-          <form onSubmit={handleCreateWebhook} className="p-6 rounded-2xl border border-border bg-surface shadow-sm space-y-4">
-            <h3 className="text-sm font-bold text-text-primary">Add Webhook Endpoint (Slack / Zapier / HRMS)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input
-                type="text"
-                placeholder="Endpoint Name (e.g. Slack #hiring Channel)"
-                value={newWebhookName}
-                onChange={(e) => setNewWebhookName(e.target.value)}
-                className="p-2.5 rounded-xl border border-border bg-bg text-text-primary placeholder:text-muted text-xs font-semibold outline-none focus:border-primary"
-                required
-              />
-              <input
-                type="url"
-                placeholder="Target Webhook URL (https://hooks.zapier.com/...)"
-                value={newWebhookUrl}
-                onChange={(e) => setNewWebhookUrl(e.target.value)}
-                className="p-2.5 rounded-xl border border-border bg-bg text-text-primary placeholder:text-muted text-xs font-semibold outline-none focus:border-primary"
-                required
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-primary hover:bg-primary-hover rounded-xl shadow-md transition-all cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Add Webhook Endpoint
-            </button>
-          </form>
-
-          <div className="p-6 rounded-2xl border border-border bg-surface shadow-sm space-y-4">
-            <h3 className="text-sm font-bold text-text-primary">Active Webhook Endpoints</h3>
-            {webhooks.length === 0 ? (
-              <p className="text-xs text-muted">No webhook endpoints configured yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {webhooks.map((wh) => (
-                  <div key={wh.id} className="flex items-center justify-between p-4 rounded-xl border border-border bg-secondary-surface/40">
-                    <div>
-                      <p className="text-xs font-bold text-text-primary">{wh.name}</p>
-                      <p className="text-[11px] font-mono text-muted">{wh.target_url}</p>
-                    </div>
-                    <button
-                      onClick={() => wh.id && handleDeleteWebhook(wh.id)}
-                      className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all cursor-pointer"
-                      title="Delete Webhook"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+      {/* ── TAB 4: AUTOMATED STAGE SMS ───────────────────────────────────────── */}
+      {activeTab === "sms" && (
+        <div className="p-6 rounded-2xl border border-border bg-surface shadow-sm space-y-6">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500">
+                <MessageSquare className="w-5 h-5" />
               </div>
-            )}
+              <div>
+                <h3 className="text-sm font-bold text-text-primary">Automated SMS Stage Notifications</h3>
+                <p className="text-xs text-muted">Send instantaneous SMS notifications to candidate mobile numbers.</p>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 flex items-center gap-1">
+              <MessageSquare className="w-3 h-3" /> Virtual Sender ID Ready
+            </span>
+          </div>
+
+          <div className="space-y-4">
+            {[
+              {
+                id: "sms_applied",
+                stage: "Applied",
+                desc: "Send instant SMS confirmation upon candidate application submission.",
+                checked: rules.stage_sms_applied ?? true,
+                setter: (val: boolean) => setRules({ ...rules, stage_sms_applied: val })
+              },
+              {
+                id: "sms_interview",
+                stage: "Interview",
+                desc: "Send SMS interview schedule reminder with date and time.",
+                checked: rules.stage_sms_interview ?? true,
+                setter: (val: boolean) => setRules({ ...rules, stage_sms_interview: val })
+              },
+              {
+                id: "sms_offer",
+                stage: "Offer",
+                desc: "Send congratulatory job offer notification SMS.",
+                checked: rules.stage_sms_offer ?? true,
+                setter: (val: boolean) => setRules({ ...rules, stage_sms_offer: val })
+              },
+              {
+                id: "sms_rejection",
+                stage: "Rejection",
+                desc: "Send polite closure notice via SMS.",
+                checked: rules.stage_sms_rejection ?? false,
+                setter: (val: boolean) => setRules({ ...rules, stage_sms_rejection: val })
+              },
+            ].map(({ id, stage, desc, checked, setter }) => (
+              <div key={id} className="flex items-center justify-between p-4 rounded-xl border border-border bg-secondary-surface/40">
+                <div>
+                  <h4 className="text-xs font-bold text-text-primary">{stage} Stage SMS Notification</h4>
+                  <p className="text-xs text-muted mt-0.5">{desc}</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) => setter(e.target.checked)}
+                  className="w-4 h-4 accent-blue-500 cursor-pointer"
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 text-xs text-muted space-y-1">
+            <p className="font-semibold text-blue-600 dark:text-blue-400">💡 No Personal Number Required for SMS:</p>
+            <p>SMS gateways use cloud virtual sender IDs (e.g. RECRUITAI) and sandbox test API keys without linking your personal phone number.</p>
           </div>
         </div>
       )}

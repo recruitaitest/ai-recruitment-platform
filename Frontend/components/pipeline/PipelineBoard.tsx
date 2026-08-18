@@ -24,6 +24,7 @@ import { getOffers, updateOfferStatus } from "@/services/offerService";
 import api from "@/lib/api";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { hasPermission } from "@/utils/permissions";
 import {
  DndContext,
  DragEndEvent,
@@ -87,6 +88,9 @@ export default function PipelineBoard() {
 
  const [offerCandidate, setOfferCandidate] =
  useState<any>(null);
+
+ const [clearStageConfirm, setClearStageConfirm] = useState<string | null>(null);
+ const [clearSelectedConfirm, setClearSelectedConfirm] = useState(false);
 
  const [viewOfferModalOpen, setViewOfferModalOpen] = useState(false);
  const [editOfferModalOpen, setEditOfferModalOpen] = useState(false);
@@ -254,13 +258,15 @@ export default function PipelineBoard() {
  }
  };
 
- const sensors = useSensors(
- useSensor(PointerSensor, {
- activationConstraint: {
- distance: 5,
- },
- })
- );
+  const canEditPipeline = hasPermission("pipelines.update") || hasPermission("pipelines.manage") || hasPermission("pipeline.edit") || hasPermission("candidates.update");
+
+  const sensors = useSensors(
+  useSensor(PointerSensor, {
+  activationConstraint: {
+  distance: canEditPipeline ? 5 : 999999,
+  },
+  })
+  );
 
  const filteredCandidates = useMemo(() => {
  return candidates.filter(
@@ -426,14 +432,17 @@ export default function PipelineBoard() {
     }
   };
 
-  const handleClearStage = async (stage: string) => {
+  const handleClearStage = (stage: string) => {
     const stageCandidates = candidates.filter((c) => c.stage === stage);
     if (stageCandidates.length === 0) return;
-    const confirmed = window.confirm(
-      `Are you sure you want to clear all ${stageCandidates.length} candidate(s) in the ${stage} stage?`
-    );
-    if (!confirmed) return;
+    setClearStageConfirm(stage);
+  };
 
+  const confirmClearStage = async () => {
+    if (!clearStageConfirm) return;
+    const stage = clearStageConfirm;
+    const stageCandidates = candidates.filter((c) => c.stage === stage);
+    setClearStageConfirm(null);
     setCandidates((prev) => prev.filter((c) => c.stage !== stage));
 
     try {
@@ -454,17 +463,18 @@ export default function PipelineBoard() {
     }
   };
 
-  const handleClearSelected = async () => {
+  const handleClearSelected = () => {
     const targetCandidates = candidates.filter((c) => selectedCardIds.has(c.id));
     if (targetCandidates.length === 0) {
       setError("Please select at least one candidate to clear.");
       return;
     }
-    const confirmed = window.confirm(
-      `Are you sure you want to clear ${targetCandidates.length} selected candidate(s) from the pipeline?`
-    );
-    if (!confirmed) return;
+    setClearSelectedConfirm(true);
+  };
 
+  const confirmClearSelected = async () => {
+    const targetCandidates = candidates.filter((c) => selectedCardIds.has(c.id));
+    setClearSelectedConfirm(false);
     setCandidates((prev) => prev.filter((c) => !selectedCardIds.has(c.id)));
 
     try {
@@ -903,6 +913,7 @@ export default function PipelineBoard() {
  onSubmitFeedback={handleSubmitFeedback}
  onRemoveCandidate={handleRemoveCandidate}
  onClearStage={handleClearStage}
+ isDraggable={canEditPipeline}
  />
  );
  })}
@@ -1136,6 +1147,82 @@ export default function PipelineBoard() {
     onConfirmStage={handleConfirmBulkStage}
     loading={bulkLoading}
   />
+
+  {/* Clear Stage Confirmation Modal */}
+  {clearStageConfirm && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
+            <Trash2 className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-text-primary">Clear Column Stage</h3>
+            <p className="text-xs text-muted">Remove candidates from this pipeline column.</p>
+          </div>
+        </div>
+
+        <p className="text-sm text-secondary bg-secondary-surface/50 p-3 rounded-xl border border-border">
+          Are you sure you want to clear all candidates in the <strong className="text-text-primary">&quot;{clearStageConfirm}&quot;</strong> stage?
+        </p>
+
+        <div className="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="button"
+            onClick={() => setClearStageConfirm(null)}
+            className="px-4 py-2 rounded-xl border border-border bg-surface-hover text-sm font-medium text-text-secondary hover:bg-border transition"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={confirmClearStage}
+            className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition shadow-md"
+          >
+            Clear All in Stage
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
+
+  {/* Clear Selected Confirmation Modal */}
+  {clearSelectedConfirm && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
+            <Trash2 className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-text-primary">Clear Selected Candidates</h3>
+            <p className="text-xs text-muted">Remove selected candidates from the pipeline.</p>
+          </div>
+        </div>
+
+        <p className="text-sm text-secondary bg-secondary-surface/50 p-3 rounded-xl border border-border">
+          Are you sure you want to remove <strong className="text-text-primary">{selectedCardIds.size} selected candidate(s)</strong> from the pipeline?
+        </p>
+
+        <div className="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="button"
+            onClick={() => setClearSelectedConfirm(false)}
+            className="px-4 py-2 rounded-xl border border-border bg-surface-hover text-sm font-medium text-text-secondary hover:bg-border transition"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={confirmClearSelected}
+            className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition shadow-md"
+          >
+            Remove Candidates
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
  </div>
  );
 }

@@ -14,6 +14,7 @@ class InterviewCreate(BaseModel):
 
     meeting_link: Optional[str] = None
     location: Optional[str] = None
+    location_link: Optional[str] = None
 
     status: str
 
@@ -29,6 +30,10 @@ class InterviewCreate(BaseModel):
 
     recommendation: str | None = None
 
+    panel_role: Optional[str] = None
+    interviewer_name: Optional[str] = None
+    notes: Optional[str] = None
+
     completed_at: str | None = None
     
 class InterviewResponse(BaseModel):
@@ -36,6 +41,9 @@ class InterviewResponse(BaseModel):
 
     candidate_id: int
     position_id: int
+
+    candidate_name: Optional[str] = None
+    position_title: Optional[str] = None
 
     interview_date: str
     interview_time: str
@@ -46,6 +54,11 @@ class InterviewResponse(BaseModel):
 
     meeting_link: Optional[str] = None
     location: Optional[str] = None
+    location_link: Optional[str] = None
+
+    panel_role: Optional[str] = None
+    interviewer_name: Optional[str] = None
+    notes: Optional[str] = None
 
     status: str
 

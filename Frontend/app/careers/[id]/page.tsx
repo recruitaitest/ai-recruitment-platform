@@ -579,59 +579,86 @@ export default function JobApplicationPage({ params }: { params: { id: string } 
 
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-slate-700">Notice Period</label>
-                    <input
-                      type="text"
+                    <select
                       value={noticePeriod}
                       onChange={(e) => setNoticePeriod(e.target.value)}
-                      placeholder="e.g. Immediate / 30 Days"
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                    />
+                    >
+                      <option value="Immediate">Immediate Joiner</option>
+                      <option value="15 Days">15 Days</option>
+                      <option value="30 Days">30 Days (1 Month)</option>
+                      <option value="45 Days">45 Days</option>
+                      <option value="60 Days">60 Days (2 Months)</option>
+                      <option value="90 Days">90 Days (3 Months)</option>
+                      <option value="Serving Notice">Serving Notice Period</option>
+                    </select>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">Current CTC</label>
-                    <input
-                      type="text"
-                      value={currentCtc}
-                      onChange={(e) => setCurrentCtc(e.target.value)}
-                      placeholder="e.g. $120,000 or 12 LPA"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                    />
+                    <label className="text-xs font-semibold text-slate-700">Current CTC (LPA)</label>
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        value={currentCtc}
+                        onChange={(e) => setCurrentCtc(e.target.value)}
+                        placeholder="e.g. 12"
+                        className="w-full pl-3.5 pr-14 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      />
+                      <span className="absolute right-3 text-xs font-bold text-slate-400">LPA</span>
+                    </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">Expected CTC</label>
-                    <input
-                      type="text"
-                      value={expectedCtc}
-                      onChange={(e) => setExpectedCtc(e.target.value)}
-                      placeholder="e.g. $150,000 or 15 LPA"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                    />
+                    <label className="text-xs font-semibold text-slate-700">Expected CTC (LPA)</label>
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        value={expectedCtc}
+                        onChange={(e) => setExpectedCtc(e.target.value)}
+                        placeholder="e.g. 15"
+                        className="w-full pl-3.5 pr-14 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      />
+                      <span className="absolute right-3 text-xs font-bold text-slate-400">LPA</span>
+                    </div>
                   </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">Availability</label>
-                    <input
-                      type="text"
+                    <label className="text-xs font-semibold text-slate-700">Availability / Notice Period</label>
+                    <select
                       value={noticePeriod || "Immediate"}
                       onChange={(e) => setNoticePeriod(e.target.value)}
-                      placeholder="e.g. Immediate"
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                    />
+                    >
+                      <option value="Immediate">Immediate Joiner</option>
+                      <option value="15 Days">15 Days</option>
+                      <option value="30 Days">30 Days (1 Month)</option>
+                      <option value="45 Days">45 Days</option>
+                      <option value="60 Days">60 Days (2 Months)</option>
+                      <option value="90 Days">90 Days (3 Months)</option>
+                      <option value="Serving Notice">Serving Notice Period</option>
+                    </select>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">Expected CTC (Optional)</label>
-                    <input
-                      type="text"
-                      value={expectedCtc}
-                      onChange={(e) => setExpectedCtc(e.target.value)}
-                      placeholder="e.g. Best in Industry / 6 LPA"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                    />
+                    <label className="text-xs font-semibold text-slate-700">Expected CTC (LPA, Optional)</label>
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        value={expectedCtc}
+                        onChange={(e) => setExpectedCtc(e.target.value)}
+                        placeholder="e.g. 6"
+                        className="w-full pl-3.5 pr-14 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      />
+                      <span className="absolute right-3 text-xs font-bold text-slate-400">LPA</span>
+                    </div>
                   </div>
                 </div>
               )}

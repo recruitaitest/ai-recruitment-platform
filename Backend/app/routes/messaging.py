@@ -95,7 +95,7 @@ def send_candidate_nudge(req: NudgeRequest, db: Session = Depends(get_db)):
         twilio_from = (settings.sms_sender_id if channel == "sms" and settings else None) or os.getenv("TWILIO_PHONE_NUMBER", "+15005550006")
         twilio_wa_from = (settings.whatsapp_phone_number if channel == "whatsapp" and settings else None) or os.getenv("TWILIO_WHATSAPP_NUMBER", "whatsapp:+14155238886")
 
-        if twilio_sid and twilio_auth and not twilio_auth.startswith("••••"):
+        if twilio_sid and twilio_auth and not twilio_auth.startswith("••••") and twilio_sid != "your_sid_here" and twilio_auth != "your_key_here":
             try:
                 from twilio.rest import Client
                 client = Client(twilio_sid, twilio_auth)
@@ -113,16 +113,17 @@ def send_candidate_nudge(req: NudgeRequest, db: Session = Depends(get_db)):
                     to=recipient
                 )
                 dispatch_status = "sent_live"
-                provider_details = f" (Twilio Message SID: {msg.sid})"
+                provider_details = f" (Twilio SID: {msg.sid})"
             except Exception as e:
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
                     detail=f"{channel_upper} Gateway Error: {str(e)}"
                 )
         else:
-            # Integration enabled with mock credentials or test mode
-            dispatch_status = "sent_mock"
-            provider_details = " (Sent via Connected Provider Sandbox Mode)"
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"{channel_upper} service is not connected. Please configure your API credentials in Settings > Integrations."
+            )
 
     elif channel == "email":
         # Dispatch via SMTP if configured
@@ -146,8 +147,16 @@ def send_candidate_nudge(req: NudgeRequest, db: Session = Depends(get_db)):
                     detail=f"Email Dispatch Error: {str(e)}"
                 )
         else:
-            dispatch_status = "sent_mock"
-            provider_details = " (Sent via RecruitAI Default Email Dispatcher)"
+            # Fallback to application default email service
+            from app.services.email_service import send_email_message
+            sent = send_email_message(email_address, "Update Regarding Your Application - RecruitAI", f"<p>{message_text}</p>")
+            if not sent:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Email service is not connected. Please connect Gmail or SMTP in Settings > Email Integration."
+                )
+            dispatch_status = "sent_live"
+            provider_details = " (RecruitAI Email Dispatcher)"
 
     # 3. Log dispatch to candidate audit notes table
     recipient_info = phone_number if channel in ["whatsapp", "sms"] else email_address

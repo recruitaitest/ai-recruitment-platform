@@ -1,6 +1,7 @@
 "use client";
 
 import { Search, Plus, Filter, Layers, Trash2 } from "lucide-react";
+import { hasPermission } from "@/utils/permissions";
 
 interface PipelineHeaderProps {
   searchQuery: string;
@@ -25,6 +26,7 @@ export default function PipelineHeader({
   totalCandidates,
   activeCandidates,
 }: PipelineHeaderProps) {
+  const canCreate = hasPermission("candidates.create") || hasPermission("pipelines.manage") || hasPermission("pipeline.edit") || hasPermission("candidates.update");
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       {/* Left Section */}
@@ -134,27 +136,29 @@ export default function PipelineHeader({
         )}
 
         {/* Add Candidate */}
-        <button
-          onClick={onAddCandidate}
-          className="
-            flex
-            h-11
-            items-center
-            gap-2
-            rounded-xl
-            bg-primary
-            px-4
-            text-sm
-            font-medium
-            text-white
-            shadow-lg
-            transition-all
-            hover:bg-primary/90
-          "
-        >
-          <Plus className="h-4 w-4" />
-          Add Candidate
-        </button>
+        {canCreate && (
+          <button
+            onClick={onAddCandidate}
+            className="
+              flex
+              h-11
+              items-center
+              gap-2
+              rounded-xl
+              bg-primary
+              px-4
+              text-sm
+              font-medium
+              text-white
+              shadow-lg
+              transition-all
+              hover:bg-primary/90
+            "
+          >
+            <Plus className="h-4 w-4" />
+            Add Candidate
+          </button>
+        )}
       </div>
     </div>
   );

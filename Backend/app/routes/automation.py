@@ -16,7 +16,8 @@ from app.services.automation_service import (
     process_bulk_zip_file,
     evaluate_automation_rules,
     generate_offer_letter,
-    check_and_archive_inactive_positions
+    check_and_archive_inactive_positions,
+    sweep_auto_advance_all_candidates
 )
 
 router = APIRouter(
@@ -52,6 +53,14 @@ def update_automation_rules(payload: AutomationRuleSchema, db: Session = Depends
 
     db.commit()
     db.refresh(rule)
+
+    # Automatically sweep and auto-advance existing candidates matching the new rules!
+    try:
+        sweep_auto_advance_all_candidates(db)
+    except Exception as err:
+        import logging
+        logging.error(f"Error executing auto-advance sweep: {err}", exc_info=True)
+
     return rule
 
 # ─── 2. Webhooks Management ───────────────────────────────────────────────────

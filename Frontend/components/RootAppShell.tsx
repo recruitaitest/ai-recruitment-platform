@@ -68,10 +68,10 @@ export function RootAppShell({ children }: RootAppShellProps) {
     };
   }, []);
 
-  const isPortalOrCareer = pathname.startsWith('/careers') || pathname.startsWith('/portal')
+  const isCareersRoute = pathname.startsWith('/careers')
   const isPublicAuthRoute = PUBLIC_ROUTES.has(pathname)
 
-  if (isPortalOrCareer) {
+  if (isCareersRoute) {
     return (
       <>
         {children}

@@ -13,6 +13,18 @@ export interface AutomationRule {
   rejection_email_template?: string;
   auto_tagging_enabled: boolean;
   auto_archive_inactive_days: number;
+  stage_email_applied?: boolean;
+  stage_email_interview?: boolean;
+  stage_email_offer?: boolean;
+  stage_email_rejection?: boolean;
+  stage_whatsapp_applied?: boolean;
+  stage_whatsapp_interview?: boolean;
+  stage_whatsapp_offer?: boolean;
+  stage_whatsapp_rejection?: boolean;
+  stage_sms_applied?: boolean;
+  stage_sms_interview?: boolean;
+  stage_sms_offer?: boolean;
+  stage_sms_rejection?: boolean;
 }
 
 export interface WebhookEndpoint {

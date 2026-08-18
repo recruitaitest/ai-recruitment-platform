@@ -10,6 +10,14 @@ import api from "@/lib/api";
 export function AnalyticsFilters() {
  const [users, setUsers] = useState<any[]>([]);
  const [positions, setPositions] = useState<any[]>([]);
+ const [isRefreshing, setIsRefreshing] = useState(false);
+
+ const handleRefresh = () => {
+   setIsRefreshing(true);
+   setTimeout(() => {
+     window.location.reload();
+   }, 400);
+ };
 
  useEffect(() => {
  const fetchFilters = async () => {
@@ -168,6 +176,9 @@ export function AnalyticsFilters() {
 
  {/* Refresh Button */}
  <button
+ type="button"
+ onClick={handleRefresh}
+ disabled={isRefreshing}
  className="
  flex
  items-center
@@ -184,12 +195,14 @@ export function AnalyticsFilters() {
  whitespace-nowrap
  transition-all
  duration-300
+ disabled:opacity-60
+ cursor-pointer
  "
  >
 
- <RefreshCw className="w-4 h-4" />
+ <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
 
- Refresh Analytics
+ {isRefreshing ? "Refreshing..." : "Refresh Analytics"}
 
  </button>
 

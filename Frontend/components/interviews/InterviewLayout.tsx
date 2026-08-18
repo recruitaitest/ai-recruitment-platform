@@ -52,6 +52,8 @@ export default function InterviewLayout() {
  const [positions, setPositions] = useState<any[]>([]);
  const [pipelines, setPipelines] = useState<any[]>([]);
  const [deleteError, setDeleteError] = useState<string | null>(null);
+ const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ id: number; candidateName: string } | null>(null);
+ const [isDeleting, setIsDeleting] = useState(false);
 
  // Independent sorting states for Upcoming and Completed tables
  const [upcomingSortConfig, setUpcomingSortConfig] = useState<{
@@ -433,14 +435,6 @@ export default function InterviewLayout() {
  Manage candidate interviews and recruitment workflows
  </p>
  </div>
- {hasPermission("interviews.create") && (
- <button
- onClick={() => setOpenModal(true)}
- className="rounded-2xl bg-violet-600 px-5 py-3 text-sm font-medium text-white hover:bg-violet-500 transition"
- >
- Schedule Interview
- </button>
- )}
  </div>
 
  {/* Delete Error Banner */}
@@ -637,10 +631,8 @@ export default function InterviewLayout() {
                       </button>
                       <button
                         type="button"
-                        onClick={async () => {
-                          if (confirm(`Are you sure you want to delete the interview for ${item.candidate_name}?`)) {
-                            await handleDeleteInterview(item.id);
-                          }
+                        onClick={() => {
+                          setDeleteConfirmModal({ id: item.id, candidateName: item.candidate_name });
                         }}
                         className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold transition"
                         title="Delete Interview"
@@ -769,10 +761,8 @@ export default function InterviewLayout() {
                       </button>
                       <button
                         type="button"
-                        onClick={async () => {
-                          if (confirm(`Are you sure you want to delete the completed interview record for ${item.candidate_name}?`)) {
-                            await handleDeleteInterview(item.id);
-                          }
+                        onClick={() => {
+                          setDeleteConfirmModal({ id: item.id, candidateName: item.candidate_name });
                         }}
                         className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold transition"
                         title="Delete Interview Record"
@@ -796,32 +786,33 @@ export default function InterviewLayout() {
     </div>
   </div>
 
- {/* Schedule Modal */}
- <ScheduleInterviewModal
- open={openModal}
- onClose={() => setOpenModal(false)}
- addInterview={() => loadAll()}
- deleteInterview={handleDeleteInterview}
- />
+  {/* Schedule Modal */}
+  <ScheduleInterviewModal
+  open={openModal}
+  onClose={() => setOpenModal(false)}
+  addInterview={() => loadAll()}
+  deleteInterview={handleDeleteInterview}
+  />
 
- {/* Candidate Drawer */}
- <CandidateDrawer
- open={openDrawer}
- onClose={() => setOpenDrawer(false)}
- candidate={selectedCandidate}
- interview={selectedInterview}
- onEdit={() => setOpenEditModal(true)}
- onDelete={async () => {
-   if (!selectedInterview) return;
-   if (confirm(`Are you sure you want to delete the interview for ${(selectedInterview as any)?.candidate_name || "this candidate"}?`)) {
-     await handleDeleteInterview(selectedInterview.id);
-   }
- }}
- onFeedback={() => {
- setOpenDrawer(false);
- setOpenFeedbackModal(true);
- }}
- />
+  {/* Candidate Drawer */}
+  <CandidateDrawer
+  open={openDrawer}
+  onClose={() => setOpenDrawer(false)}
+  candidate={selectedCandidate}
+  interview={selectedInterview}
+  onEdit={() => setOpenEditModal(true)}
+  onDelete={() => {
+    if (!selectedInterview) return;
+    setDeleteConfirmModal({
+      id: selectedInterview.id,
+      candidateName: (selectedInterview as any)?.candidate_name || "this candidate"
+    });
+  }}
+  onFeedback={() => {
+  setOpenDrawer(false);
+  setOpenFeedbackModal(true);
+  }}
+  />
 
  <EditInterviewModal
  open={openEditModal}
@@ -912,11 +903,65 @@ export default function InterviewLayout() {
  }}
  />
 
- <AIQuestionGeneratorModal
-    isOpen={aiQuestionOpen}
-    onClose={() => setAiQuestionOpen(false)}
- />
+  <AIQuestionGeneratorModal
+     isOpen={aiQuestionOpen}
+     onClose={() => setAiQuestionOpen(false)}
+  />
 
- </motion.div>
- );
+  {/* Custom Delete Confirmation Modal Popup */}
+  {deleteConfirmModal && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+      <div 
+        className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-500 border border-rose-500/20">
+            <Trash2 className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-text-primary">Delete Interview</h3>
+            <p className="text-xs text-muted">This action will remove the scheduled interview record.</p>
+          </div>
+        </div>
+
+        <p className="text-sm text-secondary">
+          Are you sure you want to delete the interview for <strong className="text-text-primary">{deleteConfirmModal.candidateName}</strong>?
+        </p>
+
+        <div className="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="button"
+            disabled={isDeleting}
+            onClick={() => setDeleteConfirmModal(null)}
+            className="rounded-xl border border-border bg-secondary-surface px-4 py-2.5 text-xs font-semibold text-text-primary hover:bg-surface transition"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={isDeleting}
+            onClick={async () => {
+              if (!deleteConfirmModal) return;
+              setIsDeleting(true);
+              try {
+                await handleDeleteInterview(deleteConfirmModal.id);
+                setDeleteConfirmModal(null);
+              } catch (e: any) {
+                console.error(e);
+              } finally {
+                setIsDeleting(false);
+              }
+            }}
+            className="rounded-xl bg-rose-600 hover:bg-rose-500 px-5 py-2.5 text-xs font-bold text-white transition flex items-center gap-1.5 shadow-lg shadow-rose-600/20 disabled:opacity-50"
+          >
+            {isDeleting ? "Deleting..." : "Yes, Delete Interview"}
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
+
+  </motion.div>
+  );
 }

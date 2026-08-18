@@ -15,6 +15,20 @@ class AutomationRuleSchema(BaseModel):
     rejection_email_template: Optional[str] = None
     auto_tagging_enabled: bool = True
     auto_archive_inactive_days: int = 60
+    stage_email_applied: bool = True
+    stage_email_interview: bool = True
+    stage_email_offer: bool = True
+    stage_email_rejection: bool = True
+
+    stage_whatsapp_applied: bool = True
+    stage_whatsapp_interview: bool = True
+    stage_whatsapp_offer: bool = True
+    stage_whatsapp_rejection: bool = False
+
+    stage_sms_applied: bool = True
+    stage_sms_interview: bool = True
+    stage_sms_offer: bool = True
+    stage_sms_rejection: bool = False
 
     class Config:
         from_attributes = True

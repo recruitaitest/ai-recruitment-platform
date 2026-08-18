@@ -715,7 +715,7 @@ export default function CandidatesPage() {
         name: c.full_name ?? "Unknown",
         email: c.email ?? "No Email",
         phone: c.phone ?? "",
-        company: c.company ?? "Not Assigned",
+        company: c.company || c.organization || "",
         experience: c.experience ?? 0,
         location: c.location ?? "Unknown",
         status: (c.status as Status) ?? "Applied",

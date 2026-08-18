@@ -39,6 +39,24 @@ export default function InterviewCalendar({
                     right:
                         "dayGridMonth,timeGridWeek,timeGridDay",
                 }}
+                buttonText={{
+                    month: "Month",
+                    week: "Week",
+                    day: "Day",
+                    today: "This Month"
+                }}
+                datesSet={(arg) => {
+                    const todayBtn = document.querySelector('.interview-calendar .fc-today-button') as HTMLButtonElement;
+                    if (todayBtn) {
+                        if (arg.view.type === 'dayGridMonth') {
+                            todayBtn.textContent = 'This Month';
+                        } else if (arg.view.type === 'timeGridWeek') {
+                            todayBtn.textContent = 'This Week';
+                        } else {
+                            todayBtn.textContent = 'Today';
+                        }
+                    }
+                }}
                 height="auto"
                 editable={true}
                 selectable={true}

@@ -37,60 +37,82 @@ export function LoginForm() {
  const [mfaToken, setMfaToken] = useState('')
  const [mfaCode, setMfaCode] = useState('')
 
- const completeLogin = (result: any) => {
- localStorage.setItem('token', result.access_token)
- localStorage.setItem('user', JSON.stringify(result.user))
+  const completeLogin = (result: any) => {
+    localStorage.setItem('token', result.access_token)
+    localStorage.setItem('user', JSON.stringify(result.user))
 
- const role = result.user.role
- const permissions = result.user.permissions || []
+    const role = result.user.role || ""
+    const permissions = result.user.permissions || []
 
- const adminResources = [
- "users",
- "roles",
- "settings",
- "security",
- "notifications",
- "audit",
- "ai_settings",
- "analytics"
- ];
+    const roleStr = String(role).toLowerCase()
+    const permsStr = Array.isArray(permissions)
+      ? permissions.join(",").toLowerCase()
+      : typeof permissions === "string"
+      ? permissions.toLowerCase()
+      : ""
 
- const hasAdminAccess =
- role === "COMPANY_OWNER" ||
- role === "ADMIN" ||
- role === "SUPER_ADMIN" ||
- permissions.some((p: string) => adminResources.includes(p.split(".")[0]));
+    const isHiringManager =
+      roleStr.includes("hiring manager") ||
+      permsStr.includes("type:hiring_manager") ||
+      permsStr.includes("hiring_manager")
 
- const recruiterResources = [
- "candidates",
- "ai_search",
- "interviews",
- "positions",
- "pipelines"
- ];
+    if (role === 'PENDING') {
+      router.push('/waiting-approval')
+      return
+    }
 
- const hasRecruiterAccess =
- role === "COMPANY_OWNER" ||
- role === "ADMIN" ||
- role === "SUPER_ADMIN" ||
- permissions.some((p: string) => recruiterResources.includes(p.split(".")[0]));
+    if (isHiringManager) {
+      localStorage.setItem('portal', 'hiring_manager')
+      router.push('/portal/hiring-manager?tab=candidates')
+      return
+    }
 
- if (role === 'PENDING') {
- router.push('/waiting-approval')
- } else if (hasAdminAccess && !hasRecruiterAccess) {
- localStorage.setItem('portal', 'admin')
- router.push('/admin/dashboard')
- } else if (hasRecruiterAccess) {
- localStorage.setItem('portal', 'recruiter')
- router.push('/dashboard')
- } else if (hasAdminAccess) {
- localStorage.setItem('portal', 'admin')
- router.push('/admin/dashboard')
- } else {
- localStorage.setItem('portal', 'recruiter')
- router.push('/dashboard')
- }
- }
+    const adminResources = [
+      "users",
+      "roles",
+      "settings",
+      "security",
+      "notifications",
+      "audit",
+      "ai_settings",
+      "analytics"
+    ];
+
+    const hasAdminAccess =
+      role === "COMPANY_OWNER" ||
+      role === "ADMIN" ||
+      role === "SUPER_ADMIN" ||
+      (Array.isArray(permissions) && permissions.some((p: string) => adminResources.includes(p.split(".")[0])));
+
+    const recruiterResources = [
+      "candidates",
+      "ai_search",
+      "interviews",
+      "positions",
+      "pipelines",
+      "offers"
+    ];
+
+    const hasRecruiterAccess =
+      role === "COMPANY_OWNER" ||
+      role === "ADMIN" ||
+      role === "SUPER_ADMIN" ||
+      (Array.isArray(permissions) && permissions.some((p: string) => recruiterResources.includes(p.split(".")[0])));
+
+    if (hasAdminAccess && !hasRecruiterAccess) {
+      localStorage.setItem('portal', 'admin')
+      router.push('/admin/dashboard')
+    } else if (hasRecruiterAccess) {
+      localStorage.setItem('portal', 'recruiter')
+      router.push('/dashboard')
+    } else if (hasAdminAccess) {
+      localStorage.setItem('portal', 'admin')
+      router.push('/admin/dashboard')
+    } else {
+      localStorage.setItem('portal', 'recruiter')
+      router.push('/dashboard')
+    }
+  }
 
  const {
  register,

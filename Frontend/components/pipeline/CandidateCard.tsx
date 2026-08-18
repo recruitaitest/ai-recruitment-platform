@@ -39,6 +39,7 @@ interface CandidateCardProps {
   onRescheduleInterview?: (candidateId: string) => void;
   onOpenCalendar?: (candidateId: string) => void;
   onRestoreCandidate?: (candidateId: string) => void;
+  isDraggable?: boolean;
 }
 
 const STAGE_ACCENT: Record<string, string> = {
@@ -54,6 +55,7 @@ const STAGE_ACCENT: Record<string, string> = {
 export default function CandidateCard({
   candidate,
   selected = false,
+  isDraggable = true,
   onToggleSelect,
   onMoveToStage,
   onViewProfile,
@@ -82,7 +84,7 @@ export default function CandidateCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: candidate.id });
+  } = useSortable({ id: candidate.id, disabled: !isDraggable });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -104,14 +106,14 @@ export default function CandidateCard({
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
+      {...(isDraggable ? listeners : {})}
       className={`
         group relative rounded-2xl border
         border-slate-200 dark:border-slate-700/50
         border-l-[4px] ${accentBorder}
         bg-white dark:bg-[#1E293B] p-4
         shadow-sm hover:shadow-md dark:shadow-black/20
-        transition-all cursor-grab active:cursor-grabbing
+        transition-all ${isDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}
         ${isDragging ? "rotate-2 opacity-70 shadow-2xl ring-2 ring-indigo-500/50" : ""}
         ${selected ? "ring-2 ring-blue-500 bg-blue-500/5" : ""}
       `}

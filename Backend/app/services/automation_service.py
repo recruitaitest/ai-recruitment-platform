@@ -89,70 +89,220 @@ def process_bulk_zip_file(zip_bytes: bytes, db: Session) -> Dict[str, Any]:
         "parsed_candidates": parsed_candidates
     }
 
+def normalize_pipeline_stage(stage_name: Optional[str]) -> str:
+    if not stage_name:
+        return "Screening"
+    s = stage_name.strip()
+    if "screening" in s.lower():
+        return "Screening"
+    if "technical" in s.lower():
+        return "Technical Interview"
+    if "hr" in s.lower():
+        return "HR Round"
+    if "interview" in s.lower():
+        return "Technical Interview"
+    if "offer" in s.lower():
+        return "Offer"
+    if "hired" in s.lower():
+        return "Hired"
+    if "applied" in s.lower():
+        return "Applied"
+    return s
+
 # ─── 2. Auto-Advance & Rejection Evaluator (Feature 2.1 & 2.2) ───────────────
 def evaluate_automation_rules(candidate_id: int, fit_score: float, db: Session) -> Dict[str, Any]:
     """
     Evaluates Candidate screening score against active Automation Rules:
-    - If score >= threshold: auto-advance candidate to next stage.
+    - If score >= threshold: auto-advance candidate to next stage and update pipeline.
     - If score < cutoff: schedule warm delayed rejection email.
     """
-    rule = db.query(AutomationRule).filter(AutomationRule.is_active == True).first()
-    if not rule:
+    rule = db.query(AutomationRule).first()
+    if not rule or (rule.is_active is False):
         return {"action": "none", "reason": "No active automation rule"}
 
     candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
     if not candidate:
         return {"action": "error", "reason": "Candidate not found"}
 
-    # 1. Auto-Advance Check
-    if rule.auto_advance_enabled and fit_score >= rule.auto_advance_score_threshold:
-        candidate.status = rule.target_advance_stage or "Interview"
-        db.commit()
+    from app.models.pipeline import Pipeline
+    from app.models.pipeline_stage_history import PipelineStageHistory
+
+    pipe = db.query(Pipeline).filter(Pipeline.candidate_id == candidate.id).first()
+    current_stage = pipe.stage if pipe else (candidate.status or "Applied")
+
+    # 1. Auto-Advance Check (Only advance candidates currently in initial 'Applied' stage)
+    if rule.auto_advance_enabled and fit_score >= (rule.auto_advance_score_threshold or 60.0):
+        target_stage = normalize_pipeline_stage(rule.target_advance_stage)
+
+        # Do NOT demote or alter candidates who have already progressed past Applied
+        if current_stage in ["Applied", "New", "Pending", ""]:
+            candidate.status = target_stage
+
+            # Ensure candidate is attached to position & pipeline stage is updated
+            target_pos_id = candidate.applied_position_id
+            if not target_pos_id:
+                existing_p = db.query(Pipeline).filter(Pipeline.candidate_id == candidate.id).first()
+                if existing_p:
+                    target_pos_id = existing_p.position_id
+                else:
+                    first_pos = db.query(Position).first()
+                    if first_pos:
+                        target_pos_id = first_pos.id
+                        candidate.applied_position_id = target_pos_id
+
+            pipeline = db.query(Pipeline).filter(Pipeline.candidate_id == candidate.id).first()
+            if pipeline:
+                old_stage = pipeline.stage
+                pipeline.stage = target_stage
+                if old_stage != target_stage:
+                    history = PipelineStageHistory(
+                        pipeline_id=pipeline.id,
+                        old_stage=old_stage,
+                        new_stage=target_stage
+                    )
+                    db.add(history)
+            elif target_pos_id:
+                pipeline = Pipeline(
+                    candidate_id=candidate.id,
+                    position_id=target_pos_id,
+                    stage=target_stage,
+                    notes=f"Auto-advanced to {target_stage} (Screening Fit Score: {fit_score}%)"
+                )
+                db.add(pipeline)
+                db.flush()
+                history = PipelineStageHistory(
+                    pipeline_id=pipeline.id,
+                    old_stage="Applied",
+                    new_stage=target_stage
+                )
+                db.add(history)
+
+            db.commit()
+
+            return {
+                "action": "auto_advanced",
+                "new_stage": target_stage,
+                "message": f"Candidate auto-advanced to {target_stage} (Score: {fit_score}%)"
+            }
+        else:
+            return {
+                "action": "none",
+                "message": f"Candidate already in advanced stage '{current_stage}', not modified."
+            }
 
         dispatch_webhook_event("stage_changed", {
             "candidate_id": candidate.id,
             "name": candidate.full_name,
-            "new_stage": candidate.status,
+            "new_stage": target_stage,
             "reason": f"Auto-advanced (Screening score: {fit_score}%)"
         }, db)
 
         return {
             "action": "auto_advanced",
-            "new_stage": candidate.status,
-            "message": f"Candidate auto-advanced to {candidate.status} (Score: {fit_score}%)"
+            "new_stage": target_stage,
+            "message": f"Candidate auto-advanced to {target_stage} (Score: {fit_score}%)"
         }
 
     # 2. Auto-Rejection Check
-    if rule.auto_reject_enabled and fit_score < rule.auto_reject_score_cutoff:
-        delay_hours = rule.rejection_delay_hours or 24
-        send_at = datetime.utcnow() + timedelta(hours=delay_hours)
-
-        body_tpl = rule.rejection_email_template or (
-            f"Dear {candidate.full_name},\n\n"
-            f"Thank you for your interest in joining our team. After carefully reviewing your profile against our current position requirements, "
-            f"we have decided to proceed with other candidates whose experience aligns more closely at this time.\n\n"
-            f"We wish you all the best in your career search.\n\nBest regards,\nRecruiting Team"
-        )
-
-        task = ScheduledEmailTask(
-            candidate_id=candidate.id,
-            to_email=candidate.email,
-            subject=f"Application Update — HR Recruitment Team",
-            body_text=body_tpl,
-            send_at=send_at,
-            status="Pending",
-            email_type="Rejection"
-        )
-        db.add(task)
+    if rule.auto_reject_enabled and fit_score < (rule.auto_reject_score_cutoff or 40.0):
+        # Update candidate status to Rejected
+        candidate.status = "Rejected"
+        
+        # Also update pipeline if exists
+        from app.models.pipeline import Pipeline
+        from app.models.pipeline_stage_history import PipelineStageHistory
+        pipe = db.query(Pipeline).filter(Pipeline.candidate_id == candidate.id).first()
+        if pipe:
+            old_s = pipe.stage
+            pipe.stage = "Rejected"
+            if old_s != "Rejected":
+                db.add(PipelineStageHistory(pipeline_id=pipe.id, old_stage=old_s, new_stage="Rejected"))
         db.commit()
 
+        if rule.stage_email_rejection is not False:
+            delay_hours = rule.rejection_delay_hours or 24
+            send_at = datetime.utcnow() + timedelta(hours=delay_hours)
+
+            body_tpl = rule.rejection_email_template or (
+                f"Dear {candidate.full_name},\n\n"
+                f"Thank you for your interest in joining our team. After carefully reviewing your profile against our current position requirements, "
+                f"we have decided to proceed with other candidates whose experience aligns more closely at this time.\n\n"
+                f"We wish you all the best in your career search.\n\nBest regards,\nRecruiting Team"
+            )
+
+            task = ScheduledEmailTask(
+                candidate_id=candidate.id,
+                to_email=candidate.email,
+                subject=f"Application Update — HR Recruitment Team",
+                body_text=body_tpl,
+                send_at=send_at,
+                status="Pending",
+                email_type="Rejection"
+            )
+            db.add(task)
+            db.commit()
+
+            return {
+                "action": "rejection_scheduled",
+                "send_at": send_at.isoformat(),
+                "message": f"Candidate rejected and warm rejection email scheduled for {send_at.strftime('%Y-%m-%d %H:%M UTC')}"
+            }
+
         return {
-            "action": "rejection_scheduled",
-            "send_at": send_at.isoformat(),
-            "message": f"Warm rejection email scheduled for {send_at.strftime('%Y-%m-%d %H:%M UTC')}"
+            "action": "rejected_no_email",
+            "message": "Candidate marked as Rejected (Rejection email notification disabled in settings)"
         }
 
     return {"action": "none", "message": "Fit score within normal manual review range"}
+
+def sweep_auto_advance_all_candidates(db: Session) -> int:
+    """
+    Sweeps through all candidates and advances any whose score meets the active rule.
+    """
+    try:
+        rule = db.query(AutomationRule).first()
+        if not rule or (rule.is_active is False) or not rule.auto_advance_enabled:
+            return 0
+
+        from app.models.pipeline import Pipeline
+        from app.models.position import Position
+        positions = db.query(Position).all()
+        pos_map = {p.id: p for p in positions}
+
+        candidates = db.query(Candidate).all()
+        advanced_count = 0
+
+        threshold = rule.auto_advance_score_threshold if rule.auto_advance_score_threshold is not None else 60.0
+
+        for cand in candidates:
+            # Determine candidate match score
+            target_pos_id = cand.applied_position_id
+            target_pos = pos_map.get(target_pos_id) if target_pos_id else None
+            if not target_pos and positions:
+                target_pos = positions[0]
+
+            score = 85.0
+            if target_pos and target_pos.required_skills and cand.skills:
+                req = [s.strip().lower() for s in target_pos.required_skills.split(",") if s.strip()]
+                cand_s = [s.strip().lower() for s in cand.skills.split(",") if s.strip()]
+                overlap = sum(1 for s in req if any(cs in s or s in cs for cs in cand_s))
+                score = float(min(98, max(55, round((overlap / max(1, len(req))) * 100))))
+            elif getattr(cand, "match_score", None):
+                score = float(cand.match_score)
+
+            if score >= threshold:
+                pipe = db.query(Pipeline).filter(Pipeline.candidate_id == cand.id).first()
+                target_stage = normalize_pipeline_stage(rule.target_advance_stage)
+                current_stage = pipe.stage if pipe else (cand.status or "Applied")
+                
+                if current_stage in ["Applied", "New", "Pending", ""]:
+                    evaluate_automation_rules(cand.id, score, db)
+                    advanced_count += 1
+
+        return advanced_count
+    except Exception as e:
+        logger.error(f"Error in sweep_auto_advance_all_candidates: {e}", exc_info=True)
+        return 0
 
 # ─── 3. Offer Letter Generator (Feature 2.8) ───────────────────────────────────
 def generate_offer_letter(candidate_id: int, position_title: str, offered_ctc: float, joining_date: str, location: str, db: Session) -> Dict[str, Any]:

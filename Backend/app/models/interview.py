@@ -19,6 +19,7 @@ class Interview(Base):
     meeting_link = Column(String, nullable=True)
 
     location = Column(String, nullable=True)
+    location_link = Column(String, nullable=True)
 
     status = Column(String)
 
@@ -33,5 +34,9 @@ class Interview(Base):
     problem_solving_rating = Column(Integer, nullable=True)
 
     recommendation = Column(String)   # Pass / Fail / Hold / No Show
+
+    panel_role = Column(String, nullable=True)
+    interviewer_name = Column(String, nullable=True)
+    notes = Column(String, nullable=True)
 
     completed_at = Column(String, nullable=True)

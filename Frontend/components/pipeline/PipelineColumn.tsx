@@ -46,6 +46,7 @@ interface PipelineColumnProps {
   onOpenCalendar?: (candidateId: string) => void;
   onRestoreCandidate?: (candidateId: string) => void;
   onClearStage?: (stage: string) => void;
+  isDraggable?: boolean;
 }
 
 const COLUMN_COLORS: Record<string, { dot: string; badge: string }> = {
@@ -84,9 +85,11 @@ export default function PipelineColumn({
   onOpenCalendar,
   onRestoreCandidate,
   onClearStage,
+  isDraggable = true,
 }: PipelineColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: title,
+    disabled: !isDraggable,
   });
 
   const colors = COLUMN_COLORS[title] || { dot: "bg-muted", badge: "bg-primary-soft text-primary" };
@@ -189,6 +192,7 @@ export default function PipelineColumn({
                 onRescheduleInterview={onRescheduleInterview}
                 onOpenCalendar={onOpenCalendar}
                 onRestoreCandidate={onRestoreCandidate}
+                isDraggable={isDraggable}
               />
             ))
           ) : (

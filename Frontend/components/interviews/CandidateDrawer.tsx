@@ -195,9 +195,19 @@ export default function CandidateDrawer({
                         <Video className="w-4 h-4" /> Join Interview
                       </a>
                     ) : (
-                      <div className="py-2.5 px-3 bg-surface border border-border text-muted rounded-xl text-xs font-medium flex items-center justify-center gap-1.5">
-                        <MapPin className="w-4 h-4 text-slate-400" /> {interview?.mode || interview?.interview_mode || "In-Person"}
-                      </div>
+                      <a
+                        href={
+                          interview?.location && (interview.location.startsWith("http") || interview.location.includes("maps"))
+                            ? (interview.location.startsWith("http") ? interview.location : `https://maps.google.com/?q=${encodeURIComponent(interview.location)}`)
+                            : `https://maps.google.com/?q=${encodeURIComponent(interview?.location || "Office")}`
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                        className="py-2.5 px-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow"
+                      >
+                        <MapPin className="w-4 h-4 text-emerald-400" />
+                        {interview?.location && (interview.location.startsWith("http") || interview.location.includes("maps")) ? "View Location Map" : (interview?.location || "In-Person Location")}
+                      </a>
                     )}
 
                     {/* Reschedule Button */}

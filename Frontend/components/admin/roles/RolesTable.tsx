@@ -21,19 +21,20 @@ interface RolesTableProps {
 export default function RolesTable({ roles, onRefresh }: RolesTableProps) {
   const [openModal, setOpenModal] = useState(false);
   const [editingRole, setEditingRole] = useState<any>(null);
+  const [deleteConfirmRole, setDeleteConfirmRole] = useState<any | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleDelete = async (roleId: number) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this role?"
-    );
-
-    if (!confirmed) return;
-
+  const confirmDelete = async () => {
+    if (!deleteConfirmRole) return;
+    setIsDeleting(true);
     try {
-      await deleteRole(roleId);
+      await deleteRole(deleteConfirmRole.id);
+      setDeleteConfirmRole(null);
       onRefresh();
     } catch (error) {
       console.error(error);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -159,10 +160,6 @@ export default function RolesTable({ roles, onRefresh }: RolesTableProps) {
                   {/* Actions */}
                   <td className="px-6 py-5">
                     <div className="flex items-center justify-end gap-2">
-                      <button className="rounded-lg p-2 text-muted transition hover:bg-secondary-surface hover:text-text-primary">
-                        <Settings className="h-4 w-4" />
-                      </button>
-
                       {hasPermission("roles.update") && (
                         <button
                           onClick={() => {
@@ -177,7 +174,7 @@ export default function RolesTable({ roles, onRefresh }: RolesTableProps) {
 
                       {hasPermission("roles.delete") && (
                         <button
-                          onClick={() => handleDelete(role.id)}
+                          onClick={() => setDeleteConfirmRole(role)}
                           className="rounded-lg p-2 text-muted transition hover:bg-secondary-surface hover:text-red-400"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -201,6 +198,45 @@ export default function RolesTable({ roles, onRefresh }: RolesTableProps) {
         }}
         onRoleCreated={onRefresh}
       />
+
+      {/* Delete Role Confirmation Modal */}
+      {deleteConfirmRole && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-text-primary">Delete Role</h3>
+                <p className="text-xs text-muted">This will remove this role definition from the system.</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-secondary bg-secondary-surface/50 p-3 rounded-xl border border-border">
+              Are you sure you want to delete role <strong className="text-text-primary">{deleteConfirmRole.name}</strong>?
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmRole(null)}
+                className="px-4 py-2 rounded-xl border border-border bg-surface-hover text-sm font-medium text-text-secondary hover:bg-border transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={confirmDelete}
+                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition shadow-md disabled:opacity-50"
+              >
+                {isDeleting ? "Deleting..." : "Delete Role"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

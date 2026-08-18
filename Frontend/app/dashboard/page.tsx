@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Zap, TrendingUp, Users, Globe } from 'lucide-react'
 import { AuthService } from '@/lib/auth'
+import { isHiringManagerUser } from '@/utils/permissions'
 import {
     StatsCards,
     FeatureGrid,
@@ -40,16 +41,19 @@ export default function DashboardPage() {
         const authenticated = AuthService.isAuthenticated()
         const token = localStorage.getItem('token')
 
-        if (!token) {
-
+        if (!token || !authenticated) {
             router.push('/login')
-
-        } else {
-
-            setAuthorized(true)
-            fetchDashboardData()
-            fetchAIRecommendations()
+            return
         }
+
+        if (isHiringManagerUser()) {
+            router.replace('/portal/hiring-manager?tab=candidates')
+            return
+        }
+
+        setAuthorized(true)
+        fetchDashboardData()
+        fetchAIRecommendations()
 
         // Get user info
         if (typeof window !== 'undefined') {
@@ -173,7 +177,7 @@ export default function DashboardPage() {
                     date: new Date(interview.interview_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
                     time: interview.interview_time || 'TBD',
                     interviewer: 'Recruiter Team',
-                    location: interview.interview_mode === 'Online' ? 'Video Call' : (interview.interview_mode === 'Phone' ? 'Phone Call' : interview.location || 'Office'),
+                    location: interview.interview_mode === 'Online' ? 'Video Call' : (interview.interview_mode === 'Phone' ? 'Phone Call' : (interview.location && !interview.location.startsWith('http') ? interview.location : 'Office Venue')),
                     type: (interview.interview_mode === 'Online' ? 'video' : (interview.interview_mode === 'Phone' ? 'phone' : 'in-person')) as 'video' | 'phone' | 'in-person',
                 }))
             setUpcomingInterviews(upcoming || [])

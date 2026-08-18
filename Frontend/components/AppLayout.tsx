@@ -5,7 +5,7 @@ import { Sidebar } from './dashboard/Sidebar'
 import { TopNavbar } from './dashboard/TopNavbar'
 import { usePathname, useRouter } from 'next/navigation'
 import { AuthService } from '@/lib/auth'
-import { hasPermission } from '@/utils/permissions'
+import { hasPermission, isHiringManagerUser } from '@/utils/permissions'
 
 interface AppLayoutProps {
   children: ReactNode
@@ -53,23 +53,38 @@ function AppLayoutContent({ children }: AppLayoutProps) {
     }
 
     const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
+    const isHM = isHiringManagerUser()
+    const targetHome = isHM ? '/portal/hiring-manager?tab=candidates' : '/dashboard'
+
+    // Strict Access Control for Hiring Manager
+    if (isHM) {
+      const isAllowedHMRoute =
+        pathname === '/portal/hiring-manager' ||
+        pathname.startsWith('/portal/hiring-manager') ||
+        pathname.startsWith('/candidates/') ||
+        pathname.startsWith('/settings')
+
+      if (!isAllowedHMRoute) {
+        setIsAuthorized(false)
+        router.replace('/portal/hiring-manager?tab=candidates')
+        return
+      }
+    }
     
     // Background sync to catch role updates from the backend
     const syncUser = async () => {
       if (storedUser?.id) {
         try {
-          // Dynamic import to avoid circular dependencies if any, but regular import works too.
           const { getProfile } = await import('@/services/profileService')
           const profile = await getProfile(storedUser.id)
           const updatedUser = { ...storedUser, ...profile }
           localStorage.setItem('user', JSON.stringify(updatedUser))
           
-          // Dispatch event so other components (TopNavbar, Sidebar) can update their state
           window.dispatchEvent(new Event('user-updated'))
 
-          // If role changed from PENDING to something else, redirect to dashboard
+          // If role changed from PENDING to something else, redirect to target dashboard
           if (updatedUser.role !== 'PENDING' && pathname === '/waiting-approval') {
-            router.replace('/dashboard')
+            router.replace(targetHome)
           } else if (updatedUser.role === 'PENDING' && pathname !== '/waiting-approval') {
             setIsAuthorized(false)
             router.replace('/waiting-approval')
@@ -99,7 +114,7 @@ function AppLayoutContent({ children }: AppLayoutProps) {
     }
 
     if (!allowed) {
-      const lastAllowed = sessionStorage.getItem('lastAllowedPath') || '/dashboard'
+      const lastAllowed = sessionStorage.getItem('lastAllowedPath') || targetHome
       router.replace(lastAllowed)
       return
     }

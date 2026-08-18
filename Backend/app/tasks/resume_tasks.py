@@ -101,7 +101,7 @@ def process_resume_task(candidate_id: int, file_path: str):
         candidate.email = candidate_email
         candidate.phone = parsed_phone or candidate.phone or ""
         candidate.skills = ", ".join(skills) if isinstance(skills, list) else (skills or "")
-        candidate.education = ", ".join(education) if isinstance(education, list) else (education or "")
+        candidate.education = "\n\n".join(education) if isinstance(education, list) else (education or "")
         candidate.experience = experience
         candidate.location = location or candidate.location
         candidate.linkedin_url = getattr(gemini_details, 'linkedin_url', None) or getattr(gemini_details, 'linkedin', None) or candidate.linkedin_url
@@ -123,6 +123,28 @@ def process_resume_task(candidate_id: int, file_path: str):
         
         index_candidate(candidate)
         index_candidate_to_opensearch(candidate)
+
+        # Automatic Automation Rules Evaluation (Auto-Advance / Auto-Reject)
+        try:
+            from app.models.position import Position
+            from app.services.automation_service import evaluate_automation_rules
+            
+            target_pos = None
+            if candidate.applied_position_id:
+                target_pos = db.query(Position).filter(Position.id == candidate.applied_position_id).first()
+            if not target_pos:
+                target_pos = db.query(Position).first()
+                
+            calc_score = 85.0
+            if target_pos and target_pos.required_skills and candidate.skills:
+                req = [s.strip().lower() for s in target_pos.required_skills.split(",") if s.strip()]
+                cand_s = [s.strip().lower() for s in candidate.skills.split(",") if s.strip()]
+                overlap = sum(1 for s in req if any(cs in s or s in cs for cs in cand_s))
+                calc_score = float(min(98, max(55, round((overlap / max(1, len(req))) * 100))))
+            
+            evaluate_automation_rules(candidate.id, calc_score, db)
+        except Exception as auto_err:
+            print(f"Automation rule evaluation warning: {auto_err}")
 
         return f"Successfully processed resume for {candidate.full_name}"
 

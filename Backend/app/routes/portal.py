@@ -278,21 +278,44 @@ def apply_to_position(
     db.add(new_pipeline)
     db.commit()
 
-    # 4. Schedule LLM Resume Parsing in Background (Non-blocking, candidate returns immediately)
+    # 4. Immediate Automation Rules Evaluation (Auto-Advance if score matches rule threshold)
+    try:
+        from app.services.automation_service import evaluate_automation_rules
+        calc_score = 85.0
+        if position.required_skills and (skills or resume_text):
+            req = [s.strip().lower() for s in position.required_skills.split(",") if s.strip()]
+            cand_s = [s.strip().lower() for s in (skills or "").split(",") if s.strip()]
+            overlap = sum(1 for s in req if any(cs in s or s in cs for cs in cand_s))
+            calc_score = float(min(98, max(65, round((overlap / max(1, len(req))) * 100))))
+        evaluate_automation_rules(new_candidate.id, calc_score, db)
+    except Exception as auto_err:
+        print(f"Portal application automation warning: {auto_err}")
+
+    # 5. Schedule LLM Resume Parsing in Background (Non-blocking, candidate returns immediately)
     background_tasks.add_task(
         parse_resume_background_job,
         candidate_id=new_candidate.id,
         file_path=final_resume_path
     )
 
-    # 5. Trigger Automatic Multi-Channel Acknowledgment in Background
-    background_tasks.add_task(
-        send_multi_channel_acknowledgment,
-        to_email=email,
-        phone=phone,
-        candidate_name=full_name,
-        position_title=position.title
-    )
+    # 6. Trigger Automatic Multi-Channel Acknowledgment in Background if enabled
+    send_ack_enabled = True
+    try:
+        from app.models.automation_models import AutomationRule
+        rule = db.query(AutomationRule).first()
+        if rule and rule.stage_email_applied is False:
+            send_ack_enabled = False
+    except Exception:
+        pass
+
+    if send_ack_enabled:
+        background_tasks.add_task(
+            send_multi_channel_acknowledgment,
+            to_email=email,
+            phone=phone,
+            candidate_name=full_name,
+            position_title=position.title
+        )
 
     return {
         "message": f"Application for '{position.title}' submitted successfully!",
