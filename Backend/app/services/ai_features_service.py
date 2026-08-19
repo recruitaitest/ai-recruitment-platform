@@ -724,26 +724,16 @@ def clean_copilot_markdown(text: str) -> str:
 def process_recruiter_chat(message: str, conversation_history: Optional[List[Dict[str, Any]]] = None, db: Session = None) -> Dict[str, Any]:
     lower_msg = message.lower().strip()
     
-    # 1. Gather rich Recruiter & Platform metrics from DB safely
+    # 1. Gather rich live Recruiter & Platform metrics from DB safely
+    from app.models.pipeline import Pipeline
+    from app.models.interview import Interview
+    from app.models.email_message import EmailMessage
+
     candidates_count = db.query(Candidate).count() if db else 0
     positions_count = db.query(Position).count() if db else 0
-    
-    stages_counts = {
-        "Applied": db.query(Candidate).filter(Candidate.status == "Applied").count() if db else 0,
-        "Screening": db.query(Candidate).filter(Candidate.status == "Screening").count() if db else 0,
-        "Technical Interview": db.query(Candidate).filter(Candidate.status == "Technical Interview").count() if db else 0,
-        "HR Round": db.query(Candidate).filter(Candidate.status == "HR Round").count() if db else 0,
-        "Offer": db.query(Candidate).filter(Candidate.status == "Offer").count() if db else 0,
-        "Hired": db.query(Candidate).filter(Candidate.status == "Hired").count() if db else 0,
-        "Rejected": db.query(Candidate).filter(Candidate.status == "Rejected").count() if db else 0,
-    }
-    
-    hired_count = stages_counts["Hired"]
-    offers_count = stages_counts["Offer"]
-    success_rate = round((hired_count / max(1, candidates_count)) * 100, 1) if candidates_count > 0 else 78.5
-    
     positions_list = db.query(Position).all() if db else []
     pos_map = {p.id: p.title for p in positions_list}
+    
     pos_summary = []
     for p in positions_list:
         pos_req = get_top_skills(p.required_skills, limit=6)
@@ -753,11 +743,21 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
             f"  - **Key Requirements:** {pos_req}"
         )
     
-    from app.models.email_message import EmailMessage
     email_cand_records = db.query(EmailMessage.candidate_id).filter(EmailMessage.candidate_id.isnot(None)).all() if db else []
     email_cand_ids = {r[0] for r in email_cand_records if r[0]}
 
-    all_candidates = db.query(Candidate).order_by(Candidate.id.desc()).limit(30).all() if db else []
+    all_candidates = db.query(Candidate).order_by(Candidate.id.desc()).all() if db else []
+    pipelines_list = db.query(Pipeline).all() if db else []
+    pipeline_by_cand = {p.candidate_id: p for p in pipelines_list}
+
+    # Canonical Pipeline Stages
+    canonical_stages = ["Applied", "Screening", "Technical Interview", "HR Round", "Offer", "Hired", "Rejected"]
+    stages_counts = {s: 0 for s in canonical_stages}
+    stages_counts["Needs Pipeline"] = 0
+    stage_candidates_map = {s: [] for s in canonical_stages}
+    stage_candidates_map["Needs Pipeline"] = []
+
+    # Resolve candidate sources and accurate pipeline stages
     cand_summary = []
     for c in all_candidates:
         if c.id in email_cand_ids or c.source in ["Gmail Sync", "Email", "Gmail"]:
@@ -767,14 +767,68 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
         else:
             c.source = c.source or "Manual Upload"
 
+        # Resolve live pipeline stage: check Pipeline table first, then Candidate.status
+        pipe_rec = pipeline_by_cand.get(c.id)
+        if pipe_rec and pipe_rec.stage:
+            c_stage = pipe_rec.stage
+        else:
+            c_stage = c.status or "Applied"
+
+        # Match to canonical stage
+        matched_stage = "Applied"
+        for cs in canonical_stages:
+            if cs.lower() == c_stage.lower() or (cs == "Technical Interview" and "technical" in c_stage.lower()) or (cs == "HR Round" and "hr" in c_stage.lower()):
+                matched_stage = cs
+                break
+        
+        stages_counts[matched_stage] = stages_counts.get(matched_stage, 0) + 1
+        stage_candidates_map[matched_stage].append(c)
+
         role_title = pos_map.get(c.applied_position_id, "Software Developer") if c.applied_position_id else "Software Developer"
         top_skills = get_top_skills(c.skills, limit=6)
         exp_str = f"{c.experience} yrs" if c.experience and c.experience > 0 else "Fresher (0 yrs)"
         cand_summary.append(
             f"- 👤 **{c.full_name}** · *{c.email}*\n"
-            f"  - **Role:** {role_title} | **Source:** `{c.source}` | **Stage:** `{c.status or 'Applied'}` | **Experience:** {exp_str}\n"
+            f"  - **Role:** {role_title} | **Source:** `{c.source}` | **Stage:** `{matched_stage}` | **Experience:** {exp_str}\n"
             f"  - **Top Skills:** {top_skills}"
         )
+
+    hired_count = stages_counts["Hired"]
+    offers_count = stages_counts["Offer"]
+    success_rate = round((hired_count / max(1, candidates_count)) * 100, 1) if candidates_count > 0 else 0.0
+
+    # Scheduled Interviews Breakdown
+    scheduled_interviews = db.query(Interview).filter(Interview.status == "Scheduled").all() if db else []
+    interview_summary = []
+    for itw in scheduled_interviews:
+        cand_obj = next((c for c in all_candidates if c.id == itw.candidate_id), None)
+        c_name = cand_obj.full_name if cand_obj else f"Candidate #{itw.candidate_id}"
+        pos_title = pos_map.get(itw.position_id, "Open Position")
+        interview_summary.append(
+            f"- 🗓️ **{c_name}** ({pos_title}) — `{itw.interview_type or 'Interview'}` on **{itw.interview_date}** at **{itw.interview_time}** ({itw.interview_mode or 'Online'})\n"
+            f"  - **Interviewer/Panel:** {itw.interviewer_name or itw.panel_role or 'Hiring Panel'}"
+        )
+
+    # Detailed stage-by-stage candidate listing for LLM
+    stage_breakdown_text = []
+    for s in canonical_stages:
+        c_list = stage_candidates_map[s]
+        if c_list:
+            c_names = ", ".join([f"**{c.full_name}**" for c in c_list])
+            stage_breakdown_text.append(f"- **{s}** ({len(c_list)} candidates): {c_names}")
+        else:
+            stage_breakdown_text.append(f"- **{s}** (0 candidates): *None*")
+    pipeline_summary_block = "\n".join(stage_breakdown_text)
+
+    # Source breakdown
+    manual_cands = [c for c in all_candidates if c.source == "Manual Upload"]
+    email_cands = [c for c in all_candidates if c.source == "Email"]
+    portal_cands = [c for c in all_candidates if c.source == "Career Portal"]
+    source_breakdown_text = (
+        f"- **Manual Upload:** {len(manual_cands)} candidates ({', '.join([c.full_name for c in manual_cands]) if manual_cands else 'None'})\n"
+        f"- **Gmail Sync / Email:** {len(email_cands)} candidates ({', '.join([c.full_name for c in email_cands]) if email_cands else 'None'})\n"
+        f"- **Career Portal:** {len(portal_cands)} candidates ({', '.join([c.full_name for c in portal_cands]) if portal_cands else 'None'})"
+    )
 
     # Comprehensive Website Features Knowledge Base
     website_knowledge = (
@@ -791,8 +845,8 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
         "   - AI Job Description Generator (auto-generates JD summary, requirements, skills).\n"
         "   - Silver Medalist Re-Engagement Engine: Surfaces past top-scoring candidates for instant re-engagement.\n\n"
         "4. Interactive Kanban Pipeline Board (/pipeline):\n"
-        "   - Visual pipeline stages: Applied -> Screening -> Technical Interview -> HR Round -> Offer -> Hired.\n"
-        "   - Drag-and-drop or 1-click stage progression with strict validation rules.\n\n"
+        "   - Visual pipeline stages: Applied -> Screening -> Technical Interview -> HR Round -> Offer -> Hired -> Rejected.\n"
+        "   - Drag-and-drop or 1-click stage progression with bidirectional interview synchronization.\n\n"
         "5. Semantic AI Search (/semantic-search):\n"
         "   - Natural language vector search across candidate resume embeddings using Qdrant/OpenSearch.\n"
         "   - Sourcing query examples: 'React developers with 4+ years experience and AWS skills'.\n\n"
@@ -809,38 +863,40 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
         "   - Candidate Status Tracking Portal (/portal/candidate?email=...): Self-service application progress timeline lookup by email address.\n"
         "   - Hiring Manager Portal (/portal/hiring-manager): Streamlined review interface for hiring managers.\n\n"
         "10. Admin & Security (/admin):\n"
-        "    - AI Provider Configuration (Ollama, Groq, OpenAI), user management, role-based access control (RBAC), security audit feeds."
+        "    - AI Provider Configuration (Ollama, Groq, Gemini, OpenAI), user management, role-based access control (RBAC), security audit feeds."
     )
 
     system_persona = (
         "You are the Senior AI Recruiter Copilot for this enterprise AI Recruitment Platform.\n"
-        "Your goal is to provide concise, beautifully formatted, professional candidate profiles and ATS insights.\n\n"
-        "STRICT CANDIDATE & POSITION CARD FORMATTING RULES:\n"
-        "1. CANDIDATE PROFILES MUST ALWAYS USE THIS CLEAN 2-LEVEL CARD FORMAT:\n"
+        "Your goal is to provide concise, beautifully formatted, 100% factual ATS insights.\n\n"
+        "STRICT RECRUITER ATS ACCURACY GUIDELINES:\n"
+        "1. WHEN ASKED ABOUT PIPELINE STAGES OR CANDIDATE COUNTS IN A STAGE:\n"
+        "   - Always reference the exact numbers and candidate names from 'LIVE KANBAN PIPELINE STAGES & CANDIDATES BREAKDOWN'.\n"
+        "   - State the exact count and list the names of candidates in that specific stage.\n"
+        "2. WHEN ASKED ABOUT SOURCING CHANNELS (Manual Upload, Email, Career Portal):\n"
+        "   - Reference the exact counts and names from 'SOURCING CHANNEL BREAKDOWN'.\n"
+        "3. WHEN ASKED ABOUT SCHEDULED INTERVIEWS:\n"
+        "   - Reference 'SCHEDULED INTERVIEWS LIST'.\n"
+        "4. CANDIDATE PROFILES MUST ALWAYS USE THIS CLEAN 2-LEVEL CARD FORMAT:\n"
         "   - 👤 **Candidate Name** · *email@example.com*\n"
-        "     - **Role:** Software Developer | **Stage:** `Applied` | **Experience:** Fresher (0 yrs)\n"
+        "     - **Role:** Software Developer | **Source:** `Manual Upload` | **Stage:** `Technical Interview` | **Experience:** Fresher (0 yrs)\n"
         "     - **Top Skills:** Java, Python, REST APIs, MySQL, Git\n\n"
-        "   CRITICAL RULES FOR CANDIDATES:\n"
-        "   - DO NOT dump 30+ skills. Always limit to top 4-6 skills.\n"
-        "   - NEVER output single-line raw text like 'Role=... | Status=... | Exp=...'.\n"
-        "   - Always put sub-details indented with `- **Field:** ...` on separate lines.\n\n"
-        "2. OPEN POSITIONS MUST ALWAYS USE THIS FORMAT:\n"
-        "   - 💼 **Position Title** (Location / Remote)\n"
-        "     - **Status:** Actively Sourcing\n"
-        "     - **Key Requirements:** Python, FastAPI, PostgreSQL, Docker\n\n"
-        "3. NO TABLES. ALWAYS USE THE BULLETED MINI-CARD FORMAT.\n"
-        "4. NEVER display internal database IDs. Identify candidates strictly by Name and Email.\n"
-        "5. When giving navigation steps, use numbered lists on separate lines.\n"
-        "6. Always use the live platform metrics provided below to answer with exact numbers."
+        "5. NO TABLES. ALWAYS USE THE BULLETED MINI-CARD FORMAT.\n"
+        "6. NEVER display internal database IDs. Identify candidates strictly by Name and Email."
     )
 
     context_data = (
         f"LIVE DATABASE RECRUITMENT METRICS:\n"
         f"- Total Database Candidates: {candidates_count}\n"
         f"- Total Open Positions: {positions_count}\n"
-        f"- Total Applications in Pipeline: {candidates_count}\n"
-        f"- Stage Breakdown: Applied={stages_counts['Applied']}, Screening={stages_counts['Screening']}, Technical Interview={stages_counts['Technical Interview']}, HR Round={stages_counts['HR Round']}, Offer={stages_counts['Offer']}, Hired={stages_counts['Hired']}, Rejected={stages_counts['Rejected']}\n"
+        f"- Total Scheduled Interviews: {len(scheduled_interviews)}\n"
         f"- Current Hiring Success Rate: {success_rate}%\n\n"
+        f"LIVE KANBAN PIPELINE STAGES & CANDIDATES BREAKDOWN:\n"
+        f"{pipeline_summary_block}\n\n"
+        f"SOURCING CHANNEL BREAKDOWN:\n"
+        f"{source_breakdown_text}\n\n"
+        f"SCHEDULED INTERVIEWS ({len(scheduled_interviews)} upcoming sessions):\n"
+        + ("\n".join(interview_summary) if interview_summary else "No interviews currently scheduled.") + "\n\n"
         f"ACTIVE OPEN POSITIONS ({positions_count} total):\n" + ("\n\n".join(pos_summary) if pos_summary else "No open positions registered.") + "\n\n"
         f"ALL CANDIDATES DIRECTORY ({len(all_candidates)} candidates):\n" + ("\n\n".join(cand_summary) if cand_summary else "No candidates found.") + "\n\n"
         f"{website_knowledge}"
@@ -858,7 +914,7 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
     prompt = f"{system_persona}\n\nRECRUITER PLATFORM & LIVE DATABASE CONTEXT:\n{context_data}\n\nCONVERSATION HISTORY:\n{history_str}\n\nCURRENT USER QUESTION: {message}"
     
     try:
-        llm = get_chat_model(temperature=0.2, json_mode=False)
+        llm = get_chat_model(temperature=0.1, json_mode=False)
         if llm:
             ai_resp = llm.invoke(prompt)
             content = ai_resp.content if hasattr(ai_resp, 'content') else str(ai_resp)
@@ -871,7 +927,83 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
     except Exception as e:
         logger.error(f"Error in recruiter chat LLM: {e}")
 
-    # Rich Fallback when LLM is offline or encounters an error
+    # =========================================================================
+    # HIGH-PRECISION FALLBACK ENGINE (Guarantees 100% accuracy even if LLM offline)
+    # =========================================================================
+    
+    # 1. Pipeline Specific Stage Query (e.g. "candidates in screening", "technical interview", "who is in hr round")
+    for s in canonical_stages:
+        s_keywords = [s.lower()]
+        if s == "Technical Interview":
+            s_keywords += ["technical interview", "technical round", "technical"]
+        elif s == "HR Round":
+            s_keywords += ["hr round", "hr interview", "hr stage"]
+        elif s == "Screening":
+            s_keywords += ["screening", "screened", "screening stage"]
+        elif s == "Applied":
+            s_keywords += ["applied stage", "new applications", "applied"]
+        elif s == "Offer":
+            s_keywords += ["offer stage", "offers given", "offer"]
+        elif s == "Hired":
+            s_keywords += ["hired stage", "joined", "hired"]
+        elif s == "Rejected":
+            s_keywords += ["rejected stage", "rejected candidates", "rejected"]
+
+        if any(kw in lower_msg for kw in s_keywords) and not any(k in lower_msg for k in ["list all candidate", "all candidate", "directory"]):
+            stage_cands = stage_candidates_map[s]
+            if stage_cands:
+                c_lines = []
+                for c in stage_cands:
+                    role_title = pos_map.get(c.applied_position_id, "Software Developer") if c.applied_position_id else "Software Developer"
+                    top_skills = get_top_skills(c.skills, limit=6)
+                    exp_str = f"{c.experience} yrs" if c.experience and c.experience > 0 else "Fresher (0 yrs)"
+                    c_lines.append(
+                        f"- 👤 **{c.full_name}** · *{c.email}*\n"
+                        f"  - **Role:** {role_title} | **Source:** `{c.source}` | **Stage:** `{s}` | **Experience:** {exp_str}\n"
+                        f"  - **Top Skills:** {top_skills}"
+                    )
+                resp = f"### 📊 Candidates in **{s}** Stage ({len(stage_cands)} candidates)\n\n" + "\n\n".join(c_lines) + f"\n\n💡 *Tip: Go to `/pipeline` to advance candidates to the next stage.*"
+            else:
+                resp = f"### 📊 **{s}** Stage\n\nThere are currently **0 candidates** in the **{s}** stage.\n\nTotal candidates across all stages: **{candidates_count}**."
+            return {
+                "response": clean_copilot_markdown(resp),
+                "portal_type": "recruiter",
+                "is_refusal": False
+            }
+
+    # 2. Pipeline Overview / Stage Breakdown Query (e.g. "pipeline stages", "show pipeline", "stage breakdown")
+    if any(k in lower_msg for k in ["pipeline stage", "stages", "pipeline overview", "pipeline breakdown", "kanban", "stages count"]):
+        resp = (
+            f"### 📊 Live Pipeline Stage Breakdown (`/pipeline`)\n\n"
+            f"- **Applied:** {stages_counts['Applied']} candidates\n"
+            f"- **Screening:** {stages_counts['Screening']} candidates\n"
+            f"- **Technical Interview:** {stages_counts['Technical Interview']} candidates\n"
+            f"- **HR Round:** {stages_counts['HR Round']} candidates\n"
+            f"- **Offer:** {stages_counts['Offer']} candidates\n"
+            f"- **Hired:** {stages_counts['Hired']} candidates\n"
+            f"- **Rejected:** {stages_counts['Rejected']} candidates\n\n"
+            f"**Candidates per Stage:**\n{pipeline_summary_block}\n\n"
+            f"💡 *Tip: Go to `/pipeline` to view and manage candidate progression.*"
+        )
+        return {
+            "response": clean_copilot_markdown(resp),
+            "portal_type": "recruiter",
+            "is_refusal": False
+        }
+
+    # 3. Scheduled Interviews Query (e.g. "scheduled interviews", "upcoming interviews", "who has interview")
+    if any(k in lower_msg for k in ["scheduled interview", "upcoming interview", "interviews scheduled", "interviews list", "who has interview"]):
+        if scheduled_interviews:
+            resp = f"### 🗓️ Scheduled Interviews ({len(scheduled_interviews)} sessions)\n\n" + "\n\n".join(interview_summary) + f"\n\n💡 *Tip: Go to `/interviews` to conduct interviews or submit scorecards.*"
+        else:
+            resp = "### 🗓️ Scheduled Interviews\n\nThere are currently **0 scheduled interviews** in the system.\n\n💡 *Tip: You can schedule new interviews directly from the `/interviews` or `/pipeline` page.*"
+        return {
+            "response": clean_copilot_markdown(resp),
+            "portal_type": "recruiter",
+            "is_refusal": False
+        }
+
+    # 4. Fit & Suitability Recommendation Query
     if any(k in lower_msg for k in ["suit", "match", "fit", "recommend", "which candidate", "best candidate", "who should apply", "who is best"]):
         if positions_list and all_candidates:
             resp_sections = []
@@ -912,7 +1044,14 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
             resp = "There are candidates in the system, but no open positions currently exist to evaluate suitability against."
         else:
             resp = "No candidates or positions currently available to evaluate fit."
-    elif any(k in lower_msg for k in ["list candidate", "show candidate", "all candidate", "list the candidate", "candidate directory", "candidates", "who are the candidate", "details of each candidate", "manually uploaded", "manual upload", "upload", "email", "career portal"]):
+        return {
+            "response": clean_copilot_markdown(resp),
+            "portal_type": "recruiter",
+            "is_refusal": False
+        }
+
+    # 5. Candidate Source & Directory Queries
+    if any(k in lower_msg for k in ["list candidate", "show candidate", "all candidate", "list the candidate", "candidate directory", "candidates", "who are the candidate", "details of each candidate", "manually uploaded", "manual upload", "upload", "email", "career portal"]):
         target_source = None
         if "manual" in lower_msg or "upload" in lower_msg:
             target_source = "Manual Upload"
@@ -940,7 +1079,14 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
             resp = f"No candidates found with source **{target_source}**. Total registered candidates in system: **{len(all_candidates)}**."
         else:
             resp = f"There are currently **{candidates_count} candidates** registered in the database."
-    elif any(k in lower_msg for k in ["how many position", "open position", "list position", "available position", "positions", "how many job"]):
+        return {
+            "response": clean_copilot_markdown(resp),
+            "portal_type": "recruiter",
+            "is_refusal": False
+        }
+
+    # 6. Positions Queries
+    if any(k in lower_msg for k in ["how many position", "open position", "list position", "available position", "positions", "how many job"]):
         if positions_list:
             p_lines = []
             for p in positions_list:
@@ -953,18 +1099,23 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
             resp = f"### 💼 Open Positions ({len(positions_list)} available)\n\n" + "\n\n".join(p_lines) + f"\n\nTotal open requisitions: **{positions_count}**.\n\n💡 *Tip: Go to `/positions` to create or publish job positions.*"
         else:
             resp = f"There are currently **{positions_count} open positions** in the system. You can create positions at `/positions`."
-    elif any(k in lower_msg for k in ["how many candidate", "total candidate", "candidate count"]):
-        resp = f"### 📊 Candidate & Pipeline Overview\n\n- **Total Database Candidates:** {candidates_count}\n- **Open Job Positions:** {positions_count}\n- **Current Hiring Success Rate:** {success_rate}%\n\n**Pipeline Stage Breakdown:**\n- **Applied:** {stages_counts['Applied']}\n- **Screening:** {stages_counts['Screening']}\n- **Technical Interview:** {stages_counts['Technical Interview']}\n- **HR Round:** {stages_counts['HR Round']}\n- **Offer:** {stages_counts['Offer']}\n- **Hired:** {stages_counts['Hired']}\n- **Rejected:** {stages_counts['Rejected']}"
-    elif "upload" in lower_msg or "resume" in lower_msg:
-        resp = "### 📄 How to Upload & Parse Resumes\n\n1. Go to the **Resume Upload** page (`/resume-upload`).\n2. Drag & drop single or bulk PDF/DOCX resumes.\n3. The AI engine will automatically parse contact info, technical skills, experience, and index vectors for semantic search!"
-    elif "search" in lower_msg or "semantic" in lower_msg or "find" in lower_msg:
-        resp = "### 🔍 Semantic AI Candidate Search\n\n1. Go to **Semantic Search** (`/semantic-search`).\n2. Type natural language queries (e.g., *'React developers with 5+ years experience'*).\n3. Our vector search engine returns instant candidate match scores and resume highlights!"
-    elif "pipeline" in lower_msg or "kanban" in lower_msg or "stage" in lower_msg:
-        resp = f"### 📊 Pipeline Stage Overview (`/pipeline`)\n\n- **Applied:** {stages_counts['Applied']} candidates\n- **Screening:** {stages_counts['Screening']} candidates\n- **Technical Interview:** {stages_counts['Technical Interview']} candidates\n- **HR Round:** {stages_counts['HR Round']} candidates\n- **Offer:** {stages_counts['Offer']} candidates\n- **Hired:** {stages_counts['Hired']} candidates\n- **Rejected:** {stages_counts['Rejected']} candidates"
-    elif "success rate" in lower_msg or "metric" in lower_msg or "stats" in lower_msg:
-        resp = f"### 📈 Recruitment Platform Executive Metrics\n\n- **Total Database Candidates:** {candidates_count}\n- **Open Job Positions:** {positions_count}\n- **Candidates Hired:** {hired_count}\n- **Current Hiring Success Rate:** {success_rate}%"
-    else:
-        resp = f"Hello Administrator! 🛠️ Our platform currently manages **{candidates_count} candidates** across **{positions_count} open positions** with a **{success_rate}% hiring success rate**.\n\nYou can ask me about:\n- **Website Navigation:** *'How to upload resumes?'*, *'Where to create jobs?'*, *'How does Semantic Search work?'*\n- **Pipeline & Candidates:** *'List the candidates'*, *'How many positions are available?'*, *'How many candidates in screening?'*\n- **Platform Features:** *'What features are on the Dashboard?'*"
+        return {
+            "response": clean_copilot_markdown(resp),
+            "portal_type": "recruiter",
+            "is_refusal": False
+        }
+
+    # 7. Default Overview Response
+    resp = (
+        f"Hello Administrator! 🛠️ Our platform currently manages **{candidates_count} candidates** across **{positions_count} open positions** with **{len(scheduled_interviews)} scheduled interview(s)**.\n\n"
+        f"**Live Pipeline Summary:**\n"
+        f"- **Applied:** {stages_counts['Applied']} | **Screening:** {stages_counts['Screening']} | **Technical Interview:** {stages_counts['Technical Interview']} | **HR Round:** {stages_counts['HR Round']} | **Offer:** {stages_counts['Offer']}\n\n"
+        f"You can ask me:\n"
+        f"- *'How many candidates are in screening stage?'*\n"
+        f"- *'Who is scheduled for an interview?'*\n"
+        f"- *'List candidates whose resume is manually uploaded'*\n"
+        f"- *'Which candidate will suit for each position?'*"
+    )
         
     return {
         "response": clean_copilot_markdown(resp),
