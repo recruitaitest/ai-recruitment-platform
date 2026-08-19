@@ -96,13 +96,21 @@ def mailbox_stats(
 
     return mailbox_service.mailbox_stats(db)
 
+import os
+from fastapi.responses import RedirectResponse
+
 @router.get("/oauth/callback")
 def oauth_callback(
     code: str,
     state: str,
     db: Session = Depends(get_db),
 ):
-    return mailbox_service.oauth_callback(db, code, state)
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    try:
+        mailbox_service.oauth_callback(db, code, state)
+        return RedirectResponse(url=f"{frontend_url}/admin/mailbox?connected=true")
+    except Exception as e:
+        return RedirectResponse(url=f"{frontend_url}/admin/mailbox?error={str(e)}")
 
 @router.get("/attachments")
 def get_attachments(
