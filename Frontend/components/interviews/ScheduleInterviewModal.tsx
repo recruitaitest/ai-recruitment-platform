@@ -373,38 +373,25 @@ export default function ScheduleInterviewModal({
 
     setIsScheduling(true);
     try {
-      const token = localStorage.getItem("token");
+      const payload = {
+        candidate_id: candidateId ?? selectedCandidateId,
+        position_id: positionId ?? selectedPositionId,
+        interview_date: date,
+        interview_time: time,
+        interview_type: interviewType,
+        interview_mode: mode,
+        meeting_link: mode === "Online" ? meetingLink : null,
+        location: mode === "In-Person" ? location : null,
+        location_link: mode === "In-Person" ? locationLink : null,
+        panel_role: panelMember || null,
+        interviewer_name: panelUser || null,
+        notes: notes || null,
+        status: "Scheduled",
+        feedback: "",
+      };
 
-      const response = await fetch(`${API_URL}/interviews/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          candidate_id: candidateId ?? selectedCandidateId,
-          position_id: positionId ?? selectedPositionId,
-          interview_date: date,
-          interview_time: time,
-          interview_type: interviewType,
-          interview_mode: mode,
-          meeting_link: mode === "Online" ? meetingLink : null,
-          location: mode === "In-Person" ? location : null,
-          location_link: mode === "In-Person" ? locationLink : null,
-          panel_role: panelMember || null,
-          interviewer_name: panelUser || null,
-          notes: notes || null,
-          status: "Scheduled",
-          feedback: "",
-        }),
-      });
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.detail || "Failed to schedule interview");
-      }
-
-      const savedInterview = await response.json();
+      const res = await api.post("/interviews", payload);
+      const savedInterview = res.data;
 
       addInterview?.(savedInterview);
       setInterviews((prev) => [...prev, savedInterview]);
@@ -414,7 +401,8 @@ export default function ScheduleInterviewModal({
       onClose();
     } catch (error: any) {
       console.error(error);
-      setScheduleError(error.message || "Failed to schedule interview. Please try again.");
+      const errMsg = error?.response?.data?.detail || error?.message || "Failed to schedule interview. Please try again.";
+      setScheduleError(errMsg);
     } finally {
       setIsScheduling(false);
     }
@@ -425,21 +413,12 @@ export default function ScheduleInterviewModal({
     setDeleteError(null);
 
     try {
-      const token = localStorage.getItem("token");
-
-      const response = await fetch(`${API_URL}/interviews/${id}/`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) throw new Error(`Failed to delete: ${response.status}`);
+      await api.delete(`/interviews/${id}`);
 
       setInterviews((prev) => prev.filter((i) => i.id !== id));
       deleteInterview?.(id);
       setDeleteConfirmId(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       setDeleteError("Failed to delete interview. Please try again.");
     } finally {
