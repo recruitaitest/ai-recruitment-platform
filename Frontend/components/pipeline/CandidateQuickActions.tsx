@@ -124,7 +124,7 @@ import { hasPermission } from "@/utils/permissions";
 const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
  recruiter: [
  "view_profile", "add_note", "open_resume", "view_timeline",
- "move_to_screening", "schedule_interview", "view_interview",
+ "move_to_screening", "schedule_interview", "submit_feedback", "view_interview",
  "reschedule_interview", "open_calendar", "reject", "remove_candidate",
  ],
  hiring_manager: [
@@ -202,13 +202,13 @@ const STAGE_CONFIG: Record<string, ConfigFactory> = {
  const hasInterview = props.interviewStatus && props.interviewStatus !== "not_scheduled";
  return {
  primary: hasInterview
- ? (can(props.userRole, "view_interview") ? {
- label: "View Interview",
- icon: <CalendarDays className="h-4 w-4" />,
+ ? (can(props.userRole, "submit_feedback") ? {
+ label: "Submit Feedback",
+ icon: <ClipboardEdit className="h-4 w-4" />,
  colorClass: "text-amber-300",
  bgClass: "bg-amber-500/10",
  borderClass: "border-amber-500/20",
- onClick: () => call(props.onViewInterview),
+ onClick: () => call(props.onSubmitFeedback, "Screening"),
  } : null)
  : (can(props.userRole, "schedule_interview") ? {
  label: "Schedule Technical Interview",
@@ -235,13 +235,13 @@ const STAGE_CONFIG: Record<string, ConfigFactory> = {
  const hasInterview = props.interviewStatus && props.interviewStatus !== "not_scheduled";
  return {
  primary: hasInterview
- ? (can(props.userRole, "view_interview") ? {
- label: "View Interview",
- icon: <CalendarDays className="h-4 w-4" />,
+ ? (can(props.userRole, "submit_feedback") ? {
+ label: "Submit Feedback",
+ icon: <ClipboardEdit className="h-4 w-4" />,
  colorClass: "text-violet-300",
  bgClass: "bg-violet-500/10",
  borderClass: "border-violet-500/20",
- onClick: () => call(props.onViewInterview),
+ onClick: () => call(props.onSubmitFeedback, "Technical Interview"),
  } : null)
  : (can(props.userRole, "schedule_interview") ? {
  label: "Schedule Technical Interview",
@@ -253,6 +253,7 @@ const STAGE_CONFIG: Record<string, ConfigFactory> = {
  } : null),
  secondary: [
  hasInterview && can(props.userRole, "reschedule_interview") && { label: "Reschedule Interview", icon: <Pencil className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onRescheduleInterview) },
+ hasInterview && can(props.userRole, "view_interview") && { label: "View Interview Details", icon: <CalendarDays className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewInterview) },
  hasInterview && can(props.userRole, "open_calendar") && { label: "Open Calendar", icon: <CalendarDays className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onOpenCalendar) },
  can(props.userRole, "view_profile") && { label: "View Profile", icon: <Eye className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewProfile) },
  can(props.userRole, "add_note") && { label: "Add Note", icon: <MessageSquarePlus className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onAddNote) },
@@ -268,13 +269,13 @@ const STAGE_CONFIG: Record<string, ConfigFactory> = {
  const hasInterview = props.interviewStatus && props.interviewStatus !== "not_scheduled";
  return {
  primary: hasInterview
- ? (can(props.userRole, "view_interview") ? {
- label: "View Interview",
- icon: <CalendarDays className="h-4 w-4" />,
+ ? (can(props.userRole, "submit_feedback") ? {
+ label: "Submit Feedback",
+ icon: <ClipboardEdit className="h-4 w-4" />,
  colorClass: "text-emerald-300",
  bgClass: "bg-emerald-500/10",
  borderClass: "border-emerald-500/20",
- onClick: () => call(props.onViewInterview),
+ onClick: () => call(props.onSubmitFeedback, "HR Round"),
  } : null)
  : (can(props.userRole, "schedule_interview") ? {
  label: "Schedule HR Interview",
@@ -285,8 +286,9 @@ const STAGE_CONFIG: Record<string, ConfigFactory> = {
  onClick: () => call(props.onMoveToStage, "HR Round"),
  } : null),
  secondary: [
- { label: "View Technical Feedback", icon: <ClipboardEdit className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewInterview) }, // Reusing onViewInterview for now, can implement a feedback specific modal or just show the interview modal to see feedback.
+ { label: "View Technical Feedback", icon: <ClipboardEdit className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewInterview) },
  hasInterview && can(props.userRole, "reschedule_interview") && { label: "Reschedule Interview", icon: <Pencil className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onRescheduleInterview) },
+ hasInterview && can(props.userRole, "view_interview") && { label: "View Interview Details", icon: <CalendarDays className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewInterview) },
  hasInterview && can(props.userRole, "open_calendar") && { label: "Open Calendar", icon: <CalendarDays className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onOpenCalendar) },
  can(props.userRole, "view_profile") && { label: "View Profile", icon: <Eye className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewProfile) },
  can(props.userRole, "add_note") && { label: "Add Note", icon: <MessageSquarePlus className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onAddNote) },
@@ -645,14 +647,14 @@ export default function CandidateQuickActions(props: CandidateQuickActionsProps)
  const isTech = stage === "Technical Interview";
  const isHR = stage === "HR Round";
  
- let expectedTypes = ["Screening"];
- if (isTech) expectedTypes = ["Technical", "Technical Interview"];
- if (isHR) expectedTypes = ["HR Round"];
- 
- const match = data.find((i: any) => 
- Number(i.candidate_id) === Number(candidateId) && 
- expectedTypes.includes(i.interview_type)
- );
+ const match = data.find((i: any) => {
+ const cMatch = Number(i.candidate_id) === Number(candidateId);
+ if (!cMatch) return false;
+ const itype = (i.interview_type || "").toLowerCase();
+ if (isTech) return itype.includes("tech");
+ if (isHR) return itype.includes("hr");
+ return true;
+ });
  
  if (match) {
  if (match.status === "Scheduled") setFetchedInterviewStatus("scheduled");

@@ -159,7 +159,8 @@ export default function CandidateCard({
       <div className="mt-3 border-t border-border pt-3">
         <CandidateQuickActions
           stage={candidate.stage}
-          candidateId={candidate.id}
+          candidateId={String(candidate.candidate_id || candidate.id)}
+          pipelineId={Number(candidate.id) || undefined}
           candidateName={candidate.name}
           onMoveToStage={onMoveToStage}
           onViewProfile={onViewProfile}

@@ -714,9 +714,44 @@ export default function PipelineBoard() {
  }
  };
 
- const handleRestoreCandidate = async (candidateId: string) => {
- updateCandidateStage(candidateId, "Applied");
- };
+  const handleRestoreCandidate = async (candidateId: string) => {
+    updateCandidateStage(candidateId, "Applied");
+  };
+
+  const handleSubmitFeedback = async (candidateId: string, round?: string) => {
+    const candidate = candidates.find(c => c.id === candidateId || String(c.candidate_id) === String(candidateId));
+    if (!candidate) return;
+
+    try {
+      const interviews = await getInterviews();
+      const currentStage = round || candidate.stage;
+      const isTech = currentStage === "Technical Interview";
+      const isHR = currentStage === "HR Round";
+
+      const match = (interviews || []).find((i: any) => {
+        const cMatch = Number(i.candidate_id) === Number(candidate.candidate_id);
+        if (!cMatch) return false;
+        const itype = (i.interview_type || "").toLowerCase();
+        if (isTech) return itype.includes("tech");
+        if (isHR) return itype.includes("hr");
+        return true;
+      });
+
+      if (match) {
+        setSelectedInterview({
+          ...match,
+          _candidateName: candidate.name,
+          _positionTitle: candidate.role,
+        });
+        setFeedbackModalOpen(true);
+      } else {
+        toast.error("No scheduled interview found to submit feedback for.");
+      }
+    } catch (err) {
+      console.error("Failed to find interview for feedback", err);
+      toast.error("Failed to load interview details.");
+    }
+  };
 
  const handleDragEnd = async (event: DragEndEvent) => {
  const { active, over } = event;
