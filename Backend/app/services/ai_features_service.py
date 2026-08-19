@@ -753,15 +753,26 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
             f"  - **Key Requirements:** {pos_req}"
         )
     
+    from app.models.email_message import EmailMessage
+    email_cand_records = db.query(EmailMessage.candidate_id).filter(EmailMessage.candidate_id.isnot(None)).all() if db else []
+    email_cand_ids = {r[0] for r in email_cand_records if r[0]}
+
     all_candidates = db.query(Candidate).order_by(Candidate.id.desc()).limit(30).all() if db else []
     cand_summary = []
     for c in all_candidates:
+        if c.id in email_cand_ids or c.source in ["Gmail Sync", "Email", "Gmail"]:
+            c.source = "Email"
+        elif c.source == "Career Portal":
+            c.source = "Career Portal"
+        else:
+            c.source = c.source or "Manual Upload"
+
         role_title = pos_map.get(c.applied_position_id, "Software Developer") if c.applied_position_id else "Software Developer"
         top_skills = get_top_skills(c.skills, limit=6)
         exp_str = f"{c.experience} yrs" if c.experience and c.experience > 0 else "Fresher (0 yrs)"
         cand_summary.append(
             f"- 👤 **{c.full_name}** · *{c.email}*\n"
-            f"  - **Role:** {role_title} | **Stage:** `{c.status or 'Applied'}` | **Experience:** {exp_str}\n"
+            f"  - **Role:** {role_title} | **Source:** `{c.source}` | **Stage:** `{c.status or 'Applied'}` | **Experience:** {exp_str}\n"
             f"  - **Top Skills:** {top_skills}"
         )
 
@@ -901,19 +912,32 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
             resp = "There are candidates in the system, but no open positions currently exist to evaluate suitability against."
         else:
             resp = "No candidates or positions currently available to evaluate fit."
-    elif any(k in lower_msg for k in ["list candidate", "show candidate", "all candidate", "list the candidate", "candidate directory", "candidates", "who are the candidate", "details of each candidate"]):
-        if all_candidates:
+    elif any(k in lower_msg for k in ["list candidate", "show candidate", "all candidate", "list the candidate", "candidate directory", "candidates", "who are the candidate", "details of each candidate", "manually uploaded", "manual upload", "upload", "email", "career portal"]):
+        target_source = None
+        if "manual" in lower_msg or "upload" in lower_msg:
+            target_source = "Manual Upload"
+        elif "email" in lower_msg or "mail" in lower_msg or "gmail" in lower_msg:
+            target_source = "Email"
+        elif "portal" in lower_msg or "career" in lower_msg:
+            target_source = "Career Portal"
+
+        filtered_cands = [c for c in all_candidates if c.source == target_source] if target_source else all_candidates
+
+        if filtered_cands:
             c_lines = []
-            for c in all_candidates:
+            for c in filtered_cands:
                 role_title = pos_map.get(c.applied_position_id, "Software Developer") if c.applied_position_id else "Software Developer"
                 top_skills = get_top_skills(c.skills, limit=6)
                 exp_str = f"{c.experience} yrs" if c.experience and c.experience > 0 else "Fresher (0 yrs)"
                 c_lines.append(
                     f"- 👤 **{c.full_name}** · *{c.email}*\n"
-                    f"  - **Role:** {role_title} | **Stage:** `{c.status or 'Applied'}` | **Experience:** {exp_str}\n"
+                    f"  - **Role:** {role_title} | **Source:** `{c.source}` | **Stage:** `{c.status or 'Applied'}` | **Experience:** {exp_str}\n"
                     f"  - **Top Skills:** {top_skills}"
                 )
-            resp = f"### 👥 Candidate Directory ({len(all_candidates)} candidates)\n\n" + "\n\n".join(c_lines) + "\n\n💡 *Tip: Go to `/candidates` to filter, search, or trigger candidate communication.*"
+            title_str = f"👥 {target_source} Candidates ({len(filtered_cands)} candidates)" if target_source else f"👥 Candidate Directory ({len(all_candidates)} candidates)"
+            resp = f"### {title_str}\n\n" + "\n\n".join(c_lines) + "\n\n💡 *Tip: Go to `/candidates` to filter, search, or trigger candidate communication.*"
+        elif target_source:
+            resp = f"No candidates found with source **{target_source}**. Total registered candidates in system: **{len(all_candidates)}**."
         else:
             resp = f"There are currently **{candidates_count} candidates** registered in the database."
     elif any(k in lower_msg for k in ["how many position", "open position", "list position", "available position", "positions", "how many job"]):
