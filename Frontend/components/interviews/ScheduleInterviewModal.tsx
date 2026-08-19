@@ -476,7 +476,7 @@ export default function ScheduleInterviewModal({
               {candidateId ? (
                 <div className="rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 px-4 py-3">
                   <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                    {candidateName} <span className="text-xs font-normal text-slate-400">#{candidateId}</span>
+                    {candidateName}
                   </p>
                 </div>
               ) : (
