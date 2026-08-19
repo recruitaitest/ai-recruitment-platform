@@ -5,11 +5,11 @@ services:
     build:
       context: ./Frontend
       args:
-        - NEXT_PUBLIC_API_URL=http://20.197.61.51:8000
+        - NEXT_PUBLIC_API_URL=https://ai-recruitment-platform.centralindia.cloudapp.azure.com
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://20.197.61.51:8000
+      - NEXT_PUBLIC_API_URL=https://ai-recruitment-platform.centralindia.cloudapp.azure.com
     depends_on:
       - api
 
