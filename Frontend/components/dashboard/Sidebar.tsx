@@ -69,7 +69,7 @@ function SidebarInner({
     const searchParams = useSearchParams()
     const [hoveredItem, setHoveredItem] = useState<string | null>(null)
     const [user, setUser] = useState<any>(null)
-    const [portal, setPortal] = useState<'recruiter' | 'admin'>('recruiter')
+    const [portal, setPortal] = useState<'recruiter' | 'admin' | 'hiring-manager'>('recruiter')
     const [semanticSearchEnabled, setSemanticSearchEnabled] = useState(true)
     const [activeAIProvider, setActiveAIProvider] = useState<string | null>(null)
     const canManageAI = hasPermission("ai_settings.manage", true)
@@ -81,15 +81,25 @@ function SidebarInner({
             setUser(storedUser)
         }
         
-        loadUser()
-
-        const savedPortal = localStorage.getItem('portal')
-        if (savedPortal === 'admin' || savedPortal === 'recruiter') {
-            setPortal(savedPortal)
+        const loadPortal = () => {
+            const savedPortal = localStorage.getItem('portal')
+            if (savedPortal === 'admin' || savedPortal === 'recruiter' || savedPortal === 'hiring-manager' || savedPortal === 'hiring_manager') {
+                setPortal(savedPortal === 'hiring_manager' ? 'hiring-manager' : (savedPortal as any))
+            }
         }
 
+        loadUser()
+        loadPortal()
+
         window.addEventListener('user-updated', loadUser)
-        return () => window.removeEventListener('user-updated', loadUser)
+        window.addEventListener('portal-changed', loadPortal)
+        window.addEventListener('storage', loadPortal)
+
+        return () => {
+            window.removeEventListener('user-updated', loadUser)
+            window.removeEventListener('portal-changed', loadPortal)
+            window.removeEventListener('storage', loadPortal)
+        }
     }, [])
 
     useEffect(() => {
@@ -359,12 +369,15 @@ function SidebarInner({
         },
     ];
 
+    const isHiringPortalRoute = pathname.startsWith('/portal/hiring-manager');
+    const isAdminRoute = pathname.startsWith('/admin');
+
     const navItems =
         role === 'PENDING'
             ? pendingNavItems
-            : isHiringManager
+            : (portal === 'hiring-manager' || isHiringPortalRoute || isHiringManager)
                 ? hiringManagerNavItems
-                : portal === 'admin'
+                : (portal === 'admin' || isAdminRoute)
                     ? adminNavItems
                     : recruiterNavItems
 

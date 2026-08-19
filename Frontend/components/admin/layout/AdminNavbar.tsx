@@ -372,6 +372,7 @@ export default function AdminNavbar() {
                     <button
                       onClick={() => {
                         localStorage.setItem("portal", "admin");
+                        window.dispatchEvent(new Event('portal-changed'));
                         setCurrentRole("Admin");
                         setShowProfileMenu(false);
                         router.push("/admin/dashboard");
@@ -383,6 +384,7 @@ export default function AdminNavbar() {
                     <button
                       onClick={() => {
                         localStorage.setItem("portal", "recruiter");
+                        window.dispatchEvent(new Event('portal-changed'));
                         setCurrentRole("Recruiter");
                         setShowProfileMenu(false);
                         router.push("/dashboard");
@@ -394,6 +396,7 @@ export default function AdminNavbar() {
                     <button
                       onClick={() => {
                         localStorage.setItem("portal", "hiring-manager");
+                        window.dispatchEvent(new Event('portal-changed'));
                         setCurrentRole("Hiring Manager");
                         setShowProfileMenu(false);
                         router.push("/portal/hiring-manager?tab=candidates");
