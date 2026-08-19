@@ -496,81 +496,72 @@ export default function PipelineBoard() {
     }
   };
 
- const handleSubmitFeedback = async (
- candidateId: string
- ) => {
+  const handleSubmitFeedback = async (
+    candidateId: string,
+    round?: string
+  ) => {
+    try {
+      const interviews = await getInterviews();
 
- try {
+      const candidate = candidates.find(
+        (c) => c.id === candidateId || String(c.candidate_id) === String(candidateId)
+      );
 
- const interviews =
- await getInterviews();
+      if (!candidate) {
+        toast.error("Candidate not found.");
+        return;
+      }
 
- const candidate = candidates.find(
- c => c.id === candidateId
- );
+      // Determine expected interview type based on candidate's current pipeline stage
+      const currentStage = round || candidate.stage;
+      const stageToType: Record<string, string[]> = {
+        "Technical Interview": ["Technical", "Technical Interview"],
+        "HR Round": ["HR Round", "HR Interview", "HR"],
+      };
 
-  if (!candidate) {
-  toast.error("Candidate not found.");
-  return;
-  }
+      const expectedTypes = stageToType[currentStage] || [];
 
- // Determine expected interview type based on candidate's current pipeline stage
- const stageToType: Record<string, string[]> = {
- "Technical Interview": ["Technical", "Technical Interview"],
- "HR Round": ["HR Round"],
- };
+      // Find matching interview
+      let interview = (interviews || []).find(
+        (item: any) =>
+          Number(item.candidate_id) === Number(candidate.candidate_id) &&
+          expectedTypes.some((t) => (item.interview_type || "").toLowerCase().includes(t.toLowerCase())) &&
+          item.status === "Scheduled"
+      );
 
- const expectedTypes = stageToType[candidate.stage] || [];
+      // Fallback: match by candidate + correct type (any status)
+      if (!interview) {
+        interview = (interviews || []).find(
+          (item: any) =>
+            Number(item.candidate_id) === Number(candidate.candidate_id) &&
+            expectedTypes.some((t) => (item.interview_type || "").toLowerCase().includes(t.toLowerCase()))
+        );
+      }
 
- // Find the matching interview: same candidate + position + correct type + prefer Scheduled status
- let interview = interviews.find(
- (item: any) =>
- Number(item.candidate_id) === Number(candidate.candidate_id) &&
- Number(item.position_id) === Number(candidate.position_id) &&
- expectedTypes.includes(item.interview_type) &&
- item.status === "Scheduled"
- );
+      // Final fallback: match any interview for this candidate
+      if (!interview) {
+        interview = (interviews || []).find(
+          (item: any) =>
+            Number(item.candidate_id) === Number(candidate.candidate_id)
+        );
+      }
 
- // Fallback: match by candidate + position + correct type (any status)
- if (!interview) {
- interview = interviews.find(
- (item: any) =>
- Number(item.candidate_id) === Number(candidate.candidate_id) &&
- Number(item.position_id) === Number(candidate.position_id) &&
- expectedTypes.includes(item.interview_type)
- );
- }
+      if (!interview) {
+        toast.error("No matching interview found for this candidate.");
+        return;
+      }
 
- // Final fallback: match any Scheduled interview for this candidate + position
- if (!interview) {
- interview = interviews.find(
- (item: any) =>
- Number(item.candidate_id) === Number(candidate.candidate_id) &&
- Number(item.position_id) === Number(candidate.position_id) &&
- item.status === "Scheduled"
- );
- }
+      setSelectedInterview({
+        ...interview,
+        _candidateName: candidate.name ?? "",
+        _positionTitle: candidate.role ?? "",
+      });
 
-  if (!interview) {
-  toast.error("No matching interview found for this candidate's current stage.");
-  return;
-  }
-
- setSelectedInterview({
- ...interview,
- _candidateName: candidate?.name ?? "",
- _positionTitle: candidate?.role ?? "",
- });
-
- setFeedbackModalOpen(true);
-
- } catch (error) {
-
- console.error(error);
-
- }
-
- };
+      setFeedbackModalOpen(true);
+    } catch (error) {
+      console.error("Error in handleSubmitFeedback:", error);
+    }
+  };
 
  const handleViewTimeline = (pipelineId: string) => {
  setSelectedPipelineId(pipelineId);
@@ -713,48 +704,12 @@ export default function PipelineBoard() {
  setCalendarModalOpen(true);
  }
  };
-
   const handleRestoreCandidate = async (candidateId: string) => {
     updateCandidateStage(candidateId, "Applied");
   };
 
-  const handleSubmitFeedback = async (candidateId: string, round?: string) => {
-    const candidate = candidates.find(c => c.id === candidateId || String(c.candidate_id) === String(candidateId));
-    if (!candidate) return;
-
-    try {
-      const interviews = await getInterviews();
-      const currentStage = round || candidate.stage;
-      const isTech = currentStage === "Technical Interview";
-      const isHR = currentStage === "HR Round";
-
-      const match = (interviews || []).find((i: any) => {
-        const cMatch = Number(i.candidate_id) === Number(candidate.candidate_id);
-        if (!cMatch) return false;
-        const itype = (i.interview_type || "").toLowerCase();
-        if (isTech) return itype.includes("tech");
-        if (isHR) return itype.includes("hr");
-        return true;
-      });
-
-      if (match) {
-        setSelectedInterview({
-          ...match,
-          _candidateName: candidate.name,
-          _positionTitle: candidate.role,
-        });
-        setFeedbackModalOpen(true);
-      } else {
-        toast.error("No scheduled interview found to submit feedback for.");
-      }
-    } catch (err) {
-      console.error("Failed to find interview for feedback", err);
-      toast.error("Failed to load interview details.");
-    }
-  };
-
- const handleDragEnd = async (event: DragEndEvent) => {
- const { active, over } = event;
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
 
  if (!over) return;
 
