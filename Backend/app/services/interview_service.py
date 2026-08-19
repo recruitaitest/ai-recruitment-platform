@@ -166,7 +166,21 @@ class InterviewService:
         
         # Dynamically fetch company from current user's profile settings (or admin profile settings)
         company = ""
-        user_id = current_user.get("user_id") if isinstance(current_user, dict) else getattr(current_user, "id", None)
+        user_id = None
+        user_email = None
+        if current_user:
+            if isinstance(current_user, dict):
+                user_id = current_user.get("user_id") or current_user.get("id") or current_user.get("sub")
+                user_email = current_user.get("email")
+            else:
+                user_id = getattr(current_user, "id", None)
+                user_email = getattr(current_user, "email", None)
+
+        if user_id and str(user_id).isdigit():
+            user_id = int(user_id)
+        else:
+            user_id = None
+
         if user_id:
             user_obj = db.query(User).filter(User.id == user_id).first()
             if user_obj and user_obj.company and user_obj.company.strip():
@@ -197,9 +211,8 @@ class InterviewService:
                 end_iso = end_dt.isoformat() + "Z"
                 
                 attendees = [candidate_email] if candidate_email else []
-                # If current user has an email, add them too (placeholder logic for recruiter email)
-                if current_user.get("email"):
-                    attendees.append(current_user["email"])
+                if user_email:
+                    attendees.append(user_email)
                 
                 summary = f"Interview: {candidate_name} - {position_title} ({interview.interview_type})"
                 description = f"Scheduled {interview.interview_mode} interview for {position_title}."
@@ -220,14 +233,17 @@ class InterviewService:
                 print(f"Failed to trigger Google Calendar sync: {e}")
         
         notified_user_ids = set()
-        if current_user and current_user.get("user_id"):
-            create_notification(
-                db,
-                current_user["user_id"],
-                "Interview Scheduled",
-                f"Interview scheduled for {candidate_name} ({position_title}) on {interview.interview_date} at {interview.interview_time}"
-            )
-            notified_user_ids.add(current_user["user_id"])
+        if user_id:
+            try:
+                create_notification(
+                    db,
+                    user_id,
+                    "Interview Scheduled",
+                    f"Interview scheduled for {candidate_name} ({position_title}) on {interview.interview_date} at {interview.interview_time}"
+                )
+                notified_user_ids.add(user_id)
+            except Exception as notif_err:
+                print(f"Failed to create creator notification: {notif_err}")
 
         # Notify assigned interviewer (Hiring Manager)
         if getattr(interview, 'interviewer_name', None):
@@ -287,21 +303,24 @@ class InterviewService:
 
         # Send email to the candidate if enabled
         if background_tasks and candidate_email and send_email_enabled:
-            background_tasks.add_task(
-                send_interview_scheduled_email,
-                to_email=candidate_email,
-                candidate_name=candidate_name,
-                position_title=position_title,
-                interview_type=interview.interview_type or "Interview",
-                date=str(interview.interview_date) if interview.interview_date else "TBD",
-                time=str(interview.interview_time) if interview.interview_time else "TBD",
-                mode=interview.interview_mode or "Online",
-                location=interview.meeting_link if interview.interview_mode == "Online" else (getattr(interview, 'location_link', None) or interview.location or "Will be provided shortly"),
-                job_description=job_description,
-                company=company,
-                required_skills=required_skills,
-                position_location=position_location,
-            )
+            try:
+                background_tasks.add_task(
+                    send_interview_scheduled_email,
+                    to_email=candidate_email,
+                    candidate_name=candidate_name,
+                    position_title=position_title,
+                    interview_type=interview.interview_type or "Interview",
+                    date=str(interview.interview_date) if interview.interview_date else "TBD",
+                    time=str(interview.interview_time) if interview.interview_time else "TBD",
+                    mode=interview.interview_mode or "Online",
+                    location=interview.meeting_link if interview.interview_mode == "Online" else (getattr(interview, 'location_link', None) or interview.location or "Will be provided shortly"),
+                    job_description=job_description,
+                    company=company,
+                    required_skills=required_skills,
+                    position_location=position_location,
+                )
+            except Exception as mail_err:
+                print(f"Failed to queue interview email: {mail_err}")
 
         db.refresh(new_interview)
         new_interview.candidate_name = candidate_name

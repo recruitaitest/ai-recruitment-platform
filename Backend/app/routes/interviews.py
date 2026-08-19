@@ -19,7 +19,14 @@ def create_interview(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    return InterviewService.create_interview(db, interview, current_user, background_tasks)
+    import logging
+    try:
+        return InterviewService.create_interview(db, interview, current_user, background_tasks)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error in create_interview endpoint: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to schedule interview: {str(e)}")
 
 
 @router.get("", response_model=list[InterviewResponse])
