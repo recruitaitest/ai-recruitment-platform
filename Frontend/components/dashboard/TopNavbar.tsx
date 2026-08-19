@@ -768,26 +768,40 @@ export function TopNavbar({
  router.replace('/admin/dashboard')
  router.refresh()
  }}
- className={`w-full rounded px-2 py-2 text-left text-sm ${currentRole === 'Admin' ? 'text-primary bg-primary/5' : 'text-text-primary'} hover:bg-slate-100 dark:hover:bg-secondary-surface`}
+ className={`w-full rounded px-2 py-2 text-left text-sm ${currentRole === 'Admin' ? 'text-primary bg-primary/5 font-bold' : 'text-text-primary'} hover:bg-slate-100 dark:hover:bg-secondary-surface`}
  >
  Admin
  </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    localStorage.setItem('portal', 'recruiter')
-                    setCurrentRole('Recruiter')
-                    setShowProfileMenu(false)
-                    router.replace('/dashboard')
-                    router.refresh()
-                  }}
-                  className={`w-full rounded px-2 py-2 text-left text-sm ${currentRole === 'Recruiter' ? 'text-primary bg-primary/5 font-bold' : 'text-text-primary'} hover:bg-slate-100 dark:hover:bg-secondary-surface`}
-                >
-                  Recruiter
-                </button>
-              </div>
-            )}
+ <button
+ type="button"
+ onClick={() => {
+ localStorage.setItem('portal', 'recruiter')
+ setCurrentRole('Recruiter')
+ setShowProfileMenu(false)
+ router.replace('/dashboard')
+ router.refresh()
+ }}
+ className={`w-full rounded px-2 py-2 text-left text-sm ${currentRole === 'Recruiter' ? 'text-primary bg-primary/5 font-bold' : 'text-text-primary'} hover:bg-slate-100 dark:hover:bg-secondary-surface`}
+ >
+ Recruiter
+ </button>
+
+ <button
+ type="button"
+ onClick={() => {
+ localStorage.setItem('portal', 'hiring-manager')
+ setCurrentRole('Hiring Manager')
+ setShowProfileMenu(false)
+ router.replace('/portal/hiring-manager?tab=candidates')
+ router.refresh()
+ }}
+ className={`w-full rounded px-2 py-2 text-left text-sm ${currentRole === 'Hiring Manager' ? 'text-primary bg-primary/5 font-bold' : 'text-text-primary'} hover:bg-slate-100 dark:hover:bg-secondary-surface`}
+ >
+ Hiring Manager
+ </button>
+ </div>
+ )}
 
  <button
  type="button"

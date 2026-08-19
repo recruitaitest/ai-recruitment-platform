@@ -391,6 +391,17 @@ export default function AdminNavbar() {
                     >
                       Recruiter
                     </button>
+                    <button
+                      onClick={() => {
+                        localStorage.setItem("portal", "hiring-manager");
+                        setCurrentRole("Hiring Manager");
+                        setShowProfileMenu(false);
+                        router.push("/portal/hiring-manager?tab=candidates");
+                      }}
+                      className="w-full text-left px-2 py-2 rounded hover:bg-secondary-surface text-sm text-text-primary"
+                    >
+                      Hiring Manager
+                    </button>
                   </div>
                 )}
 
