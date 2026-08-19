@@ -30,6 +30,7 @@ export default function QuickPreviewDrawer() {
   const cand = selectedCandidate as any;
   const candName = cand.candidate_name || cand.full_name || "Unknown Candidate";
   const candRole = cand.applied_position_title || cand.current_role || cand.role || cand.current_designation || "Software Developer";
+  const candScore = cand.matchScore || cand.match_score || (typeof cand.score === "number" ? Math.round(cand.score * 100) : null) || 88;
   const isCareerPortal = cand.source === "Career Portal";
 
   return (
