@@ -20,6 +20,8 @@ services:
       context: ./Backend
     ports:
       - "8000:8000"
+    env_file:
+      - ./Backend/.env
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
@@ -33,6 +35,8 @@ services:
       - OPENSEARCH_HOST=opensearch
       - OPENSEARCH_PORT=9200
       - QDRANT_URL=http://qdrant:6333
+      - GMAIL_REDIRECT_URI=https://ai-recruitment-platform.centralindia.cloudapp.azure.com/mailbox/oauth/callback
+      - FRONTEND_URL=https://ai-recruitment-platform.centralindia.cloudapp.azure.com
     depends_on:
       - db
       - redis
@@ -42,6 +46,8 @@ services:
     build:
       context: ./Backend
     command: celery -A app.celery_app worker --loglevel=info
+    env_file:
+      - ./Backend/.env
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
@@ -54,6 +60,8 @@ services:
       - OPENSEARCH_HOST=opensearch
       - OPENSEARCH_PORT=9200
       - QDRANT_URL=http://qdrant:6333
+      - GMAIL_REDIRECT_URI=https://ai-recruitment-platform.centralindia.cloudapp.azure.com/mailbox/oauth/callback
+      - FRONTEND_URL=https://ai-recruitment-platform.centralindia.cloudapp.azure.com
     depends_on:
       - db
       - redis
