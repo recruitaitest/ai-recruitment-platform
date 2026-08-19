@@ -58,7 +58,19 @@ class CandidateService:
             pos_map = {p.id: p for p in positions}
             pipeline_map = {p.candidate_id: p for p in pipelines}
 
+            from app.models.email_message import EmailMessage
+            email_cand_records = db.query(EmailMessage.candidate_id).filter(EmailMessage.candidate_id.isnot(None)).all()
+            email_cand_ids = {r[0] for r in email_cand_records if r[0]}
+
             for candidate in candidates:
+                # Recognize Email vs Career Portal vs Manual Upload
+                if candidate.id in email_cand_ids or candidate.source in ["Gmail Sync", "Email", "Gmail"]:
+                    candidate.source = "Email"
+                elif candidate.source == "Career Portal":
+                    candidate.source = "Career Portal"
+                else:
+                    candidate.source = candidate.source or "Manual Upload"
+
                 if candidate.id in pipeline_map:
                     candidate.status = pipeline_map[candidate.id].stage
                     if not candidate.applied_position_id:
@@ -111,6 +123,15 @@ class CandidateService:
         else:
             candidate.applied_position_title = candidate.current_designation or None
             candidate.match_score = 85
+
+        from app.models.email_message import EmailMessage
+        email_exists = db.query(EmailMessage).filter(EmailMessage.candidate_id == candidate.id).first()
+        if email_exists or candidate.source in ["Gmail Sync", "Email", "Gmail"]:
+            candidate.source = "Email"
+        elif candidate.source == "Career Portal":
+            candidate.source = "Career Portal"
+        else:
+            candidate.source = candidate.source or "Manual Upload"
 
         return candidate
 
