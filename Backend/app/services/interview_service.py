@@ -302,30 +302,67 @@ class InterviewService:
             pass
 
         # Send email to the candidate if enabled
-        if background_tasks and candidate_email and send_email_enabled:
+        if candidate_email and send_email_enabled:
             try:
-                background_tasks.add_task(
-                    send_interview_scheduled_email,
-                    to_email=candidate_email,
-                    candidate_name=candidate_name,
-                    position_title=position_title,
-                    interview_type=interview.interview_type or "Interview",
-                    date=str(interview.interview_date) if interview.interview_date else "TBD",
-                    time=str(interview.interview_time) if interview.interview_time else "TBD",
-                    mode=interview.interview_mode or "Online",
-                    location=interview.meeting_link if interview.interview_mode == "Online" else (getattr(interview, 'location_link', None) or interview.location or "Will be provided shortly"),
-                    job_description=job_description,
-                    company=company,
-                    required_skills=required_skills,
-                    position_location=position_location,
-                )
+                if background_tasks:
+                    background_tasks.add_task(
+                        send_interview_scheduled_email,
+                        to_email=candidate_email,
+                        candidate_name=candidate_name,
+                        position_title=position_title,
+                        interview_type=interview.interview_type or "Interview",
+                        date=str(interview.interview_date) if interview.interview_date else "TBD",
+                        time=str(interview.interview_time) if interview.interview_time else "TBD",
+                        mode=interview.interview_mode or "Online",
+                        location=interview.meeting_link if interview.interview_mode == "Online" else (getattr(interview, 'location_link', None) or interview.location or "Will be provided shortly"),
+                        job_description=job_description,
+                        company=company,
+                        required_skills=required_skills,
+                        position_location=position_location,
+                    )
+                else:
+                    send_interview_scheduled_email(
+                        to_email=candidate_email,
+                        candidate_name=candidate_name,
+                        position_title=position_title,
+                        interview_type=interview.interview_type or "Interview",
+                        date=str(interview.interview_date) if interview.interview_date else "TBD",
+                        time=str(interview.interview_time) if interview.interview_time else "TBD",
+                        mode=interview.interview_mode or "Online",
+                        location=interview.meeting_link if interview.interview_mode == "Online" else (getattr(interview, 'location_link', None) or interview.location or "Will be provided shortly"),
+                        job_description=job_description,
+                        company=company,
+                        required_skills=required_skills,
+                        position_location=position_location,
+                    )
             except Exception as mail_err:
                 print(f"Failed to queue interview email: {mail_err}")
 
-        db.refresh(new_interview)
-        new_interview.candidate_name = candidate_name
-        new_interview.position_title = position_title
-        return new_interview
+        return InterviewResponse(
+            id=new_interview.id,
+            candidate_id=new_interview.candidate_id,
+            position_id=new_interview.position_id,
+            candidate_name=candidate_name,
+            position_title=position_title,
+            interview_date=new_interview.interview_date,
+            interview_time=new_interview.interview_time,
+            interview_type=new_interview.interview_type,
+            interview_mode=new_interview.interview_mode or "Online",
+            meeting_link=new_interview.meeting_link,
+            location=new_interview.location,
+            location_link=new_interview.location_link,
+            panel_role=new_interview.panel_role,
+            interviewer_name=new_interview.interviewer_name,
+            notes=new_interview.notes,
+            status=new_interview.status or "Scheduled",
+            feedback=new_interview.feedback or "",
+            overall_rating=new_interview.overall_rating,
+            technical_rating=new_interview.technical_rating,
+            communication_rating=new_interview.communication_rating,
+            problem_solving_rating=new_interview.problem_solving_rating,
+            recommendation=new_interview.recommendation,
+            completed_at=new_interview.completed_at
+        )
 
     @staticmethod
     def get_interviews(db: Session):

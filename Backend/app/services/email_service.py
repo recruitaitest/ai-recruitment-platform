@@ -26,7 +26,7 @@ def send_email_message(to_email: str, subject: str, html_content: str) -> bool:
     except Exception:
         db_settings = None
 
-    if db_settings and db_settings.email_enabled and db_settings.smtp_host:
+    if db_settings and db_settings.email_enabled and db_settings.smtp_host and db_settings.smtp_username and db_settings.smtp_password:
         smtp_server = db_settings.smtp_host
         smtp_port = db_settings.smtp_port or 587
         sender_email = db_settings.sender_email or db_settings.smtp_username or "careers@company.com"
