@@ -10,6 +10,7 @@ def create_candidate_from_resume(
     file_path: str,
     db: Session,
     original_filename: str = None,
+    source: str = "Manual Upload",
     commit: bool = True
 ):
     settings = db.query(AISettings).first()
@@ -29,7 +30,8 @@ def create_candidate_from_resume(
         email=f"pending_{Path(file_path).stem}@placeholder.local",
         resume_path=file_path,
         original_filename=original_filename or filename,
-        status=status
+        status=status,
+        source=source
     )
 
     db.add(candidate)

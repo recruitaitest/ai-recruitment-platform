@@ -227,7 +227,7 @@ function resolveResume(c: Candidate): string | null {
 
 function isDocxResume(c: any): boolean {
     const fname = (c.original_filename || c.resume_path || '').toLowerCase();
-    return fname.endsWith('.docx');
+    return fname.endsWith('.docx') || fname.endsWith('.doc');
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────

@@ -334,6 +334,8 @@ class GmailProvider(BaseMailProvider):
                                 candidate = create_candidate_from_resume(
                                     file_path=local_path,
                                     db=db,
+                                    original_filename=attachment.get("filename"),
+                                    source="Gmail Sync",
                                     commit=False
                                 )
                                 candidates_created += 1

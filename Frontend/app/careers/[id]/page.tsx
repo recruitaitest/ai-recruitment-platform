@@ -382,7 +382,7 @@ export default function JobApplicationPage({ params }: { params: { id: string } 
               <input
                 type="file"
                 id="resume-dropzone"
-                accept=".pdf,.docx,.doc"
+                accept=".pdf,.docx,.doc,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 className="hidden"
                 onChange={(e) => {
                   if (e.target.files && e.target.files[0]) {
@@ -430,7 +430,7 @@ export default function JobApplicationPage({ params }: { params: { id: string } 
                         Drop your Resume here or <span className="text-indigo-600 underline">browse file</span>
                       </p>
                       <p className="text-[11px] text-slate-400 mt-0.5">
-                        PDF or DOCX (Max 15MB) — AI extracts name, email, skills & experience in 1 second
+                        PDF, DOC, or DOCX (Max 15MB) — AI extracts name, email, skills & experience in 1 second
                       </p>
                     </div>
                   </div>
