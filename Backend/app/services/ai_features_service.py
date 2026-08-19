@@ -861,7 +861,47 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
         logger.error(f"Error in recruiter chat LLM: {e}")
 
     # Rich Fallback when LLM is offline or encounters an error
-    if any(k in lower_msg for k in ["list candidate", "show candidate", "all candidate", "list the candidate", "candidate directory", "candidates", "who are the candidate", "details of each candidate"]):
+    if any(k in lower_msg for k in ["suit", "match", "fit", "recommend", "which candidate", "best candidate", "who should apply", "who is best"]):
+        if positions_list and all_candidates:
+            resp_sections = []
+            for p in positions_list:
+                req_skills = [s.strip().lower() for s in (p.required_skills or "").split(",") if s.strip()]
+                pos_matches = []
+                for c in all_candidates:
+                    c_skills = [s.strip().lower() for s in (c.skills or "").split(",") if s.strip()]
+                    overlap = sum(1 for rs in req_skills if any(cs in rs or rs in cs for cs in c_skills))
+                    score = min(98, max(50, round((overlap / max(1, len(req_skills))) * 100))) if req_skills else 80
+                    matched_skills = [s.title() for s in req_skills if any(cs in s.lower() for cs in c_skills)]
+                    pos_matches.append((c, score, matched_skills))
+                
+                pos_matches.sort(key=lambda x: x[1], reverse=True)
+                top_3 = pos_matches[:3]
+                
+                match_lines = []
+                for c, score, m_skills in top_3:
+                    m_str = ", ".join(m_skills[:4]) if m_skills else get_top_skills(c.skills, limit=4)
+                    match_lines.append(
+                        f"  - 👤 **{c.full_name}** ({score}% Match)\n"
+                        f"    - **Matching Skills:** {m_str} | **Stage:** `{c.status or 'Applied'}`"
+                    )
+                
+                resp_sections.append(
+                    f"### 💼 **{p.title}** ({p.location or 'Remote'})\n"
+                    f"*Requirements: {get_top_skills(p.required_skills, limit=5)}*\n\n"
+                    + "\n".join(match_lines)
+                )
+            
+            resp = (
+                f"### 🎯 Candidate Suitability & Fit Recommendations\n\n"
+                f"Here is the AI match analysis based on candidate technical skillsets and position requirements across **{len(positions_list)} active roles**:\n\n"
+                + "\n\n".join(resp_sections)
+                + "\n\n💡 *Tip: Click on any candidate on `/candidates` to view full parsed resumes and scorecards.*"
+            )
+        elif all_candidates:
+            resp = "There are candidates in the system, but no open positions currently exist to evaluate suitability against."
+        else:
+            resp = "No candidates or positions currently available to evaluate fit."
+    elif any(k in lower_msg for k in ["list candidate", "show candidate", "all candidate", "list the candidate", "candidate directory", "candidates", "who are the candidate", "details of each candidate"]):
         if all_candidates:
             c_lines = []
             for c in all_candidates:
