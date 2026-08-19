@@ -7,7 +7,7 @@ from app.models.user import User
 from app.models.pipeline_stage_history import PipelineStageHistory
 from app.models.pipeline import Pipeline
 from app.utils.notification_helper import create_notification
-from app.schemas.interview_schema import InterviewCreate, InterviewFeedback
+from app.schemas.interview_schema import InterviewCreate, InterviewResponse, InterviewFeedback
 from app.services.google_service import create_calendar_event
 from app.services.email_service import send_interview_scheduled_email
 from datetime import datetime, timedelta, date, time
@@ -248,7 +248,6 @@ class InterviewService:
         # Notify assigned interviewer (Hiring Manager)
         if getattr(interview, 'interviewer_name', None):
             try:
-                from app.models.user import User
                 from sqlalchemy import or_
                 interviewer_users = db.query(User).filter(
                     or_(
@@ -273,7 +272,6 @@ class InterviewService:
         # Notify users matching panel role if not already notified
         if getattr(interview, 'panel_role', None):
             try:
-                from app.models.user import User
                 panel_users = db.query(User).filter(
                     (User.role == interview.panel_role) |
                     (User.role.ilike(f"%{interview.panel_role}%"))
