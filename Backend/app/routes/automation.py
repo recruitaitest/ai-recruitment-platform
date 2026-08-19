@@ -28,18 +28,37 @@ router = APIRouter(
 # ─── 1. Automation Rules Configuration ─────────────────────────────────────────
 @router.get("/rules", response_model=AutomationRuleSchema)
 def get_automation_rules(db: Session = Depends(get_db)):
-    rule = db.query(AutomationRule).first()
-    if not rule:
-        # Create default rule
-        rule = AutomationRule(rule_name="Default Recruitment Automation Policy")
-        db.add(rule)
-        db.commit()
-        db.refresh(rule)
-    return rule
+    try:
+        rule = db.query(AutomationRule).first()
+        if not rule:
+            rule = AutomationRule(rule_name="Default Recruitment Automation Policy")
+            db.add(rule)
+            db.commit()
+            db.refresh(rule)
+        return rule
+    except Exception as e:
+        db.rollback()
+        try:
+            Base.metadata.create_all(bind=engine, tables=[AutomationRule.__table__])
+            rule = db.query(AutomationRule).first()
+            if not rule:
+                rule = AutomationRule(rule_name="Default Recruitment Automation Policy")
+                db.add(rule)
+                db.commit()
+                db.refresh(rule)
+            return rule
+        except Exception:
+            return AutomationRuleSchema()
 
 @router.post("/rules", response_model=AutomationRuleSchema)
 def update_automation_rules(payload: AutomationRuleSchema, db: Session = Depends(get_db)):
-    rule = db.query(AutomationRule).first()
+    try:
+        rule = db.query(AutomationRule).first()
+    except Exception:
+        db.rollback()
+        Base.metadata.create_all(bind=engine, tables=[AutomationRule.__table__])
+        rule = db.query(AutomationRule).first()
+
     if not rule:
         rule = AutomationRule(rule_name="Default Recruitment Automation Policy")
         db.add(rule)
