@@ -204,15 +204,22 @@ def update_pipeline(
         )
         db.add(history)
 
-    # Sync interviews if rejected
-    if updated_pipeline.stage == "Rejected":
-        interviews = db.query(Interview).filter(
-            Interview.candidate_id == updated_pipeline.candidate_id
-        ).all()
-        for itw in interviews:
-            if itw.status != "Completed":
-                itw.status = "Rejected"
-                itw.recommendation = "Rejected"
+    # Sync interviews when moved out of interview stages or rejected
+    interview_stages = ["Technical Interview", "HR Round", "Interview", "Technical Round"]
+    pre_interview_stages = ["Applied", "Screening", "Shortlisted", "Needs Pipeline"]
+
+    if old_stage in interview_stages and updated_pipeline.stage in pre_interview_stages:
+        db.query(Interview).filter(
+            Interview.candidate_id == updated_pipeline.candidate_id,
+            Interview.position_id == updated_pipeline.position_id,
+            Interview.status == "Scheduled"
+        ).delete(synchronize_session=False)
+    elif updated_pipeline.stage == "Rejected":
+        db.query(Interview).filter(
+            Interview.candidate_id == updated_pipeline.candidate_id,
+            Interview.position_id == updated_pipeline.position_id,
+            Interview.status == "Scheduled"
+        ).delete(synchronize_session=False)
 
     db.commit()
     db.refresh(pipeline)
@@ -269,14 +276,11 @@ def reject_pipeline_candidate(
         )
         db.add(history)
 
-    # Sync all candidate non-completed interviews to Rejected
-    interviews = db.query(Interview).filter(
-        Interview.candidate_id == req.candidate_id
-    ).all()
-    for itw in interviews:
-        if itw.status != "Completed":
-            itw.status = "Rejected"
-            itw.recommendation = "Rejected"
+    # Clean up scheduled interviews for this candidate
+    db.query(Interview).filter(
+        Interview.candidate_id == req.candidate_id,
+        Interview.status == "Scheduled"
+    ).delete(synchronize_session=False)
 
     db.commit()
     db.refresh(pipeline)
@@ -349,6 +353,13 @@ def delete_pipeline(
     from app.models.offer import Offer
     db.query(Offer).filter(
         Offer.pipeline_id == pipeline_id
+    ).delete(synchronize_session=False)
+
+    # Delete scheduled interviews for this candidate and position
+    db.query(Interview).filter(
+        Interview.candidate_id == pipeline.candidate_id,
+        Interview.position_id == pipeline.position_id,
+        Interview.status == "Scheduled"
     ).delete(synchronize_session=False)
 
     db.query(PipelineStageHistory).filter(
