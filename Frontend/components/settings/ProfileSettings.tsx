@@ -9,6 +9,7 @@ import {
   removeProfilePhoto,
   uploadProfilePhoto,
 } from "@/services/profileService";
+import { getProfilePhotoUrl } from "@/lib/utils";
 
 /* ── shared tokens ── */
 const accent = "var(--primary)";
@@ -72,9 +73,7 @@ export default function ProfileSettings() {
       setOriginalForm(initialForm);
 
       if (user.profile_photo) {
-        setPhoto(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/${user.profile_photo}`
-        );
+        setPhoto(getProfilePhotoUrl(user.profile_photo));
       }
 
       if (user?.id) {
@@ -89,9 +88,7 @@ export default function ProfileSettings() {
           setForm(mergedForm);
           setOriginalForm(mergedForm);
           if (profile.profile_photo) {
-            setPhoto(
-              `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/${profile.profile_photo}`
-            );
+            setPhoto(getProfilePhotoUrl(profile.profile_photo));
           }
         } catch (apiErr) {
           console.warn("Backend loadProfile error, fallback to local data:", apiErr);
@@ -155,7 +152,7 @@ export default function ProfileSettings() {
     try {
       if (user?.id) {
         const result = await uploadProfilePhoto(user.id, file);
-        const photoPath = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/${result.profile_photo}`;
+        const photoPath = getProfilePhotoUrl(result.profile_photo);
         setPhoto(photoPath);
         const updatedUser = {
           ...user,

@@ -28,6 +28,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { AuthService } from '@/lib/auth'
 import { getAISettings } from '@/services/adminService'
 import { hasPermission } from "@/utils/permissions";
+import { getProfilePhotoUrl } from "@/lib/utils";
 
 interface NavItem {
     id: string
@@ -387,9 +388,9 @@ function SidebarInner({
                     title="Profile & Account Settings"
                 >
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-primary to-ai-accent text-sm font-bold text-white shadow-sm">
-                        {user?.profile_photo ? (
+                        {user?.profile_photo && getProfilePhotoUrl(user.profile_photo) ? (
                             <img
-                                src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/${user.profile_photo}`}
+                                src={getProfilePhotoUrl(user.profile_photo)!}
                                 alt="Profile"
                                 className="h-full w-full object-cover"
                             />

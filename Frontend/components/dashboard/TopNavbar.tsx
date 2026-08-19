@@ -34,6 +34,7 @@ import { getAISettings } from '@/services/adminService'
 import { hasAdminPortalAccess, hasRecruiterPortalAccess, hasPermission } from '@/utils/permissions'
 import { applyTheme } from '@/utils/theme'
 import { NotificationsPanel } from './NotificationsPanel'
+import { getProfilePhotoUrl } from '@/lib/utils'
 import {
  getUserNotifications,
  deleteNotification,
@@ -704,9 +705,9 @@ export function TopNavbar({
  className="flex items-center gap-3 rounded-xl border border-border bg-white px-3 py-2 transition-all duration-base ease-standard focus-ring hover:bg-surface-hover hover:scale-[1.02] active:scale-95 dark:border-border dark:bg-secondary-surface dark:hover:border-slate-600 dark:hover:bg-surface-hover"
  >
  <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-blue-500 to-purple-600">
- {user?.profile_photo ? (
+ {user?.profile_photo && getProfilePhotoUrl(user.profile_photo) ? (
  <img
- src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/${user.profile_photo}`}
+ src={getProfilePhotoUrl(user.profile_photo)!}
  alt="Profile"
  className="h-8 w-8 rounded-full object-cover"
  />
