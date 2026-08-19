@@ -40,8 +40,7 @@ export function QuickResumePreviewModal({
     candidate.executive_summary ||
     null;
 
-  const candidateScore = candidate.matchScore || candidate.match_score || candidate.overall_score || candidate.score || 86;
-  const isCareerPortal = candidate.source === "Career Portal" || !!candidate.applied_position_id || !!candidate.appliedPositionId;
+  const isCareerPortal = candidate.source === "Career Portal";
   const skillsList: string[] = Array.isArray(candidate.skills)
     ? candidate.skills
     : typeof candidate.skills === "string" && candidate.skills

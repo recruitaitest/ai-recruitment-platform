@@ -19,6 +19,7 @@ class CandidateCreate(BaseModel):
     notice_period: Optional[str] = None
     current_designation: Optional[str] = None
     applied_position_id: Optional[int] = None
+    source: Optional[str] = "Manual Upload"
 
 
 class CandidateUpdate(BaseModel):

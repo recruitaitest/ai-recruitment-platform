@@ -719,7 +719,7 @@ export default function CandidatesPage() {
         experience: c.experience ?? 0,
         location: c.location ?? "Unknown",
         status: (c.status as Status) ?? "Applied",
-        source: c.applied_position_id || c.source === "Career Portal" ? "Career Portal" : (c.source ?? "Manual Upload"),
+        source: c.source === "Career Portal" ? "Career Portal" : c.source === "Gmail Sync" ? "Email" : (c.source ?? "Manual Upload"),
         currentCtc: c.current_ctc || c.currentCtc || "N/A",
         expectedCtc: c.expected_ctc || c.expectedCtc || "N/A",
         noticePeriod: c.notice_period || c.noticePeriod || "N/A",

@@ -34,7 +34,8 @@ class CandidateService:
             expected_ctc=candidate.expected_ctc,
             notice_period=candidate.notice_period,
             current_designation=candidate.current_designation,
-            applied_position_id=candidate.applied_position_id
+            applied_position_id=candidate.applied_position_id,
+            source=getattr(candidate, "source", "Manual Upload") or "Manual Upload"
         )
         db.add(new_candidate)
         db.commit()
