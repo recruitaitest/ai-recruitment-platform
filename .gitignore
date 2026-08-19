@@ -42,3 +42,9 @@ Frontend/yarn-error.log*
 
 # Other specific ignores
 query
+Backend/data/
+dump.rdb
+*.rdb
+**/__pycache__/
+*.pyc
+
