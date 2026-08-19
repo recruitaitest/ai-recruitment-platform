@@ -1,6 +1,6 @@
 "use client";
 
-import { Bot, Search } from "lucide-react";
+import { Bot, Sparkles } from "lucide-react";
 
 export default function ThinkingIndicator() {
     return (
@@ -12,13 +12,13 @@ export default function ThinkingIndicator() {
             </div>
 
             {/* Thinking Bubble */}
-            <div className="flex items-center gap-3 rounded-2xl border bg-gradient-to-r from-primary/5 to-primary/10 px-5 py-4">
+            <div className="flex items-center gap-3 rounded-2xl border bg-gradient-to-r from-primary/5 to-primary/10 px-5 py-4 shadow-sm">
 
-                {/* Animated search icon */}
-                <Search className="h-4 w-4 animate-pulse text-primary" />
+                {/* Animated AI spark icon */}
+                <Sparkles className="h-4 w-4 animate-pulse text-primary" />
 
                 <span className="text-sm font-medium text-muted-foreground">
-                    Searching candidates
+                    Generating response
                 </span>
 
                 {/* Animated dots */}
