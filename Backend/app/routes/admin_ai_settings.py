@@ -77,19 +77,34 @@ def test_ai_connection(
             }
 
         elif provider == "Gemini":
-            import google.generativeai as genai
+            import requests
             api_key = cfg.get("apiKey", "")
             if not api_key:
                 return {"success": False, "source": "UI", "message": "No API key provided."}
-            genai.configure(api_key=api_key)
-            models = list(genai.list_models())
+            
+            model = cfg.get("modelName", "gemini-1.5-flash")
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}?key={api_key}"
+            resp = requests.get(url, timeout=10)
             latency_ms = int((time.time() - start) * 1000)
-            return {
-                "success": True,
-                "source": "UI",
-                "latency_ms": latency_ms,
-                "message": f"Gemini API key is valid ({latency_ms}ms). {len(models)} models available.",
-            }
+            
+            if resp.status_code == 200:
+                return {
+                    "success": True,
+                    "source": "UI",
+                    "latency_ms": latency_ms,
+                    "message": f"Gemini API key is valid ({latency_ms}ms). Model '{model}' ready ✓",
+                }
+            else:
+                try:
+                    err_msg = resp.json().get("error", {}).get("message", f"HTTP {resp.status_code}")
+                except Exception:
+                    err_msg = f"HTTP {resp.status_code} - {resp.text[:100]}"
+                return {
+                    "success": False,
+                    "source": "UI",
+                    "latency_ms": latency_ms,
+                    "message": f"Gemini connection failed: {err_msg}",
+                }
 
         elif provider == "OpenAI":
             from openai import OpenAI
