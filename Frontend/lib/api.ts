@@ -1,13 +1,6 @@
 import axios from "axios";
 
 const getBaseUrl = () => {
-  if (typeof window !== "undefined") {
-    const host = window.location.hostname;
-    const protocol = window.location.protocol;
-    if (host !== "localhost" && host !== "127.0.0.1") {
-      return `${protocol}//${host}:8000`;
-    }
-  }
   return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 };
 
