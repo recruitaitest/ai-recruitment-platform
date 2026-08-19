@@ -171,7 +171,10 @@ def get_salary_benchmark(role_title: str, location: Optional[str] = "India", exp
 
 # 1.14 Dual-Mode AI Chatbot Endpoints
 @router.post("/recruiter-chat", response_model=AIChatResponse)
-def post_recruiter_chat(req: AIChatRequest, db: Session = Depends(get_db)):
+def post_recruiter_chat(
+    req: AIChatRequest,
+    db: Session = Depends(get_db)
+):
     return process_recruiter_chat(req.message, req.conversation_history or [], db)
 
 @router.post("/careers-chat", response_model=AIChatResponse)

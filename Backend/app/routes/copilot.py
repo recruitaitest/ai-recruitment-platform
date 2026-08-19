@@ -184,7 +184,7 @@ async def process_chat_message(
 
         # Generate response via the unified Live ATS Recruiter Copilot engine
         try:
-            recruiter_res = process_recruiter_chat(user_prompt, conversation_history, db)
+            recruiter_res = process_recruiter_chat(user_prompt, conversation_history, db, current_user)
             ai_response_text = recruiter_res.get("response", "") if isinstance(recruiter_res, dict) else str(recruiter_res)
         except Exception as e:
             import logging

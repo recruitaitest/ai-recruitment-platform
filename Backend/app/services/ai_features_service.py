@@ -721,33 +721,100 @@ def clean_copilot_markdown(text: str) -> str:
 
     return text.strip()
 
-def process_recruiter_chat(message: str, conversation_history: Optional[List[Dict[str, Any]]] = None, db: Session = None) -> Dict[str, Any]:
+def process_recruiter_chat(
+    message: str,
+    conversation_history: Optional[List[Dict[str, Any]]] = None,
+    db: Session = None,
+    current_user: Optional[Any] = None
+) -> Dict[str, Any]:
     lower_msg = message.lower().strip()
     
-    # 1. Gather rich live Recruiter & Platform metrics from DB safely
+    # 0. RBAC / Permission Resolution
+    from app.models.user import User
+    from app.models.role import Role
     from app.models.pipeline import Pipeline
     from app.models.interview import Interview
     from app.models.email_message import EmailMessage
 
-    candidates_count = db.query(Candidate).count() if db else 0
-    positions_count = db.query(Position).count() if db else 0
-    positions_list = db.query(Position).all() if db else []
+    user_obj = None
+    user_role_str = "Recruiter"
+    user_permissions = set()
+
+    if current_user and db:
+        if isinstance(current_user, User):
+            user_obj = current_user
+        elif isinstance(current_user, dict):
+            uid = current_user.get("user_id") or current_user.get("id")
+            email = current_user.get("email") or current_user.get("sub")
+            if uid and str(uid).isdigit():
+                user_obj = db.query(User).filter(User.id == int(uid)).first()
+            elif email:
+                user_obj = db.query(User).filter(User.email == email).first()
+
+    if user_obj:
+        user_role_str = user_obj.role or "Recruiter"
+        role_record = db.query(Role).filter(Role.name.ilike(user_role_str)).first()
+        if role_record and role_record.permissions:
+            user_permissions = {p.strip().lower() for p in role_record.permissions.split(",") if p.strip()}
+
+    # Superuser check (COMPANY_OWNER and ADMIN have full access to everything)
+    is_super = user_role_str.upper() in ["COMPANY_OWNER", "ADMIN", "SUPERADMIN"] or "all" in user_permissions or "*" in user_permissions
+
+    can_view_positions = is_super or "positions.view" in user_permissions or "positions.create" in user_permissions or "positions.update" in user_permissions
+    can_view_candidates = is_super or "candidates.view" in user_permissions or "candidates.create" in user_permissions or "candidates.update" in user_permissions
+    can_view_pipeline = is_super or "pipelines.view" in user_permissions or "pipelines.manage" in user_permissions
+    can_view_interviews = is_super or "interviews.view" in user_permissions or "interviews.create" in user_permissions or "interviews.update" in user_permissions
+
+    # Fast RBAC Access Guard: If user specifically asks about a restricted module, reject immediately
+    if any(k in lower_msg for k in ["position", "positions", "open job", "available job", "open role", "requisition"]) and not can_view_positions:
+        return {
+            "response": "🔒 **Access Restricted**: You do not have permission to view or manage Job Positions on this platform. Please contact your organization administrator to request the `positions.view` permission.",
+            "portal_type": "recruiter",
+            "is_refusal": True
+        }
+
+    if any(k in lower_msg for k in ["candidate", "candidates", "resume", "directory", "who applied"]) and not can_view_candidates:
+        return {
+            "response": "🔒 **Access Restricted**: You do not have permission to view Candidate profiles or resume data. Please contact your organization administrator to request the `candidates.view` permission.",
+            "portal_type": "recruiter",
+            "is_refusal": True
+        }
+
+    if any(k in lower_msg for k in ["pipeline", "screening stage", "technical interview stage", "hr round stage", "stages breakdown"]) and not can_view_pipeline:
+        return {
+            "response": "🔒 **Access Restricted**: You do not have permission to access the Recruitment Pipeline board (`pipelines.view`). Please contact your organization administrator.",
+            "portal_type": "recruiter",
+            "is_refusal": True
+        }
+
+    if any(k in lower_msg for k in ["scheduled interview", "upcoming interview", "interviews scheduled", "interview list", "scorecard"]) and not can_view_interviews:
+        return {
+            "response": "🔒 **Access Restricted**: You do not have permission to view Scheduled Interviews (`interviews.view`). Please contact your organization administrator.",
+            "portal_type": "recruiter",
+            "is_refusal": True
+        }
+
+    # 1. Gather rich live Recruiter & Platform metrics from DB safely
+    candidates_count = db.query(Candidate).count() if db and can_view_candidates else 0
+    positions_count = db.query(Position).count() if db and can_view_positions else 0
+    positions_list = db.query(Position).all() if db and can_view_positions else []
     pos_map = {p.id: p.title for p in positions_list}
     
     pos_summary = []
-    for p in positions_list:
-        pos_req = get_top_skills(p.required_skills, limit=6)
-        pos_summary.append(
-            f"- 💼 **{p.title}** ({p.location or 'Remote'})\n"
-            f"  - **Status:** Actively Sourcing\n"
-            f"  - **Key Requirements:** {pos_req}"
-        )
+    if can_view_positions:
+        for p in positions_list:
+            pos_req = get_top_skills(p.required_skills, limit=6)
+            pos_summary.append(
+                f"- 💼 **{p.title}** ({p.location or 'Remote'})\n"
+                f"  - **Status:** Actively Sourcing\n"
+                f"  - **Key Requirements:** {pos_req}"
+            )
     
-    email_cand_records = db.query(EmailMessage.candidate_id).filter(EmailMessage.candidate_id.isnot(None)).all() if db else []
+    email_cand_records = db.query(EmailMessage.candidate_id).filter(EmailMessage.candidate_id.isnot(None)).all() if db and can_view_candidates else []
     email_cand_ids = {r[0] for r in email_cand_records if r[0]}
 
-    all_candidates = db.query(Candidate).order_by(Candidate.id.desc()).all() if db else []
-    pipelines_list = db.query(Pipeline).all() if db else []
+    all_candidates = db.query(Candidate).order_by(Candidate.id.desc()).all() if db and can_view_candidates else []
+    pipelines_list = db.query(Pipeline).all() if db and can_view_pipeline else []
     pipeline_by_cand = {p.candidate_id: p for p in pipelines_list}
 
     # Canonical Pipeline Stages
@@ -759,66 +826,69 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
 
     # Resolve candidate sources and accurate pipeline stages
     cand_summary = []
-    for c in all_candidates:
-        if c.id in email_cand_ids or c.source in ["Gmail Sync", "Email", "Gmail"]:
-            c.source = "Email"
-        elif c.source == "Career Portal":
-            c.source = "Career Portal"
-        else:
-            c.source = c.source or "Manual Upload"
+    if can_view_candidates:
+        for c in all_candidates:
+            if c.id in email_cand_ids or c.source in ["Gmail Sync", "Email", "Gmail"]:
+                c.source = "Email"
+            elif c.source == "Career Portal":
+                c.source = "Career Portal"
+            else:
+                c.source = c.source or "Manual Upload"
 
-        # Resolve live pipeline stage: check Pipeline table first, then Candidate.status
-        pipe_rec = pipeline_by_cand.get(c.id)
-        if pipe_rec and pipe_rec.stage:
-            c_stage = pipe_rec.stage
-        else:
-            c_stage = c.status or "Applied"
+            # Resolve live pipeline stage: check Pipeline table first, then Candidate.status
+            pipe_rec = pipeline_by_cand.get(c.id)
+            if pipe_rec and pipe_rec.stage:
+                c_stage = pipe_rec.stage
+            else:
+                c_stage = c.status or "Applied"
 
-        # Match to canonical stage
-        matched_stage = "Applied"
-        for cs in canonical_stages:
-            if cs.lower() == c_stage.lower() or (cs == "Technical Interview" and "technical" in c_stage.lower()) or (cs == "HR Round" and "hr" in c_stage.lower()):
-                matched_stage = cs
-                break
-        
-        stages_counts[matched_stage] = stages_counts.get(matched_stage, 0) + 1
-        stage_candidates_map[matched_stage].append(c)
+            # Match to canonical stage
+            matched_stage = "Applied"
+            for cs in canonical_stages:
+                if cs.lower() == c_stage.lower() or (cs == "Technical Interview" and "technical" in c_stage.lower()) or (cs == "HR Round" and "hr" in c_stage.lower()):
+                    matched_stage = cs
+                    break
+            
+            stages_counts[matched_stage] = stages_counts.get(matched_stage, 0) + 1
+            stage_candidates_map[matched_stage].append(c)
 
-        role_title = pos_map.get(c.applied_position_id, "Software Developer") if c.applied_position_id else "Software Developer"
-        top_skills = get_top_skills(c.skills, limit=6)
-        exp_str = f"{c.experience} yrs" if c.experience and c.experience > 0 else "Fresher (0 yrs)"
-        cand_summary.append(
-            f"- 👤 **{c.full_name}** · *{c.email}*\n"
-            f"  - **Role:** {role_title} | **Source:** `{c.source}` | **Stage:** `{matched_stage}` | **Experience:** {exp_str}\n"
-            f"  - **Top Skills:** {top_skills}"
-        )
+            role_title = pos_map.get(c.applied_position_id, "Software Developer") if c.applied_position_id else "Software Developer"
+            top_skills = get_top_skills(c.skills, limit=6)
+            exp_str = f"{c.experience} yrs" if c.experience and c.experience > 0 else "Fresher (0 yrs)"
+            cand_summary.append(
+                f"- 👤 **{c.full_name}** · *{c.email}*\n"
+                f"  - **Role:** {role_title} | **Source:** `{c.source}` | **Stage:** `{matched_stage}` | **Experience:** {exp_str}\n"
+                f"  - **Top Skills:** {top_skills}"
+            )
 
     hired_count = stages_counts["Hired"]
     offers_count = stages_counts["Offer"]
     success_rate = round((hired_count / max(1, candidates_count)) * 100, 1) if candidates_count > 0 else 0.0
 
     # Scheduled Interviews Breakdown
-    scheduled_interviews = db.query(Interview).filter(Interview.status == "Scheduled").all() if db else []
+    scheduled_interviews = db.query(Interview).filter(Interview.status == "Scheduled").all() if db and can_view_interviews else []
     interview_summary = []
-    for itw in scheduled_interviews:
-        cand_obj = next((c for c in all_candidates if c.id == itw.candidate_id), None)
-        c_name = cand_obj.full_name if cand_obj else f"Candidate #{itw.candidate_id}"
-        pos_title = pos_map.get(itw.position_id, "Open Position")
-        interview_summary.append(
-            f"- 🗓️ **{c_name}** ({pos_title}) — `{itw.interview_type or 'Interview'}` on **{itw.interview_date}** at **{itw.interview_time}** ({itw.interview_mode or 'Online'})\n"
-            f"  - **Interviewer/Panel:** {itw.interviewer_name or itw.panel_role or 'Hiring Panel'}"
-        )
+    if can_view_interviews:
+        for itw in scheduled_interviews:
+            cand_obj = next((c for c in all_candidates if c.id == itw.candidate_id), None)
+            c_name = cand_obj.full_name if cand_obj else f"Candidate #{itw.candidate_id}"
+            pos_title = pos_map.get(itw.position_id, "Open Position")
+            interview_summary.append(
+                f"- 🗓️ **{c_name}** ({pos_title}) — `{itw.interview_type or 'Interview'}` on **{itw.interview_date}** at **{itw.interview_time}** ({itw.interview_mode or 'Online'})\n"
+                f"  - **Interviewer/Panel:** {itw.interviewer_name or itw.panel_role or 'Hiring Panel'}"
+            )
 
     # Detailed stage-by-stage candidate listing for LLM
     stage_breakdown_text = []
-    for s in canonical_stages:
-        c_list = stage_candidates_map[s]
-        if c_list:
-            c_names = ", ".join([f"**{c.full_name}**" for c in c_list])
-            stage_breakdown_text.append(f"- **{s}** ({len(c_list)} candidates): {c_names}")
-        else:
-            stage_breakdown_text.append(f"- **{s}** (0 candidates): *None*")
-    pipeline_summary_block = "\n".join(stage_breakdown_text)
+    if can_view_pipeline:
+        for s in canonical_stages:
+            c_list = stage_candidates_map[s]
+            if c_list:
+                c_names = ", ".join([f"**{c.full_name}**" for c in c_list])
+                stage_breakdown_text.append(f"- **{s}** ({len(c_list)} candidates): {c_names}")
+            else:
+                stage_breakdown_text.append(f"- **{s}** (0 candidates): *None*")
+    pipeline_summary_block = "\n".join(stage_breakdown_text) if can_view_pipeline else "[ACCESS RESTRICTED: User lacks pipelines.view permission]"
 
     # Source breakdown
     manual_cands = [c for c in all_candidates if c.source == "Manual Upload"]
@@ -828,7 +898,7 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
         f"- **Manual Upload:** {len(manual_cands)} candidates ({', '.join([c.full_name for c in manual_cands]) if manual_cands else 'None'})\n"
         f"- **Gmail Sync / Email:** {len(email_cands)} candidates ({', '.join([c.full_name for c in email_cands]) if email_cands else 'None'})\n"
         f"- **Career Portal:** {len(portal_cands)} candidates ({', '.join([c.full_name for c in portal_cands]) if portal_cands else 'None'})"
-    )
+    ) if can_view_candidates else "[ACCESS RESTRICTED: User lacks candidates.view permission]"
 
     # Comprehensive Website Features Knowledge Base
     website_knowledge = (
@@ -868,37 +938,48 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
 
     system_persona = (
         "You are the Senior AI Recruiter Copilot for this enterprise AI Recruitment Platform.\n"
-        "Your goal is to provide concise, beautifully formatted, 100% factual ATS insights.\n\n"
-        "STRICT RECRUITER ATS ACCURACY GUIDELINES:\n"
-        "1. WHEN ASKED ABOUT PIPELINE STAGES OR CANDIDATE COUNTS IN A STAGE:\n"
+        "Your goal is to provide concise, beautifully formatted, 100% factual ATS insights while strictly adhering to RBAC security boundaries.\n\n"
+        "STRICT RBAC & ATS ACCURACY GUIDELINES:\n"
+        "1. STRICT PERMISSION BOUNDARIES:\n"
+        "   - If any section in the context below is marked [ACCESS RESTRICTED], or if the user asks for details about a module they do not have permission for, you MUST NOT disclose any details and must reply that their role does not have permission to view that data.\n"
+        "2. WHEN ASKED ABOUT PIPELINE STAGES OR CANDIDATE COUNTS IN A STAGE:\n"
         "   - Always reference the exact numbers and candidate names from 'LIVE KANBAN PIPELINE STAGES & CANDIDATES BREAKDOWN'.\n"
         "   - State the exact count and list the names of candidates in that specific stage.\n"
-        "2. WHEN ASKED ABOUT SOURCING CHANNELS (Manual Upload, Email, Career Portal):\n"
+        "3. WHEN ASKED ABOUT SOURCING CHANNELS (Manual Upload, Email, Career Portal):\n"
         "   - Reference the exact counts and names from 'SOURCING CHANNEL BREAKDOWN'.\n"
-        "3. WHEN ASKED ABOUT SCHEDULED INTERVIEWS:\n"
+        "4. WHEN ASKED ABOUT SCHEDULED INTERVIEWS:\n"
         "   - Reference 'SCHEDULED INTERVIEWS LIST'.\n"
-        "4. CANDIDATE PROFILES MUST ALWAYS USE THIS CLEAN 2-LEVEL CARD FORMAT:\n"
+        "5. CANDIDATE PROFILES MUST ALWAYS USE THIS CLEAN 2-LEVEL CARD FORMAT:\n"
         "   - 👤 **Candidate Name** · *email@example.com*\n"
         "     - **Role:** Software Developer | **Source:** `Manual Upload` | **Stage:** `Technical Interview` | **Experience:** Fresher (0 yrs)\n"
         "     - **Top Skills:** Java, Python, REST APIs, MySQL, Git\n\n"
-        "5. NO TABLES. ALWAYS USE THE BULLETED MINI-CARD FORMAT.\n"
-        "6. NEVER display internal database IDs. Identify candidates strictly by Name and Email."
+        "6. NO TABLES. ALWAYS USE THE BULLETED MINI-CARD FORMAT.\n"
+        "7. NEVER display internal database IDs. Identify candidates strictly by Name and Email."
     )
 
+    positions_block = ("\n\n".join(pos_summary) if pos_summary else "No open positions registered.") if can_view_positions else "[ACCESS RESTRICTED: User lacks positions.view permission. Do not disclose position details.]"
+    candidates_block = ("\n\n".join(cand_summary) if cand_summary else "No candidates found.") if can_view_candidates else "[ACCESS RESTRICTED: User lacks candidates.view permission. Do not disclose candidate details.]"
+    interviews_block = ("\n".join(interview_summary) if interview_summary else "No interviews currently scheduled.") if can_view_interviews else "[ACCESS RESTRICTED: User lacks interviews.view permission. Do not disclose interview schedules.]"
+
     context_data = (
+        f"USER ROLE & PERMISSIONS:\n"
+        f"- Role: {user_role_str}\n"
+        f"- Permissions: {', '.join(user_permissions) if user_permissions else 'Default Standard Permissions'}\n\n"
         f"LIVE DATABASE RECRUITMENT METRICS:\n"
-        f"- Total Database Candidates: {candidates_count}\n"
-        f"- Total Open Positions: {positions_count}\n"
-        f"- Total Scheduled Interviews: {len(scheduled_interviews)}\n"
+        f"- Total Database Candidates: {candidates_count if can_view_candidates else '[RESTRICTED]'}\n"
+        f"- Total Open Positions: {positions_count if can_view_positions else '[RESTRICTED]'}\n"
+        f"- Total Scheduled Interviews: {len(scheduled_interviews) if can_view_interviews else '[RESTRICTED]'}\n"
         f"- Current Hiring Success Rate: {success_rate}%\n\n"
         f"LIVE KANBAN PIPELINE STAGES & CANDIDATES BREAKDOWN:\n"
         f"{pipeline_summary_block}\n\n"
         f"SOURCING CHANNEL BREAKDOWN:\n"
         f"{source_breakdown_text}\n\n"
-        f"SCHEDULED INTERVIEWS ({len(scheduled_interviews)} upcoming sessions):\n"
-        + ("\n".join(interview_summary) if interview_summary else "No interviews currently scheduled.") + "\n\n"
-        f"ACTIVE OPEN POSITIONS ({positions_count} total):\n" + ("\n\n".join(pos_summary) if pos_summary else "No open positions registered.") + "\n\n"
-        f"ALL CANDIDATES DIRECTORY ({len(all_candidates)} candidates):\n" + ("\n\n".join(cand_summary) if cand_summary else "No candidates found.") + "\n\n"
+        f"SCHEDULED INTERVIEWS ({len(scheduled_interviews) if can_view_interviews else 0} upcoming sessions):\n"
+        f"{interviews_block}\n\n"
+        f"ACTIVE OPEN POSITIONS ({positions_count if can_view_positions else 0} total):\n"
+        f"{positions_block}\n\n"
+        f"ALL CANDIDATES DIRECTORY ({len(all_candidates) if can_view_candidates else 0} candidates):\n"
+        f"{candidates_block}\n\n"
         f"{website_knowledge}"
     )
 
@@ -928,10 +1009,18 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
         logger.error(f"Error in recruiter chat LLM: {e}")
 
     # =========================================================================
-    # HIGH-PRECISION FALLBACK ENGINE (Guarantees 100% accuracy even if LLM offline)
+    # HIGH-PRECISION FALLBACK ENGINE (Guarantees 100% accuracy & RBAC enforcement)
     # =========================================================================
     
     # 1. Pipeline Specific Stage Query (e.g. "candidates in screening", "technical interview", "who is in hr round")
+    if not can_view_pipeline:
+        if any(k in lower_msg for k in ["pipeline", "screening", "technical interview", "hr round", "stage"]):
+            return {
+                "response": "🔒 **Access Restricted**: You do not have permission to access the Recruitment Pipeline (`pipelines.view`).",
+                "portal_type": "recruiter",
+                "is_refusal": True
+            }
+
     for s in canonical_stages:
         s_keywords = [s.lower()]
         if s == "Technical Interview":
@@ -973,6 +1062,12 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
 
     # 2. Pipeline Overview / Stage Breakdown Query (e.g. "pipeline stages", "show pipeline", "stage breakdown")
     if any(k in lower_msg for k in ["pipeline stage", "stages", "pipeline overview", "pipeline breakdown", "kanban", "stages count"]):
+        if not can_view_pipeline:
+            return {
+                "response": "🔒 **Access Restricted**: You do not have permission to access the Recruitment Pipeline (`pipelines.view`).",
+                "portal_type": "recruiter",
+                "is_refusal": True
+            }
         resp = (
             f"### 📊 Live Pipeline Stage Breakdown (`/pipeline`)\n\n"
             f"- **Applied:** {stages_counts['Applied']} candidates\n"
@@ -993,6 +1088,12 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
 
     # 3. Scheduled Interviews Query (e.g. "scheduled interviews", "upcoming interviews", "who has interview")
     if any(k in lower_msg for k in ["scheduled interview", "upcoming interview", "interviews scheduled", "interviews list", "who has interview"]):
+        if not can_view_interviews:
+            return {
+                "response": "🔒 **Access Restricted**: You do not have permission to view Scheduled Interviews (`interviews.view`).",
+                "portal_type": "recruiter",
+                "is_refusal": True
+            }
         if scheduled_interviews:
             resp = f"### 🗓️ Scheduled Interviews ({len(scheduled_interviews)} sessions)\n\n" + "\n\n".join(interview_summary) + f"\n\n💡 *Tip: Go to `/interviews` to conduct interviews or submit scorecards.*"
         else:
@@ -1005,6 +1106,12 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
 
     # 4. Fit & Suitability Recommendation Query
     if any(k in lower_msg for k in ["suit", "match", "fit", "recommend", "which candidate", "best candidate", "who should apply", "who is best"]):
+        if not can_view_candidates or not can_view_positions:
+            return {
+                "response": "🔒 **Access Restricted**: You need both `candidates.view` and `positions.view` permissions to view candidate suitability recommendations.",
+                "portal_type": "recruiter",
+                "is_refusal": True
+            }
         if positions_list and all_candidates:
             resp_sections = []
             for p in positions_list:
@@ -1052,6 +1159,12 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
 
     # 5. Candidate Source & Directory Queries
     if any(k in lower_msg for k in ["list candidate", "show candidate", "all candidate", "list the candidate", "candidate directory", "candidates", "who are the candidate", "details of each candidate", "manually uploaded", "manual upload", "upload", "email", "career portal"]):
+        if not can_view_candidates:
+            return {
+                "response": "🔒 **Access Restricted**: You do not have permission to view the Candidate Directory (`candidates.view`).",
+                "portal_type": "recruiter",
+                "is_refusal": True
+            }
         target_source = None
         if "manual" in lower_msg or "upload" in lower_msg:
             target_source = "Manual Upload"
@@ -1087,6 +1200,12 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
 
     # 6. Positions Queries
     if any(k in lower_msg for k in ["how many position", "open position", "list position", "available position", "positions", "how many job"]):
+        if not can_view_positions:
+            return {
+                "response": "🔒 **Access Restricted**: You do not have permission to view Job Positions (`positions.view`).",
+                "portal_type": "recruiter",
+                "is_refusal": True
+            }
         if positions_list:
             p_lines = []
             for p in positions_list:
@@ -1107,7 +1226,7 @@ def process_recruiter_chat(message: str, conversation_history: Optional[List[Dic
 
     # 7. Default Overview Response
     resp = (
-        f"Hello Administrator! 🛠️ Our platform currently manages **{candidates_count} candidates** across **{positions_count} open positions** with **{len(scheduled_interviews)} scheduled interview(s)**.\n\n"
+        f"Hello {user_obj.name if user_obj else 'Administrator'}! 🛠️ Our platform currently manages **{candidates_count if can_view_candidates else '[Restricted]'} candidates** across **{positions_count if can_view_positions else '[Restricted]'} open positions** with **{len(scheduled_interviews) if can_view_interviews else '[Restricted]'} scheduled interview(s)**.\n\n"
         f"**Live Pipeline Summary:**\n"
         f"- **Applied:** {stages_counts['Applied']} | **Screening:** {stages_counts['Screening']} | **Technical Interview:** {stages_counts['Technical Interview']} | **HR Round:** {stages_counts['HR Round']} | **Offer:** {stages_counts['Offer']}\n\n"
         f"You can ask me:\n"
