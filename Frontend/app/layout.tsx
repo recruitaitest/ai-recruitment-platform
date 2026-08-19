@@ -46,7 +46,7 @@ export default function RootLayout({
       </head>
       <body className="bg-background text-text-primary min-h-screen antialiased">
         <GoogleOAuthProvider
-          clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!}
+          clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "430036805987-j50sj94o5pjhbrpb2bc917l6ueeheq3p.apps.googleusercontent.com"}
         >
           <RootAppShell>
             {children}

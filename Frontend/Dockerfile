@@ -17,6 +17,8 @@ COPY . .
 # NEXT_PUBLIC_* vars must be available at build time for Next.js to inline them
 ARG NEXT_PUBLIC_API_URL=http://localhost:8000
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID=430036805987-j50sj94o5pjhbrpb2bc917l6ueeheq3p.apps.googleusercontent.com
+ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
 ENV NEXT_TELEMETRY_DISABLED 1
 RUN npm run build
 

@@ -6,10 +6,12 @@ services:
       context: ./Frontend
       args:
         - NEXT_PUBLIC_API_URL=https://ai-recruitment-platform.centralindia.cloudapp.azure.com
+        - NEXT_PUBLIC_GOOGLE_CLIENT_ID=430036805987-j50sj94o5pjhbrpb2bc917l6ueeheq3p.apps.googleusercontent.com
     ports:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=https://ai-recruitment-platform.centralindia.cloudapp.azure.com
+      - NEXT_PUBLIC_GOOGLE_CLIENT_ID=430036805987-j50sj94o5pjhbrpb2bc917l6ueeheq3p.apps.googleusercontent.com
     depends_on:
       - api
 
