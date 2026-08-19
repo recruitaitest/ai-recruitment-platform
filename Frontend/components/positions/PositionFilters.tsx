@@ -12,49 +12,16 @@ export default function PositionFilters({
  setSearch,
 }: Props) {
  return (
- <div className="rounded-2xl border border-border bg-surface p-5 shadow-md">
-
- <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-
- {/* Search */}
- <div className="relative w-full xl:max-w-md">
-
+ <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+ <div className="relative w-full">
  <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted" />
-
  <input
  type="text"
  value={search}
- onChange={(e) =>
- setSearch(e.target.value)
- }
- placeholder="Search positions..."
+ onChange={(e) => setSearch(e.target.value)}
+ placeholder="Search positions by title, department, location, or skills..."
  className="w-full rounded-2xl border border-border bg-surface py-3 pl-12 pr-4 text-text-primary outline-none placeholder:text-muted"
  />
- </div>
-
- {/* Filters */}
- <div className="flex flex-wrap gap-4">
-
- <select className="rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-secondary outline-none">
- <option>All Departments</option>
- <option>Engineering</option>
- <option>Design</option>
- <option>HR</option>
- </select>
-
- <select className="rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-secondary outline-none">
- <option>All Status</option>
- <option>Open</option>
- <option>Closed</option>
- </select>
-
- <button className="flex items-center gap-2 rounded-2xl bg-violet-600 px-5 py-3 text-sm font-medium text-white hover:bg-violet-500 transition">
-
- <SlidersHorizontal className="h-4 w-4" />
-
- Filters
- </button>
- </div>
  </div>
  </div>
  );

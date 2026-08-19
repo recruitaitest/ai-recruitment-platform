@@ -33,6 +33,7 @@ import {
  useSensors,
 } from "@dnd-kit/core";
 
+import { useRouter } from "next/navigation";
 import PipelineHeader from "./PipelineHeader";
 import PipelineColumn from "./PipelineColumn";
 
@@ -47,6 +48,7 @@ const stages = [
 ];
 
 export default function PipelineBoard() {
+ const router = useRouter();
 
  const [searchQuery, setSearchQuery] =
  useState("");
@@ -351,7 +353,7 @@ export default function PipelineBoard() {
     newStage: string
   ) => {
     const candidate = candidates.find(
-      (c) => c.id === candidateId
+      (c) => c.id === candidateId || String(c.candidate_id) === String(candidateId)
     );
     if (!candidate) return;
 
@@ -385,7 +387,7 @@ export default function PipelineBoard() {
     if (newStage === "Offer") {
       setOfferCandidate(candidate);
       setOfferModalOpen(true);
-      updateCandidateStage(candidateId, newStage);
+      updateCandidateStage(candidate.id, newStage);
       return;
     }
 
@@ -395,18 +397,19 @@ export default function PipelineBoard() {
       return;
     }
 
-    updateCandidateStage(candidateId, newStage);
+    updateCandidateStage(candidate.id, newStage);
   };
 
   const handleViewProfile = (candidateId: string) => {
-    const candidate = candidates.find(c => c.id === candidateId);
-    if (candidate?.candidate_id) {
-      window.open(`/candidates/${candidate.candidate_id}`, "_blank");
+    const candidate = candidates.find(c => c.id === candidateId || String(c.candidate_id) === String(candidateId));
+    const targetId = candidate?.candidate_id || candidate?.id || candidateId;
+    if (targetId) {
+      router.push(`/candidates/${targetId}`);
     }
   };
 
   const handleReject = (candidateId: string) => {
-    const candidate = candidates.find((c) => c.id === candidateId);
+    const candidate = candidates.find((c) => c.id === candidateId || String(c.candidate_id) === String(candidateId));
     if (candidate) {
       setRejectCandidate(candidate);
       setRejectModalOpen(true);
@@ -416,13 +419,13 @@ export default function PipelineBoard() {
   };
 
   const handleRemoveCandidate = async (candidateId: string) => {
-    const candidate = candidates.find(c => c.id === candidateId);
+    const candidate = candidates.find(c => c.id === candidateId || String(c.candidate_id) === String(candidateId));
     if (!candidate) return;
 
-    setCandidates((prev) => prev.filter((c) => c.id !== candidateId));
+    setCandidates((prev) => prev.filter((c) => c.id !== candidate.id));
 
     try {
-      await api.delete(`/pipelines/${candidateId}`);
+      await api.delete(`/pipelines/${candidate.id}`);
       setSuccessMsg(`${candidate.name} removed from pipeline successfully`);
       await fetchPipelines();
     } catch (error) {
@@ -563,147 +566,146 @@ export default function PipelineBoard() {
     }
   };
 
- const handleViewTimeline = (pipelineId: string) => {
- setSelectedPipelineId(pipelineId);
- setTimelineOpen(true);
- };
+  const handleViewTimeline = (pipelineId: string) => {
+    setSelectedPipelineId(pipelineId);
+    setTimelineOpen(true);
+  };
 
- const handleGenerateOffer = (candidateId: string) => {
- const candidate = candidates.find(c => c.id === candidateId);
- if (!candidate) return;
- setOfferCandidate(candidate);
- setOfferModalOpen(true);
- };
+  const handleGenerateOffer = (candidateId: string) => {
+    const candidate = candidates.find(c => c.id === candidateId || String(c.candidate_id) === String(candidateId));
+    if (!candidate) return;
+    setOfferCandidate(candidate);
+    setOfferModalOpen(true);
+  };
 
- const handleSendOffer = async (candidateId: string) => {
- const candidate = candidates.find(c => c.id === candidateId);
- if (!candidate || !candidate.offerId) return;
- try {
- await updateOfferStatus(candidate.offerId, "Sent");
- setSuccessMsg(`Offer sent to ${candidate.name}`);
- await fetchPipelines();
- } catch (e) {
- setError("Failed to send offer.");
- }
- };
+  const handleSendOffer = async (candidateId: string) => {
+    const candidate = candidates.find(c => c.id === candidateId || String(c.candidate_id) === String(candidateId));
+    if (!candidate || !candidate.offerId) return;
+    try {
+      await updateOfferStatus(candidate.offerId, "Sent");
+      setSuccessMsg(`Offer sent to ${candidate.name}`);
+      await fetchPipelines();
+    } catch (e) {
+      setError("Failed to send offer.");
+    }
+  };
 
- const handleResendOffer = async (candidateId: string) => {
- const candidate = candidates.find(c => c.id === candidateId);
- if (!candidate || !candidate.offerId) return;
- setSuccessMsg(`Offer resent to ${candidate.name}`);
- };
+  const handleResendOffer = async (candidateId: string) => {
+    const candidate = candidates.find(c => c.id === candidateId || String(c.candidate_id) === String(candidateId));
+    if (!candidate || !candidate.offerId) return;
+    setSuccessMsg(`Offer resent to ${candidate.name}`);
+  };
 
- const handleWithdrawOffer = async (candidateId: string) => {
- const candidate = candidates.find(c => c.id === candidateId);
- if (!candidate || !candidate.offerId) return;
- try {
- await updateOfferStatus(candidate.offerId, "Withdrawn");
- setSuccessMsg(`Offer withdrawn for ${candidate.name}`);
- await fetchPipelines();
- } catch (e) {
- setError("Failed to withdraw offer.");
- }
- };
+  const handleWithdrawOffer = async (candidateId: string) => {
+    const candidate = candidates.find(c => c.id === candidateId || String(c.candidate_id) === String(candidateId));
+    if (!candidate || !candidate.offerId) return;
+    try {
+      await updateOfferStatus(candidate.offerId, "Withdrawn");
+      setSuccessMsg(`Offer withdrawn for ${candidate.name}`);
+      await fetchPipelines();
+    } catch (e) {
+      setError("Failed to withdraw offer.");
+    }
+  };
 
- const handleViewOffer = (candidateId: string) => {
- const candidate = candidates.find(c => c.id === candidateId);
- if (candidate && candidate.offerId) {
- setSelectedOfferId(candidate.offerId);
- setViewOfferModalOpen(true);
- } else {
- setError("Offer not found.");
- }
- };
+  const handleViewOffer = (candidateId: string) => {
+    const candidate = candidates.find(c => c.id === candidateId || String(c.candidate_id) === String(candidateId));
+    if (candidate && candidate.offerId) {
+      setSelectedOfferId(candidate.offerId);
+      setViewOfferModalOpen(true);
+    } else {
+      setError("Offer not found.");
+    }
+  };
 
- const handleEditOffer = (candidateId: string) => {
- const candidate = candidates.find(c => c.id === candidateId);
- if (candidate && candidate.offerId) {
- setSelectedOfferId(candidate.offerId);
- setEditOfferModalOpen(true);
- } else {
- setError("Offer not found.");
- }
- };
+  const handleEditOffer = (candidateId: string) => {
+    const candidate = candidates.find(c => c.id === candidateId || String(c.candidate_id) === String(candidateId));
+    if (candidate && candidate.offerId) {
+      setSelectedOfferId(candidate.offerId);
+      setEditOfferModalOpen(true);
+    } else {
+      setError("Offer not found.");
+    }
+  };
 
- const handleUpdateOfferStatus = async (candidateId: string, offerId?: number) => {
- if (!offerId) return;
- const status = window.prompt("Enter new status (Accepted, Rejected, Withdrawn):");
- if (!status) return;
- const validStatuses = ["Accepted", "Rejected", "Withdrawn"];
- const matchedStatus = validStatuses.find(s => s.toLowerCase() === status.toLowerCase());
-  if (!matchedStatus) {
-  toast.error("Invalid status. Please enter Accepted, Rejected, or Withdrawn.");
-  return;
-  }
- 
- try {
- await updateOfferStatus(offerId, matchedStatus);
- setSuccessMsg(`Offer status updated to ${matchedStatus}`);
- await fetchPipelines();
- } catch (e) {
- setError("Failed to update offer status.");
- }
- };
+  const handleUpdateOfferStatus = async (candidateId: string, offerId?: number) => {
+    if (!offerId) return;
+    const status = window.prompt("Enter new status (Accepted, Rejected, Withdrawn):");
+    if (!status) return;
+    const validStatuses = ["Accepted", "Rejected", "Withdrawn"];
+    const matchedStatus = validStatuses.find(s => s.toLowerCase() === status.toLowerCase());
+    if (!matchedStatus) {
+      toast.error("Invalid status. Please enter Accepted, Rejected, or Withdrawn.");
+      return;
+    }
+    
+    try {
+      await updateOfferStatus(offerId, matchedStatus);
+      setSuccessMsg(`Offer status updated to ${matchedStatus}`);
+      await fetchPipelines();
+    } catch (e) {
+      setError("Failed to update offer status.");
+    }
+  };
 
- const handleAddNote = (candidateId: string) => {
- const candidate = candidates.find(c => c.id === candidateId);
- if (!candidate) return;
- setNoteCandidate(candidate);
- setNoteModalOpen(true);
- };
+  const handleAddNote = (candidateId: string) => {
+    const candidate = candidates.find(c => c.id === candidateId || String(c.candidate_id) === String(candidateId));
+    if (!candidate) return;
+    setNoteCandidate(candidate);
+    setNoteModalOpen(true);
+  };
 
- const submitNote = async (note: string) => {
- if (!noteCandidate) return;
- try {
- const token = localStorage.getItem("token");
- await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/candidates/${noteCandidate.candidate_id}/notes`, {
- method: "POST",
- headers: { 
- "Content-Type": "application/json",
- "Authorization": `Bearer ${token}` 
- },
- body: JSON.stringify({
- content: note,
- }),
- });
- setSuccessMsg("Note added.");
- // We do not need to fetch pipelines since notes are candidate-level now
- // await fetchPipelines();
- } catch (e) {
- setError("Failed to add note.");
- }
- };
+  const submitNote = async (note: string) => {
+    if (!noteCandidate) return;
+    try {
+      const token = localStorage.getItem("token");
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/candidates/${noteCandidate.candidate_id}/notes`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` 
+        },
+        body: JSON.stringify({
+          content: note,
+        }),
+      });
+      setSuccessMsg("Note added.");
+    } catch (e) {
+      setError("Failed to add note.");
+    }
+  };
 
- const handleOpenResume = (candidateId: string) => {
- const candidate = candidates.find(c => c.id === candidateId);
- if (candidate?.candidate_id) {
- window.open(`/candidates/${candidate.candidate_id}?tab=resume`, "_blank");
- }
- };
+  const handleOpenResume = (candidateId: string) => {
+    const candidate = candidates.find(c => c.id === candidateId || String(c.candidate_id) === String(candidateId));
+    if (candidate?.candidate_id) {
+      window.open(`/candidates/${candidate.candidate_id}?tab=resume`, "_blank");
+    }
+  };
 
- const handleViewInterview = (candidateId: string) => {
- const candidate = candidates.find(c => c.id === candidateId);
- if (candidate) {
- setSelectedCandidate(candidate);
- setViewInterviewModalOpen(true);
- }
- };
+  const handleViewInterview = (candidateId: string) => {
+    const candidate = candidates.find(c => c.id === candidateId || String(c.candidate_id) === String(candidateId));
+    if (candidate) {
+      setSelectedCandidate(candidate);
+      setViewInterviewModalOpen(true);
+    }
+  };
 
- const handleRescheduleInterview = (candidateId: string) => {
- const candidate = candidates.find(c => c.id === candidateId);
- if (candidate) {
- setSelectedCandidate(candidate);
- setRescheduleInterviewModalOpen(true);
- }
- };
+  const handleRescheduleInterview = (candidateId: string) => {
+    const candidate = candidates.find(c => c.id === candidateId || String(c.candidate_id) === String(candidateId));
+    if (candidate) {
+      setSelectedCandidate(candidate);
+      setRescheduleInterviewModalOpen(true);
+    }
+  };
 
- const handleOpenCalendar = (candidateId: string) => {
- const candidate = candidates.find(c => c.id === candidateId);
- if (candidate) {
- setSelectedCandidate(candidate);
- setCalendarModalOpen(true);
- }
- };
+  const handleOpenCalendar = (candidateId: string) => {
+    const candidate = candidates.find(c => c.id === candidateId || String(c.candidate_id) === String(candidateId));
+    if (candidate) {
+      setSelectedCandidate(candidate);
+      setCalendarModalOpen(true);
+    }
+  };
+
   const handleRestoreCandidate = async (candidateId: string) => {
     updateCandidateStage(candidateId, "Applied");
   };

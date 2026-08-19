@@ -1,4 +1,7 @@
-import { Globe, Users, ExternalLink } from "lucide-react";
+"use client";
+
+import { useState, useMemo } from "react";
+import { Globe, Users, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { motion } from "framer-motion";
 import { Position } from "@/types/positon";
 
@@ -10,6 +13,18 @@ interface Props {
   onViewSkills?: (position: Position) => void;
 }
 
+type SortField =
+  | "title"
+  | "department"
+  | "location"
+  | "experience"
+  | "applicants"
+  | "status"
+  | "is_published"
+  | "skills";
+
+type SortOrder = "asc" | "desc" | null;
+
 export default function PositionTable({
   positions,
   onSelect,
@@ -17,24 +32,139 @@ export default function PositionTable({
   onTogglePublish,
   onViewSkills,
 }: Props) {
+  const [sortField, setSortField] = useState<SortField>("title");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      if (sortOrder === "asc") setSortOrder("desc");
+      else if (sortOrder === "desc") setSortOrder(null);
+      else setSortOrder("asc");
+    } else {
+      setSortField(field);
+      setSortOrder("asc");
+    }
+  };
+
+  const sortedPositions = useMemo(() => {
+    if (!sortOrder || !sortField) return positions;
+
+    return [...positions].sort((a, b) => {
+      let valA: any = a[sortField as keyof Position];
+      let valB: any = b[sortField as keyof Position];
+
+      if (sortField === "applicants") {
+        valA = Number(a.applicants || 0);
+        valB = Number(b.applicants || 0);
+      } else if (sortField === "is_published") {
+        valA = a.is_published ? 1 : 0;
+        valB = b.is_published ? 1 : 0;
+      } else if (sortField === "skills") {
+        valA = (a.skills || []).length;
+        valB = (b.skills || []).length;
+      } else {
+        valA = String(valA || "").toLowerCase();
+        valB = String(valB || "").toLowerCase();
+      }
+
+      if (valA < valB) return sortOrder === "asc" ? -1 : 1;
+      if (valA > valB) return sortOrder === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [positions, sortField, sortOrder]);
+
+  const renderSortIcon = (field: SortField) => {
+    if (sortField !== field || !sortOrder) {
+      return <ArrowUpDown className="w-3.5 h-3.5 text-muted opacity-60 group-hover:opacity-100 transition-opacity ml-1" />;
+    }
+    if (sortOrder === "asc") {
+      return <ArrowUp className="w-3.5 h-3.5 text-violet-500 font-bold ml-1" />;
+    }
+    return <ArrowDown className="w-3.5 h-3.5 text-violet-500 font-bold ml-1" />;
+  };
+
   return (
     <div className="overflow-x-auto rounded-2xl border border-border bg-surface shadow-md">
       <table className="w-full min-w-[1200px]">
         <thead>
-          <tr className="border-b border-border text-left text-sm text-muted">
-            <th className="px-6 py-5 font-medium">Position</th>
-            <th className="px-6 py-5 font-medium">Department</th>
-            <th className="px-6 py-5 font-medium">Location</th>
-            <th className="px-6 py-5 font-medium">Experience</th>
-            <th className="px-6 py-5 font-medium">Applicants</th>
-            <th className="px-6 py-5 font-medium">Status</th>
-            <th className="px-6 py-5 font-medium">Career Portal</th>
-            <th className="px-6 py-5 font-medium">Skills</th>
+          <tr className="border-b border-border text-left text-sm text-muted select-none">
+            <th
+              onClick={() => handleSort("title")}
+              className="px-6 py-5 font-medium cursor-pointer hover:text-text-primary transition group"
+            >
+              <div className="flex items-center">
+                <span>Position</span>
+                {renderSortIcon("title")}
+              </div>
+            </th>
+            <th
+              onClick={() => handleSort("department")}
+              className="px-6 py-5 font-medium cursor-pointer hover:text-text-primary transition group"
+            >
+              <div className="flex items-center">
+                <span>Department</span>
+                {renderSortIcon("department")}
+              </div>
+            </th>
+            <th
+              onClick={() => handleSort("location")}
+              className="px-6 py-5 font-medium cursor-pointer hover:text-text-primary transition group"
+            >
+              <div className="flex items-center">
+                <span>Location</span>
+                {renderSortIcon("location")}
+              </div>
+            </th>
+            <th
+              onClick={() => handleSort("experience")}
+              className="px-6 py-5 font-medium cursor-pointer hover:text-text-primary transition group"
+            >
+              <div className="flex items-center">
+                <span>Experience</span>
+                {renderSortIcon("experience")}
+              </div>
+            </th>
+            <th
+              onClick={() => handleSort("applicants")}
+              className="px-6 py-5 font-medium cursor-pointer hover:text-text-primary transition group"
+            >
+              <div className="flex items-center">
+                <span>Applicants</span>
+                {renderSortIcon("applicants")}
+              </div>
+            </th>
+            <th
+              onClick={() => handleSort("status")}
+              className="px-6 py-5 font-medium cursor-pointer hover:text-text-primary transition group"
+            >
+              <div className="flex items-center">
+                <span>Status</span>
+                {renderSortIcon("status")}
+              </div>
+            </th>
+            <th
+              onClick={() => handleSort("is_published")}
+              className="px-6 py-5 font-medium cursor-pointer hover:text-text-primary transition group"
+            >
+              <div className="flex items-center">
+                <span>Career Portal</span>
+                {renderSortIcon("is_published")}
+              </div>
+            </th>
+            <th
+              onClick={() => handleSort("skills")}
+              className="px-6 py-5 font-medium cursor-pointer hover:text-text-primary transition group"
+            >
+              <div className="flex items-center">
+                <span>Skills</span>
+                {renderSortIcon("skills")}
+              </div>
+            </th>
           </tr>
         </thead>
 
         <tbody>
-          {positions.map((position) => (
+          {sortedPositions.map((position) => (
             <motion.tr
               key={position.id}
               whileHover={{ y: -2, scale: 1.005 }}

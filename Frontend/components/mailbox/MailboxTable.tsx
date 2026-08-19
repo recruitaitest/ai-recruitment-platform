@@ -8,6 +8,8 @@ import {
 } from "@/services/mailboxService";
 import { motion, AnimatePresence } from "framer-motion";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
+import MailboxAccountDrawer from "./Mailboxaccountdrawer";
+import { toast } from "sonner";
 
 import {
   MoreHorizontal,
@@ -168,14 +170,15 @@ export default function MailboxTable() {
   const [syncingId, setSyncingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [viewAll, setViewAll] = useState(false);
+  const [selectedDrawerAccountId, setSelectedDrawerAccountId] = useState<number | null>(null);
 
-  useBodyScrollLock(viewAll);
+  useBodyScrollLock(viewAll || selectedDrawerAccountId !== null);
 
   const fetchMailboxes = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getMailboxAccounts();
-      setMailboxes(data);
+      setMailboxes(data || []);
     } catch (error) {
       console.error("Failed to fetch mailboxes", error);
     } finally {
@@ -191,28 +194,33 @@ export default function MailboxTable() {
     setSyncingId(id);
     try {
       await syncMailbox(id);
+      toast.success("Mailbox sync triggered successfully.");
       await fetchMailboxes();
     } catch (error) {
       console.error("Failed to sync mailbox", error);
+      toast.error("Failed to sync mailbox.");
     } finally {
       setSyncingId(null);
     }
   };
 
   const handleDelete = async (id: number) => {
+    if (!window.confirm("Are you sure you want to disconnect this mailbox?")) return;
     setDeletingId(id);
     try {
       await disconnectMailbox(id);
+      toast.success("Mailbox disconnected successfully.");
       await fetchMailboxes();
     } catch (error) {
       console.error("Failed to disconnect mailbox", error);
+      toast.error("Failed to disconnect mailbox.");
     } finally {
       setDeletingId(null);
     }
   };
 
   const handleView = (id: number) => {
-    console.log("View mailbox", id);
+    setSelectedDrawerAccountId(id);
   };
 
   const visible = mailboxes.slice(0, LIMIT);
@@ -235,9 +243,6 @@ export default function MailboxTable() {
               Monitor synchronization and applicant email ingestion.
             </p>
           </div>
-          <button className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover transition active:scale-[0.97] focus-ring">
-            Add Mailbox
-          </button>
         </div>
 
         {/* Table — limited to 5 */}
@@ -259,13 +264,20 @@ export default function MailboxTable() {
             </span>
             <button
               onClick={() => setViewAll(true)}
-              className="text-xs font-semibold text-primary hover:text-primary-hover transition"
+              className="text-xs font-semibold text-primary hover:text-primary-hover transition cursor-pointer"
             >
               View All →
             </button>
           </div>
         )}
       </motion.div>
+
+      {/* Account Details Drawer */}
+      <MailboxAccountDrawer
+        isOpen={selectedDrawerAccountId !== null}
+        onClose={() => setSelectedDrawerAccountId(null)}
+        accountId={selectedDrawerAccountId}
+      />
 
       {/* View All Modal */}
       <AnimatePresence>

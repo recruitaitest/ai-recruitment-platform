@@ -160,25 +160,35 @@ export default function RolesTable({ roles, onRefresh }: RolesTableProps) {
                   {/* Actions */}
                   <td className="px-6 py-5">
                     <div className="flex items-center justify-end gap-2">
-                      {hasPermission("roles.update") && (
-                        <button
-                          onClick={() => {
-                            setEditingRole(role);
-                            setOpenModal(true);
-                          }}
-                          className="rounded-lg p-2 text-muted transition hover:bg-secondary-surface hover:text-text-primary"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                      )}
+                      {role.name?.toUpperCase() === "COMPANY_OWNER" || role.name?.toLowerCase() === "company owner" || role.name?.toLowerCase() === "company_owner" ? (
+                        <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 px-2.5 py-1 rounded-lg select-none">
+                          System Role
+                        </span>
+                      ) : (
+                        <>
+                          {hasPermission("roles.update") && (
+                            <button
+                              onClick={() => {
+                                setEditingRole(role);
+                                setOpenModal(true);
+                              }}
+                              title="Edit Role"
+                              className="rounded-lg p-2 text-muted transition hover:bg-secondary-surface hover:text-text-primary cursor-pointer"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                          )}
 
-                      {hasPermission("roles.delete") && (
-                        <button
-                          onClick={() => setDeleteConfirmRole(role)}
-                          className="rounded-lg p-2 text-muted transition hover:bg-secondary-surface hover:text-red-400"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                          {hasPermission("roles.delete") && (
+                            <button
+                              onClick={() => setDeleteConfirmRole(role)}
+                              title="Delete Role"
+                              className="rounded-lg p-2 text-muted transition hover:bg-secondary-surface hover:text-red-400 cursor-pointer"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   </td>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isAuthenticated } from "@/lib/auth";
 import { AnalyticsHeader } from "@/components/analytics/AnalyticsHeader";
@@ -10,17 +10,22 @@ import { RecruitmentFunnel } from "@/components/analytics/RecruitmentFunnel";
 import { HiringTrends } from "@/components/analytics/HiringTrends";
 import { SourceAnalytics } from "@/components/analytics/SourceAnalytics";
 import { TimeToHire } from "@/components/analytics/TimeToHire";
-import { RecruiterProductivity } from "@/components/analytics/RecruiterProductivity";
 import { OfferDeclineAnalytics } from "@/components/analytics/OfferDeclineAnalytics";
 import { AIBiasDetectionWidget } from "@/components/analytics/AIBiasDetectionWidget";
 import { InterviewSuccessPredictor } from "@/components/analytics/InterviewSuccessPredictor";
 import { CandidateQualityScore } from "@/components/analytics/CandidateQualityScore";
 import { RejectionReasonAnalytics } from "@/components/analytics/RejectionReasonAnalytics";
 import { AnalyticsMotion } from "@/components/analytics/AnalyticsMotion";
+import AnalyticsReportModal from "@/components/analytics/AnalyticsReportModal";
 import { AppLayout } from "@/components/AppLayout";
 
 export default function AnalyticsPage() {
     const router = useRouter();
+    const [reportModalOpen, setReportModalOpen] = useState(false);
+    const [dateRange, setDateRange] = useState("Last 30 Days");
+    const [recruiterId, setRecruiterId] = useState("");
+    const [roleId, setRoleId] = useState("");
+    const [refreshKey, setRefreshKey] = useState(0);
 
     useEffect(() => {
         if (!isAuthenticated()) {
@@ -28,25 +33,37 @@ export default function AnalyticsPage() {
         }
     }, [router]);
 
+    const handleRefresh = () => {
+        setRefreshKey((k) => k + 1);
+    };
+
     return (
         <AppLayout>
             <div className="min-h-screen bg-background p-6">
                 <div className="space-y-6 max-w-[1600px] mx-auto my-4">
 
                     <AnalyticsMotion delay={0}>
-                        <AnalyticsHeader />
+                        <AnalyticsHeader onExportReport={() => setReportModalOpen(true)} />
                     </AnalyticsMotion>
 
                     <AnalyticsMotion delay={0.1}>
-                        <AnalyticsFilters />
+                        <AnalyticsFilters
+                            dateRange={dateRange}
+                            setDateRange={setDateRange}
+                            recruiterId={recruiterId}
+                            setRecruiterId={setRecruiterId}
+                            roleId={roleId}
+                            setRoleId={setRoleId}
+                            onRefresh={handleRefresh}
+                        />
                     </AnalyticsMotion>
 
-                    <AnalyticsMotion delay={0.2}>
+                    <AnalyticsMotion delay={0.2} key={`kpi-${refreshKey}-${dateRange}-${recruiterId}-${roleId}`}>
                         <KPISection />
                     </AnalyticsMotion>
 
                     {/* Section 5: Decision-Support Features Grid */}
-                    <AnalyticsMotion delay={0.3}>
+                    <AnalyticsMotion delay={0.3} key={`workspace-${refreshKey}-${dateRange}-${recruiterId}-${roleId}`}>
                         <div className="space-y-6">
                             <h2 className="text-xl font-bold text-text-primary flex items-center gap-2 border-b border-border pb-3">
                                 🧠 Decision-Support & Predictive Analytics Workspace
@@ -77,12 +94,21 @@ export default function AnalyticsPage() {
                                 <HiringTrends />
                                 <SourceAnalytics />
                             </div>
-
-                            <RecruiterProductivity />
                         </div>
                     </AnalyticsMotion>
 
                 </div>
+
+                {/* Formatted Analytics Executive Report Modal */}
+                <AnalyticsReportModal
+                    isOpen={reportModalOpen}
+                    onClose={() => setReportModalOpen(false)}
+                    filters={{
+                        dateRange,
+                        recruiterId,
+                        roleId,
+                    }}
+                />
             </div>
         </AppLayout>
     );

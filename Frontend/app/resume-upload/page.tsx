@@ -60,41 +60,13 @@ export default function ResumeUploadPage() {
  <div className="min-h-screen bg-background text-text-primary p-6">
 
  {/* Header */}
-
- <div className="mb-6 flex items-center justify-between">
-
- <div>
-
+ <div className="mb-6">
  <h1 className="text-3xl font-bold tracking-tight">
-
  Resume Upload
-
  </h1>
-
  <p className="text-sm text-muted mt-1">
-
  Upload resumes and extract AI-powered candidate insights instantly.
-
  </p>
-
- </div>
-
- <div className="flex gap-3">
-
- <button className="rounded-xl border border-border bg-surface px-4 py-2 text-sm hover:bg-secondary-surface transition">
-
- Recent Uploads
-
- </button>
-
- <button className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500 transition">
-
- Upload Guidelines
-
- </button>
-
- </div>
-
  </div>
 
  {/* Main Layout */}

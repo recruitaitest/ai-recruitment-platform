@@ -396,48 +396,6 @@ function HiringManagerPortalContent() {
       {/* Recruiter Dashboard-sized Stat Cards with CountUp animation */}
       <StatsCards stats={statCardsData} isLoading={loading} />
 
-      {/* Live Interview Notification Alert Banner */}
-      {myAssignedInterviews.filter((i) => i.status === "Scheduled" && !i.feedback).length > 0 && (
-        <div className="flex items-center justify-between flex-wrap gap-4 p-4 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-blue-500/10 border border-indigo-500/30 text-indigo-900 dark:text-indigo-200">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shrink-0 shadow-md">
-              <CalendarDays className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
-                  New Interview Triggered
-                </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400">
-                  {myAssignedInterviews.filter((i) => i.status === "Scheduled" && !i.feedback).length} sessions scheduled
-                </span>
-              </div>
-              <p className="text-sm font-semibold text-slate-900 dark:text-white mt-0.5">
-                {getCandidateDisplayName(
-                  myAssignedInterviews.filter((i) => i.status === "Scheduled" && !i.feedback)[0].candidate_id,
-                  myAssignedInterviews.filter((i) => i.status === "Scheduled" && !i.feedback)[0].candidate_name
-                )}{" "}
-                •{" "}
-                {getPositionDisplayName(
-                  myAssignedInterviews.filter((i) => i.status === "Scheduled" && !i.feedback)[0].position_id,
-                  myAssignedInterviews.filter((i) => i.status === "Scheduled" && !i.feedback)[0].position_title,
-                  myAssignedInterviews.filter((i) => i.status === "Scheduled" && !i.feedback)[0].candidate_id
-                )}{" "}
-                ({myAssignedInterviews.filter((i) => i.status === "Scheduled" && !i.feedback)[0].interview_type || "Technical Interview"})
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={() => setActiveTab("interviews")}
-            className="px-4 py-2 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-sm flex items-center gap-1.5 shrink-0"
-          >
-            <span>View Scheduled Interviews</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
-
       {/* TAB 1: ASSIGNED CANDIDATES */}
       {activeTab === "candidates" && (
         <div className="space-y-4">
