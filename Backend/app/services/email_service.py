@@ -36,32 +36,37 @@ def send_email_message(to_email: str, subject: str, html_content: str) -> bool:
     else:
         smtp_server = os.getenv("MAIL_SERVER", os.getenv("SMTP_SERVER", "smtp.gmail.com"))
         smtp_port = int(os.getenv("MAIL_PORT", os.getenv("SMTP_PORT", "587")))
-        sender_email = os.getenv("MAIL_FROM", os.getenv("SMTP_SENDER", "careers@company.com"))
-        smtp_user = os.getenv("MAIL_USERNAME", os.getenv("SMTP_USER", ""))
-        smtp_password = os.getenv("MAIL_PASSWORD", os.getenv("SMTP_PASSWORD", ""))
+        sender_email = os.getenv("MAIL_FROM", os.getenv("SMTP_SENDER", "recruitaitest@gmail.com"))
+        smtp_user = os.getenv("MAIL_USERNAME", os.getenv("SMTP_USER", "recruitaitest@gmail.com"))
+        smtp_password = os.getenv("MAIL_PASSWORD", os.getenv("SMTP_PASSWORD", "ivubxdzkopegmjrd"))
         use_tls = os.getenv("MAIL_STARTTLS", "True").lower() == "true"
+
+    clean_user = (smtp_user or "").strip()
+    clean_pass = (smtp_password or "").replace(" ", "").strip()
+    clean_sender = sender_email.strip() if sender_email else clean_user
+    if "company.com" in clean_sender and clean_user:
+        clean_sender = clean_user
 
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = sender_email
+        msg["From"] = f"RecruitAI Platform <{clean_sender}>"
         msg["To"] = to_email
         msg.attach(MIMEText(html_content, "html"))
 
-        if smtp_user and smtp_password:
-            with smtplib.SMTP(smtp_server, smtp_port, timeout=10) as server:
+        if clean_user and clean_pass:
+            with smtplib.SMTP(smtp_server, smtp_port, timeout=15) as server:
                 if use_tls:
                     server.starttls()
-                server.login(smtp_user, smtp_password)
-                server.sendmail(sender_email, [to_email], msg.as_string())
+                server.login(clean_user, clean_pass)
+                server.sendmail(clean_sender, [to_email], msg.as_string())
             logger.info(f"Email '{subject}' sent successfully to {to_email}")
         else:
             logger.info(f"[SIMULATED EMAIL] To: {to_email} | Subject: {subject}")
         return True
     except Exception as e:
-        logger.error(f"Failed to send email '{subject}' to {to_email}: {str(e)}")
-        # Return True in dev/test environment to prevent app crashes if SMTP is unconfigured
-        return True
+        logger.error(f"Failed to send email '{subject}' to {to_email}: {str(e)}", exc_info=True)
+        return False
 
 
 import re

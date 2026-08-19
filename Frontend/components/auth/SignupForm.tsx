@@ -40,11 +40,11 @@ export function SignupForm() {
  ) => {
  e.preventDefault()
 
- const lowerEmail = email.toLowerCase()
- if (!lowerEmail.endsWith('@gmail.com') && !lowerEmail.endsWith('@googlemail.com')) {
- setGeneralError('Please use a valid Google account (@gmail.com) so you can verify and recover your password.')
- return
- }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email.trim())) {
+    setGeneralError('Please enter a valid email address.');
+    return;
+  }
 
  try {
  setIsLoading(true)

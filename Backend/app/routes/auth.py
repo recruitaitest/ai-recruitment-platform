@@ -185,7 +185,7 @@ def signup(
     db.commit()
     db.refresh(new_user)
 
-    frontend_url = os.getenv("FRONTEND_URL")
+    frontend_url = (os.getenv("FRONTEND_URL") or "https://ai-recruitment-platform.centralindia.cloudapp.azure.com").rstrip("/")
     verification_link = (
         f"{frontend_url}/verify-email"
         f"?token={verification['token']}"
@@ -458,8 +458,7 @@ def resend_verification(
 
     db.commit()
 
-    frontend_url = os.getenv("FRONTEND_URL")
-
+    frontend_url = (os.getenv("FRONTEND_URL") or "https://ai-recruitment-platform.centralindia.cloudapp.azure.com").rstrip("/")
     verification_link = (
         f"{frontend_url}/verify-email"
         f"?token={verification['token']}"

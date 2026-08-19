@@ -37,6 +37,12 @@ services:
       - QDRANT_URL=http://qdrant:6333
       - GMAIL_REDIRECT_URI=https://ai-recruitment-platform.centralindia.cloudapp.azure.com/mailbox/oauth/callback
       - FRONTEND_URL=https://ai-recruitment-platform.centralindia.cloudapp.azure.com
+      - MAIL_USERNAME=recruitaitest@gmail.com
+      - MAIL_PASSWORD=ivubxdzkopegmjrd
+      - MAIL_FROM=recruitaitest@gmail.com
+      - MAIL_SERVER=smtp.gmail.com
+      - MAIL_PORT=587
+      - MAIL_STARTTLS=True
     depends_on:
       - db
       - redis
@@ -62,6 +68,12 @@ services:
       - QDRANT_URL=http://qdrant:6333
       - GMAIL_REDIRECT_URI=https://ai-recruitment-platform.centralindia.cloudapp.azure.com/mailbox/oauth/callback
       - FRONTEND_URL=https://ai-recruitment-platform.centralindia.cloudapp.azure.com
+      - MAIL_USERNAME=recruitaitest@gmail.com
+      - MAIL_PASSWORD=ivubxdzkopegmjrd
+      - MAIL_FROM=recruitaitest@gmail.com
+      - MAIL_SERVER=smtp.gmail.com
+      - MAIL_PORT=587
+      - MAIL_STARTTLS=True
     depends_on:
       - db
       - redis
