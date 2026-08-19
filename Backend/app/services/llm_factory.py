@@ -94,6 +94,8 @@ def get_chat_model(
             
         from langchain_groq import ChatGroq
         valid_model = model_name or "llama-3.3-70b-versatile"
+        if valid_model in ["llama3-70b-8192", "llama3-8b-8192", "llama-3.1-70b-versatile"]:
+            valid_model = "llama-3.3-70b-versatile"
         kwargs = {"model": valid_model, "temperature": temperature, "api_key": api_key}
         if json_mode:
             kwargs["model_kwargs"] = {"response_format": {"type": "json_object"}}
