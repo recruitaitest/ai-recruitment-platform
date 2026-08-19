@@ -28,7 +28,7 @@ import {
 } from "@/services/adminService";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { AuthService } from "@/lib/auth";
 
 import { hasAdminPortalAccess, hasRecruiterPortalAccess, hasPermission } from "@/utils/permissions";
@@ -106,6 +106,7 @@ export default function AdminNavbar() {
  const notificationsRef = useRef<HTMLDivElement>(null);
  const profileRef = useRef<HTMLDivElement>(null);
  const router = useRouter();
+ const pathname = usePathname();
 
  useEffect(() => {
  fetchNotifications();
@@ -149,12 +150,14 @@ export default function AdminNavbar() {
  setUser(storedUser);
 
  const portal = localStorage.getItem("portal");
- if (portal === "admin") {
+ if (portal === "admin" || pathname?.startsWith("/admin")) {
  setCurrentRole("Admin");
+ } else if (portal === "hiring-manager" || portal === "hiring_manager" || pathname?.startsWith("/portal/hiring-manager")) {
+ setCurrentRole("Hiring Manager");
  } else {
  setCurrentRole("Recruiter");
  }
- }, []);
+ }, [pathname]);
 
  // Close dropdowns when clicking outside
  useEffect(() => {
@@ -377,7 +380,7 @@ export default function AdminNavbar() {
                         setShowProfileMenu(false);
                         router.push("/admin/dashboard");
                       }}
-                      className="w-full text-left px-2 py-2 rounded hover:bg-secondary-surface text-sm text-text-primary"
+                      className={`w-full text-left px-2 py-2 rounded text-sm ${currentRole === 'Admin' ? 'text-primary bg-primary/5 font-bold' : 'text-text-primary'} hover:bg-secondary-surface`}
                     >
                       Admin
                     </button>
@@ -389,7 +392,7 @@ export default function AdminNavbar() {
                         setShowProfileMenu(false);
                         router.push("/dashboard");
                       }}
-                      className="w-full text-left px-2 py-2 rounded hover:bg-secondary-surface text-sm text-text-primary"
+                      className={`w-full text-left px-2 py-2 rounded text-sm ${currentRole === 'Recruiter' ? 'text-primary bg-primary/5 font-bold' : 'text-text-primary'} hover:bg-secondary-surface`}
                     >
                       Recruiter
                     </button>
@@ -401,7 +404,7 @@ export default function AdminNavbar() {
                         setShowProfileMenu(false);
                         router.push("/portal/hiring-manager?tab=candidates");
                       }}
-                      className="w-full text-left px-2 py-2 rounded hover:bg-secondary-surface text-sm text-text-primary"
+                      className={`w-full text-left px-2 py-2 rounded text-sm ${currentRole === 'Hiring Manager' ? 'text-primary bg-primary/5 font-bold' : 'text-text-primary'} hover:bg-secondary-surface`}
                     >
                       Hiring Manager
                     </button>
