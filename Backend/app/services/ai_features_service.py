@@ -803,11 +803,13 @@ def process_recruiter_chat(
     pos_summary = []
     if can_view_positions:
         for p in positions_list:
-            pos_req = get_top_skills(p.required_skills, limit=6)
+            pos_req = get_top_skills(p.required_skills, limit=10)
+            desc_snippet = (p.description[:250] + '...') if p.description and len(p.description) > 250 else (p.description or 'Standard position requirements')
             pos_summary.append(
                 f"- 💼 **{p.title}** ({p.location or 'Remote'})\n"
-                f"  - **Status:** Actively Sourcing\n"
-                f"  - **Key Requirements:** {pos_req}"
+                f"  - **Company:** {p.company or 'Our Organization'} | **Status:** {'Published' if p.is_published else 'Draft'}\n"
+                f"  - **Key Required Skills:** {pos_req}\n"
+                f"  - **Job Summary:** {desc_snippet}"
             )
     
     email_cand_records = db.query(EmailMessage.candidate_id).filter(EmailMessage.candidate_id.isnot(None)).all() if db and can_view_candidates else []
@@ -853,12 +855,16 @@ def process_recruiter_chat(
             stage_candidates_map[matched_stage].append(c)
 
             role_title = pos_map.get(c.applied_position_id, "Software Developer") if c.applied_position_id else "Software Developer"
-            top_skills = get_top_skills(c.skills, limit=6)
+            top_skills = get_top_skills(c.skills, limit=8)
             exp_str = f"{c.experience} yrs" if c.experience and c.experience > 0 else "Fresher (0 yrs)"
             cand_summary.append(
-                f"- 👤 **{c.full_name}** · *{c.email}*\n"
+                f"- 👤 **{c.full_name}** · *{c.email}* (Phone: {c.phone or 'N/A'})\n"
                 f"  - **Role:** {role_title} | **Source:** `{c.source}` | **Stage:** `{matched_stage}` | **Experience:** {exp_str}\n"
-                f"  - **Top Skills:** {top_skills}"
+                f"  - **Education:** {c.education or 'Not Specified'} | **Location:** {c.location or 'Not Specified'}\n"
+                f"  - **Company/Designation:** {c.company or 'N/A'} — {c.current_designation or 'N/A'}\n"
+                f"  - **Current/Expected CTC:** {c.current_ctc or 'N/A'} / {c.expected_ctc or 'N/A'} | **Notice Period:** {c.notice_period or 'Immediate'}\n"
+                f"  - **Top Skills:** {top_skills}\n"
+                f"  - **Profile Summary:** {c.summary or 'N/A'}"
             )
 
     hired_count = stages_counts["Hired"]
@@ -1157,7 +1163,112 @@ def process_recruiter_chat(
             "is_refusal": False
         }
 
-    # 5. Candidate Source & Directory Queries
+    # 5. Educational Background Query
+    if any(k in lower_msg for k in ["education", "educational background", "qualification", "degree", "college", "university", "studied", "btech", "b.tech", "academic"]):
+        if not can_view_candidates:
+            return {
+                "response": "🔒 **Access Restricted**: You do not have permission to view Candidate profiles (`candidates.view`).",
+                "portal_type": "recruiter",
+                "is_refusal": True
+            }
+        if all_candidates:
+            e_lines = []
+            for c in all_candidates:
+                role_title = pos_map.get(c.applied_position_id, "Software Developer") if c.applied_position_id else "Software Developer"
+                edu_str = c.education if c.education else "Degree information not specified"
+                e_lines.append(
+                    f"- 🎓 **{c.full_name}** ({role_title})\n"
+                    f"  - **Education / Degree:** {edu_str}\n"
+                    f"  - **Location:** {c.location or 'Not Specified'} | **Experience:** {c.experience or 0} yrs"
+                )
+            resp = f"### 🎓 Candidate Educational Background ({len(all_candidates)} candidates)\n\n" + "\n\n".join(e_lines) + "\n\n💡 *Tip: Open individual candidate cards on `/candidates` to view full resumes.*"
+        else:
+            resp = "There are currently no candidates registered in the system."
+        return {
+            "response": clean_copilot_markdown(resp),
+            "portal_type": "recruiter",
+            "is_refusal": False
+        }
+
+    # 6. Experience & Work History Query
+    if any(k in lower_msg for k in ["experience of each", "how much experience", "work experience", "years of experience", "current company", "designation", "work history"]):
+        if not can_view_candidates:
+            return {
+                "response": "🔒 **Access Restricted**: You do not have permission to view Candidate profiles (`candidates.view`).",
+                "portal_type": "recruiter",
+                "is_refusal": True
+            }
+        if all_candidates:
+            w_lines = []
+            for c in all_candidates:
+                role_title = pos_map.get(c.applied_position_id, "Software Developer") if c.applied_position_id else "Software Developer"
+                exp_str = f"{c.experience} yrs" if c.experience and c.experience > 0 else "Fresher (0 yrs)"
+                desig_str = f"{c.current_designation} at {c.company}" if c.current_designation and c.company else (c.current_designation or c.company or "N/A")
+                w_lines.append(
+                    f"- 💼 **{c.full_name}** — *{role_title}*\n"
+                    f"  - **Experience:** {exp_str} | **Current Role:** {desig_str}\n"
+                    f"  - **Top Skills:** {get_top_skills(c.skills, limit=6)}"
+                )
+            resp = f"### 💼 Candidate Work Experience & Designations\n\n" + "\n\n".join(w_lines)
+        else:
+            resp = "No candidates found."
+        return {
+            "response": clean_copilot_markdown(resp),
+            "portal_type": "recruiter",
+            "is_refusal": False
+        }
+
+    # 7. Location & Contact Query
+    if any(k in lower_msg for k in ["where are candidate", "candidate location", "location of each", "phone number", "contact detail", "email of each", "where located"]):
+        if not can_view_candidates:
+            return {
+                "response": "🔒 **Access Restricted**: You do not have permission to view Candidate profiles (`candidates.view`).",
+                "portal_type": "recruiter",
+                "is_refusal": True
+            }
+        if all_candidates:
+            l_lines = []
+            for c in all_candidates:
+                l_lines.append(
+                    f"- 📍 **{c.full_name}** · *{c.email}*\n"
+                    f"  - **Location:** {c.location or 'Not Specified'} | **Phone:** {c.phone or 'Not Provided'}"
+                )
+            resp = f"### 📍 Candidate Locations & Contact Info\n\n" + "\n\n".join(l_lines)
+        else:
+            resp = "No candidates found."
+        return {
+            "response": clean_copilot_markdown(resp),
+            "portal_type": "recruiter",
+            "is_refusal": False
+        }
+
+    # 8. Summary / Bio Query
+    if any(k in lower_msg for k in ["summary of each", "bio of candidate", "candidate profile detail", "profile detail", "candidate summary", "candidate summaries"]):
+        if not can_view_candidates:
+            return {
+                "response": "🔒 **Access Restricted**: You do not have permission to view Candidate profiles (`candidates.view`).",
+                "portal_type": "recruiter",
+                "is_refusal": True
+            }
+        if all_candidates:
+            s_lines = []
+            for c in all_candidates:
+                role_title = pos_map.get(c.applied_position_id, "Software Developer") if c.applied_position_id else "Software Developer"
+                s_lines.append(
+                    f"- 👤 **{c.full_name}** ({role_title})\n"
+                    f"  - **Summary:** {c.summary or 'No profile summary available.'}\n"
+                    f"  - **Education:** {c.education or 'N/A'} | **Location:** {c.location or 'N/A'}"
+                )
+            resp = f"### 📝 Candidate Profile Summaries\n\n" + "\n\n".join(s_lines)
+        else:
+            resp = "No candidates found."
+        return {
+            "response": clean_copilot_markdown(resp),
+            "portal_type": "recruiter",
+            "is_refusal": False
+        }
+
+    # 9. Candidate Source & Directory Queries
     if any(k in lower_msg for k in ["list candidate", "show candidate", "all candidate", "list the candidate", "candidate directory", "candidates", "who are the candidate", "details of each candidate", "manually uploaded", "manual upload", "upload", "email", "career portal"]):
         if not can_view_candidates:
             return {
@@ -1184,6 +1295,7 @@ def process_recruiter_chat(
                 c_lines.append(
                     f"- 👤 **{c.full_name}** · *{c.email}*\n"
                     f"  - **Role:** {role_title} | **Source:** `{c.source}` | **Stage:** `{c.status or 'Applied'}` | **Experience:** {exp_str}\n"
+                    f"  - **Education:** {c.education or 'Not Specified'} | **Location:** {c.location or 'Not Specified'}\n"
                     f"  - **Top Skills:** {top_skills}"
                 )
             title_str = f"👥 {target_source} Candidates ({len(filtered_cands)} candidates)" if target_source else f"👥 Candidate Directory ({len(all_candidates)} candidates)"
@@ -1198,8 +1310,8 @@ def process_recruiter_chat(
             "is_refusal": False
         }
 
-    # 6. Positions Queries
-    if any(k in lower_msg for k in ["how many position", "open position", "list position", "available position", "positions", "how many job"]):
+    # 10. Positions & Requirements Queries
+    if any(k in lower_msg for k in ["how many position", "open position", "list position", "available position", "positions", "how many job", "skills required", "requirements of position", "position detail", "job description"]):
         if not can_view_positions:
             return {
                 "response": "🔒 **Access Restricted**: You do not have permission to view Job Positions (`positions.view`).",
@@ -1209,13 +1321,15 @@ def process_recruiter_chat(
         if positions_list:
             p_lines = []
             for p in positions_list:
-                pos_req = get_top_skills(p.required_skills, limit=6)
+                pos_req = get_top_skills(p.required_skills, limit=10)
+                desc_snippet = (p.description[:200] + '...') if p.description and len(p.description) > 200 else (p.description or 'Standard position requirements')
                 p_lines.append(
                     f"- 💼 **{p.title}** ({p.location or 'Remote'})\n"
-                    f"  - **Status:** Actively Sourcing\n"
-                    f"  - **Key Requirements:** {pos_req}"
+                    f"  - **Company:** {p.company or 'Our Organization'} | **Status:** {'Published' if p.is_published else 'Draft'}\n"
+                    f"  - **Required Skills:** {pos_req}\n"
+                    f"  - **Description:** {desc_snippet}"
                 )
-            resp = f"### 💼 Open Positions ({len(positions_list)} available)\n\n" + "\n\n".join(p_lines) + f"\n\nTotal open requisitions: **{positions_count}**.\n\n💡 *Tip: Go to `/positions` to create or publish job positions.*"
+            resp = f"### 💼 Open Positions & Requirements ({len(positions_list)} available)\n\n" + "\n\n".join(p_lines) + f"\n\nTotal open requisitions: **{positions_count}**.\n\n💡 *Tip: Go to `/positions` to create or publish job positions.*"
         else:
             resp = f"There are currently **{positions_count} open positions** in the system. You can create positions at `/positions`."
         return {
