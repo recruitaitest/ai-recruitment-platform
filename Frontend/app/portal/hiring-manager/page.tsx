@@ -194,6 +194,17 @@ function HiringManagerPortalContent() {
       ? currentUser.permissions.toLowerCase()
       : "";
 
+    const isOwnerOrAdmin =
+      currentUser?.role === "COMPANY_OWNER" ||
+      currentUser?.role === "ADMIN" ||
+      currentUser?.role === "SUPER_ADMIN" ||
+      userRoleStr.includes("owner") ||
+      userRoleStr.includes("admin");
+
+    if (isOwnerOrAdmin) {
+      return positions;
+    }
+
     const matching = positions.filter((p) => {
       const titleLower = String(p.title || "").toLowerCase();
       if (userRoleStr.includes(titleLower) || userPermsStr.includes(`position:${titleLower}`)) {
@@ -207,9 +218,17 @@ function HiringManagerPortalContent() {
 
   // Dynamic Position Heading computation
   const dynamicHeadingPosition = useMemo(() => {
+    const isOwnerOrAdmin =
+      currentUser?.role === "COMPANY_OWNER" ||
+      currentUser?.role === "ADMIN" ||
+      currentUser?.role === "SUPER_ADMIN";
+
     if (selectedPos !== "all") {
       const match = positions.find((p) => String(p.id) === String(selectedPos));
       if (match) return match.title;
+    }
+    if (isOwnerOrAdmin) {
+      return "All Company Positions";
     }
     if (assignedPositions.length === 1) {
       return assignedPositions[0].title;
@@ -217,11 +236,20 @@ function HiringManagerPortalContent() {
     if (assignedPositions.length > 1) {
       return assignedPositions[0].title;
     }
-    return "Full Stack Developer";
-  }, [selectedPos, positions, assignedPositions]);
+    return "All Openings";
+  }, [selectedPos, positions, assignedPositions, currentUser]);
 
   // Scoped Candidates: Candidates applied for assigned positions only
   const scopedCandidates = useMemo(() => {
+    const isOwnerOrAdmin =
+      currentUser?.role === "COMPANY_OWNER" ||
+      currentUser?.role === "ADMIN" ||
+      currentUser?.role === "SUPER_ADMIN";
+
+    if (isOwnerOrAdmin) {
+      return candidates;
+    }
+
     if (!assignedPositions || assignedPositions.length === 0) return candidates;
 
     const assignedTitles = new Set(assignedPositions.map((p) => (p.title || "").toLowerCase()));
@@ -282,6 +310,13 @@ function HiringManagerPortalContent() {
     const hmEmail = (currentUser.email || "").toLowerCase();
     const hmRole = (currentUser.role || "").toLowerCase();
 
+    const isOwnerOrAdmin =
+      currentUser?.role === "COMPANY_OWNER" ||
+      currentUser?.role === "ADMIN" ||
+      currentUser?.role === "SUPER_ADMIN" ||
+      hmRole.includes("owner") ||
+      hmRole.includes("admin");
+
     return interviews.filter((intv) => {
       const intvInterviewer = (intv.interviewer_name || "").toLowerCase();
       const intvPanelRole = (intv.panel_role || "").toLowerCase();
@@ -291,6 +326,10 @@ function HiringManagerPortalContent() {
       }
 
       if (intvPanelRole && (intvPanelRole === hmRole || hmRole.includes(intvPanelRole) || intvPanelRole.includes(hmRole))) {
+        return true;
+      }
+
+      if (isOwnerOrAdmin) {
         return true;
       }
 

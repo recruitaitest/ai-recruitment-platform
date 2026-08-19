@@ -304,6 +304,8 @@ class InterviewService:
             )
 
         db.refresh(new_interview)
+        new_interview.candidate_name = candidate_name
+        new_interview.position_title = position_title
         return new_interview
 
     @staticmethod

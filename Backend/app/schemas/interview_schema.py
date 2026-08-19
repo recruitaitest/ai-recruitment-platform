@@ -9,32 +9,26 @@ class InterviewCreate(BaseModel):
     interview_time: str
 
     interview_type: str
-
-    interview_mode: str      # Required
+    interview_mode: str = "Online"
 
     meeting_link: Optional[str] = None
     location: Optional[str] = None
     location_link: Optional[str] = None
 
-    status: str
-
-    feedback: str = ""
+    status: Optional[str] = "Scheduled"
+    feedback: Optional[str] = ""
     
-    overall_rating: int | None = None
-
-    technical_rating: int | None = None
-
-    communication_rating: int | None = None
-
-    problem_solving_rating: int | None = None
-
-    recommendation: str | None = None
+    overall_rating: Optional[int] = None
+    technical_rating: Optional[int] = None
+    communication_rating: Optional[int] = None
+    problem_solving_rating: Optional[int] = None
+    recommendation: Optional[str] = None
 
     panel_role: Optional[str] = None
     interviewer_name: Optional[str] = None
     notes: Optional[str] = None
 
-    completed_at: str | None = None
+    completed_at: Optional[str] = None
     
 class InterviewResponse(BaseModel):
     id: int
@@ -45,12 +39,11 @@ class InterviewResponse(BaseModel):
     candidate_name: Optional[str] = None
     position_title: Optional[str] = None
 
-    interview_date: str
-    interview_time: str
+    interview_date: Optional[str] = None
+    interview_time: Optional[str] = None
 
-    interview_type: str
-
-    interview_mode: str      # Required
+    interview_type: Optional[str] = None
+    interview_mode: Optional[str] = "Online"
 
     meeting_link: Optional[str] = None
     location: Optional[str] = None
@@ -60,24 +53,19 @@ class InterviewResponse(BaseModel):
     interviewer_name: Optional[str] = None
     notes: Optional[str] = None
 
-    status: str
+    status: Optional[str] = "Scheduled"
+    feedback: Optional[str] = ""
 
-    feedback: str
+    overall_rating: Optional[int] = None
+    technical_rating: Optional[int] = None
+    communication_rating: Optional[int] = None
+    problem_solving_rating: Optional[int] = None
+    recommendation: Optional[str] = None
+
+    completed_at: Optional[str] = None
 
     class Config:
         from_attributes = True
-        
-    overall_rating: int | None = None
-
-    technical_rating: int | None = None
-
-    communication_rating: int | None = None
-
-    problem_solving_rating: int | None = None
-
-    recommendation: str | None = None
-
-    completed_at: str | None = None
     
 class InterviewFeedback(BaseModel):
 

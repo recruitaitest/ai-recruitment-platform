@@ -175,6 +175,14 @@ function SidebarInner({
                 href: '/interviews',
             }]
             : []),
+        ...(hasPermission("interviews.view", false) || role === "COMPANY_OWNER" || role === "ADMIN"
+            ? [{
+                id: 'hiring-manager-portal',
+                label: 'Hiring Portal',
+                icon: <Building className="w-5 h-5 text-indigo-400" />,
+                href: '/portal/hiring-manager',
+            }]
+            : []),
         ...(hasPermission("offers.view", false)
             ? [{
                 id: "offers",
@@ -221,6 +229,12 @@ function SidebarInner({
             label: 'Dashboard',
             icon: <LayoutGrid className="w-5 h-5" />,
             href: '/admin/dashboard',
+        },
+        {
+            id: 'admin-hiring-manager-portal',
+            label: 'Hiring Portal',
+            icon: <Building className="w-5 h-5 text-indigo-400" />,
+            href: '/portal/hiring-manager',
         },
         {
             id: 'admin-automation',
