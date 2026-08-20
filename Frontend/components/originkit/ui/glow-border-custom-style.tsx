@@ -300,6 +300,6 @@ const __originkitPresetProps = {
     "hoverMultiplier": 5
 };
 
-export default function GlowBorder(props: Record<string, unknown>) {
-    return <__OriginkitBase_GlowBorder {...(__originkitPresetProps as Record<string, unknown>)} {...props} />;
+export default function GlowBorder(props: Partial<Props> & { children?: React.ReactNode; className?: string }) {
+    return <__OriginkitBase_GlowBorder {...(__originkitPresetProps as unknown as Props)} {...props} />;
 }
