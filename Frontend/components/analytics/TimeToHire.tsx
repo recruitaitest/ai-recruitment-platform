@@ -11,18 +11,24 @@ import {
 } from "recharts";
 
 import { useEffect, useState } from "react";
-import { getTimeToHire } from "@/services/analyticsService";
+import { AnalyticsFilterParams, getTimeToHire } from "@/services/analyticsService";
 
-export function TimeToHire() {
+interface TimeToHireProps {
+  filters?: AnalyticsFilterParams;
+}
+
+export function TimeToHire({ filters }: TimeToHireProps) {
  const [hiringTimeData, setHiringTimeData] = useState<any[]>([]);
  const [mounted, setMounted] = useState(false);
 
  useEffect(() => {
    setMounted(true);
-   getTimeToHire().then(data => {
-     setHiringTimeData(data || []);
-   }).catch(err => console.error(err));
- }, []);
+   getTimeToHire(filters)
+     .then(data => {
+       setHiringTimeData(data || []);
+     })
+     .catch(err => console.error(err));
+ }, [filters?.dateRange, filters?.recruiterId, filters?.roleId]);
 
  return (
  <div

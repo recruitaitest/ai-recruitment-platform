@@ -2,10 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import { TrendingDown, DollarSign } from "lucide-react";
-import api from "@/lib/api";
+import { AnalyticsFilterParams, getOfferDeclineAnalytics } from "@/services/analyticsService";
 
-export function OfferDeclineAnalytics() {
-  const [timeRange, setTimeRange] = useState("Q3 2026");
+interface OfferDeclineAnalyticsProps {
+  filters?: AnalyticsFilterParams;
+}
+
+export function OfferDeclineAnalytics({ filters }: OfferDeclineAnalyticsProps) {
   const [data, setData] = useState<{
     total_offers: number;
     accepted_offers: number;
@@ -16,12 +19,12 @@ export function OfferDeclineAnalytics() {
 
   useEffect(() => {
     fetchData();
-  }, [timeRange]);
+  }, [filters?.dateRange, filters?.recruiterId, filters?.roleId]);
 
   const fetchData = async () => {
     try {
-      const res = await api.get("/analytics/offer-decline");
-      setData(res.data);
+      const res = await getOfferDeclineAnalytics(filters);
+      setData(res);
     } catch {
       setData({
         total_offers: 0,

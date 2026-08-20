@@ -59,7 +59,7 @@ export default function AnalyticsPage() {
                     </AnalyticsMotion>
 
                     <AnalyticsMotion delay={0.2} key={`kpi-${refreshKey}-${dateRange}-${recruiterId}-${roleId}`}>
-                        <KPISection />
+                        <KPISection filters={{ dateRange, recruiterId, roleId }} />
                     </AnalyticsMotion>
 
                     {/* Section 5: Decision-Support Features Grid */}
@@ -71,28 +71,28 @@ export default function AnalyticsPage() {
 
                             {/* 5.1 & 5.2 Funnel & Time-to-Hire */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                <RecruitmentFunnel />
-                                <TimeToHire />
+                                <RecruitmentFunnel filters={{ dateRange, recruiterId, roleId }} />
+                                <TimeToHire filters={{ dateRange, recruiterId, roleId }} />
                             </div>
 
                             {/* 5.5 Predictive Success Engine */}
-                            <InterviewSuccessPredictor />
+                            <InterviewSuccessPredictor filters={{ dateRange, recruiterId, roleId }} />
 
                             {/* 5.3 & 5.7 Offer Decline & Rejection Analytics */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                <OfferDeclineAnalytics />
-                                <RejectionReasonAnalytics />
+                                <OfferDeclineAnalytics filters={{ dateRange, recruiterId, roleId }} />
+                                <RejectionReasonAnalytics filters={{ dateRange, recruiterId, roleId }} />
                             </div>
 
                             {/* 5.4 Bias Detection & 5.6 Candidate Quality Score */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 <AIBiasDetectionWidget />
-                                <CandidateQualityScore />
+                                <CandidateQualityScore filters={{ dateRange, recruiterId, roleId }} />
                             </div>
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                <HiringTrends />
-                                <SourceAnalytics />
+                                <HiringTrends filters={{ dateRange, recruiterId, roleId }} />
+                                <SourceAnalytics filters={{ dateRange, recruiterId, roleId }} />
                             </div>
                         </div>
                     </AnalyticsMotion>

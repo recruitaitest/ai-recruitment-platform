@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getPipelineStats } from "@/services/analyticsService";
+import { AnalyticsFilterParams, getPipelineStats } from "@/services/analyticsService";
 import { CalendarDays, BarChart3 } from "lucide-react";
 import Highcharts from "highcharts";
 import HighchartsReact from "highcharts-react-official";
@@ -21,18 +21,22 @@ interface RecruitmentItem {
  color: string;
 }
 
-export function RecruitmentFunnel() {
+interface RecruitmentFunnelProps {
+ filters?: AnalyticsFilterParams;
+}
+
+export function RecruitmentFunnel({ filters }: RecruitmentFunnelProps) {
  const [recruitmentData, setRecruitmentData] = useState<
  RecruitmentItem[]
  >([]);
 
  useEffect(() => {
  loadPipelineStats();
- }, []);
+ }, [filters?.dateRange, filters?.recruiterId, filters?.roleId]);
 
  const loadPipelineStats = async () => {
  try {
- const data = await getPipelineStats();
+ const data = await getPipelineStats(filters);
 
  const colors = [
  "#3B82F6",

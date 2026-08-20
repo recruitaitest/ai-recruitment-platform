@@ -2,9 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import { Award } from "lucide-react";
-import api from "@/lib/api";
+import { AnalyticsFilterParams, getCandidateQualityScore } from "@/services/analyticsService";
 
-export function CandidateQualityScore() {
+interface CandidateQualityScoreProps {
+  filters?: AnalyticsFilterParams;
+}
+
+export function CandidateQualityScore({ filters }: CandidateQualityScoreProps) {
   const [selectedQuarter, setSelectedQuarter] = useState("Q3 2026");
   const [channels, setChannels] = useState<
     Array<{ channel: string; score: number; trend: string; candidates: number; color: string; text: string }>
@@ -12,12 +16,12 @@ export function CandidateQualityScore() {
 
   useEffect(() => {
     fetchQualityScoreData();
-  }, [selectedQuarter]);
+  }, [selectedQuarter, filters?.dateRange, filters?.recruiterId, filters?.roleId]);
 
   const fetchQualityScoreData = async () => {
     try {
-      const res = await api.get("/analytics/quality-score");
-      setChannels(res.data.channels || []);
+      const res = await getCandidateQualityScore({ ...filters, dateRange: filters?.dateRange || selectedQuarter });
+      setChannels(res?.channels || []);
     } catch {
       setChannels([]);
     }

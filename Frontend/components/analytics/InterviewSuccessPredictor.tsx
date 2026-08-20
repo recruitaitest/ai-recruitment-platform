@@ -2,21 +2,25 @@
 
 import React, { useState, useEffect } from "react";
 import { Target, Sparkles, TrendingUp } from "lucide-react";
-import api from "@/lib/api";
+import { AnalyticsFilterParams, getInterviewPredictor } from "@/services/analyticsService";
 
-export function InterviewSuccessPredictor() {
+interface InterviewSuccessPredictorProps {
+  filters?: AnalyticsFilterParams;
+}
+
+export function InterviewSuccessPredictor({ filters }: InterviewSuccessPredictorProps) {
   const [insights, setInsights] = useState<
     Array<{ metric: string; probability: string; impact: string; color: string; desc: string }>
   >([]);
 
   useEffect(() => {
     fetchPredictorData();
-  }, []);
+  }, [filters?.dateRange, filters?.recruiterId, filters?.roleId]);
 
   const fetchPredictorData = async () => {
     try {
-      const res = await api.get("/analytics/interview-predictor");
-      setInsights(res.data.insights || []);
+      const res = await getInterviewPredictor(filters);
+      setInsights(res?.insights || []);
     } catch {
       setInsights([]);
     }

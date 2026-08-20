@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 import { useEffect, useState, useRef } from "react";
-import { getDashboardAnalytics } from "@/services/analyticsService";
+import { AnalyticsFilterParams, getDashboardAnalytics } from "@/services/analyticsService";
 import { motion, animate, useIsPresent } from "framer-motion";
 
 function CountUp({ value }: { value: string | number }) {
@@ -57,49 +57,52 @@ function CountUp({ value }: { value: string | number }) {
     return <span ref={nodeRef}>{value}</span>
 }
 
-export function KPISection() {
+interface KPISectionProps {
+    filters?: AnalyticsFilterParams;
+}
 
- const [kpiData, setKpiData] = useState<any[]>([]);
+export function KPISection({ filters }: KPISectionProps) {
 
- useEffect(() => {
- loadSummary();
- }, []);
+	const [kpiData, setKpiData] = useState<any[]>([]);
 
- const loadSummary = async () => {
- try {
- const data = await getDashboardAnalytics();
- console.log(data);
+	useEffect(() => {
+		loadSummary();
+	}, [filters?.dateRange, filters?.recruiterId, filters?.roleId]);
 
- setKpiData([
- {
- title: "Total Candidates",
- value: data.total_candidates,
- growth: "",
- icon: "users",
- },
- {
- title: "Active Jobs",
- value: data.total_positions,
- growth: "",
- icon: "briefcase",
- },
- {
- title: "Interviews",
- value: data.total_interviews,
- growth: "",
- icon: "calendar",
- },
- {
- title: "Successful Hires",
- value: data.total_hired,
- growth: "",
- icon: "hires",
- },
- ]);
- } catch (error) {
- console.error("Analytics Summary Error:", error);
- }
- };
+	const loadSummary = async () => {
+		try {
+			const data = await getDashboardAnalytics(filters);
+
+			setKpiData([
+				{
+					title: "Total Candidates",
+					value: data.total_candidates,
+					growth: "",
+					icon: "users",
+				},
+				{
+					title: "Active Jobs",
+					value: data.total_positions,
+					growth: "",
+					icon: "briefcase",
+				},
+				{
+					title: "Interviews",
+					value: data.total_interviews,
+					growth: "",
+					icon: "calendar",
+				},
+				{
+					title: "Successful Hires",
+					value: data.total_hired,
+					growth: "",
+					icon: "hires",
+				},
+			]);
+		} catch (error) {
+			console.error("Analytics Summary Error:", error);
+		}
+	};
 
  const renderIcon = (icon: string) => {
 

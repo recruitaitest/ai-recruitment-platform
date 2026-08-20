@@ -102,14 +102,20 @@ const chartOptions = {
     ],
 };
 
-export function HiringTrends() {
+import { AnalyticsFilterParams, getHiringTrends } from "@/services/analyticsService";
+
+interface HiringTrendsProps {
+    filters?: AnalyticsFilterParams;
+}
+
+export function HiringTrends({ filters }: HiringTrendsProps) {
     const [hiringData, setHiringData] = useState<any[]>([]);
 
     useEffect(() => {
-        getHiringTrends().then(data => {
-            setHiringData(data);
+        getHiringTrends(filters).then(data => {
+            setHiringData(data || []);
         }).catch(err => console.error(err));
-    }, []);
+    }, [filters?.dateRange, filters?.recruiterId, filters?.roleId]);
 
     const dynamicChartOptions = {
         ...chartOptions,

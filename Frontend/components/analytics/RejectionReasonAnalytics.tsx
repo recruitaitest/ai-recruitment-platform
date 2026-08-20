@@ -2,9 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import { XCircle } from "lucide-react";
-import api from "@/lib/api";
+import { AnalyticsFilterParams, getRejectionReasons } from "@/services/analyticsService";
 
-export function RejectionReasonAnalytics() {
+interface RejectionReasonAnalyticsProps {
+  filters?: AnalyticsFilterParams;
+}
+
+export function RejectionReasonAnalytics({ filters }: RejectionReasonAnalyticsProps) {
   const [selectedStage, setSelectedStage] = useState("All Stages");
   const [rejections, setRejections] = useState<
     Array<{ reason: string; percentage: number; count: number; stage: string; color: string; text: string }>
@@ -12,12 +16,12 @@ export function RejectionReasonAnalytics() {
 
   useEffect(() => {
     fetchRejections();
-  }, []);
+  }, [filters?.dateRange, filters?.recruiterId, filters?.roleId]);
 
   const fetchRejections = async () => {
     try {
-      const res = await api.get("/analytics/rejection-reasons");
-      setRejections(res.data || []);
+      const data = await getRejectionReasons(filters);
+      setRejections(data || []);
     } catch {
       setRejections([]);
     }

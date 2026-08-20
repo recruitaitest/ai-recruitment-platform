@@ -7,21 +7,24 @@ import {
  ResponsiveContainer,
 } from "recharts";
 import { useEffect, useState } from "react";
-import { getTopSkills } from "@/services/analyticsService";
+import { AnalyticsFilterParams, getTopSkills } from "@/services/analyticsService";
 
+interface SourceAnalyticsProps {
+  filters?: AnalyticsFilterParams;
+}
 
-export function SourceAnalytics() {
+export function SourceAnalytics({ filters }: SourceAnalyticsProps) {
  const [sourceData, setSourceData] = useState<any[]>([]);
  const [mounted, setMounted] = useState(false);
 
  useEffect(() => {
    setMounted(true);
    loadTopSkills();
- }, []);
+ }, [filters?.dateRange, filters?.recruiterId, filters?.roleId]);
 
  const loadTopSkills = async () => {
  try {
- const data = await getTopSkills();
+ const data = await getTopSkills(filters);
 
   const colors = [
   "var(--primary)",
