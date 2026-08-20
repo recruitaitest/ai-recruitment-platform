@@ -710,6 +710,43 @@ class AnalyticsService:
 
     @staticmethod
     def bias_detection_scan(text: str):
+        from app.services.llm_factory import get_chat_model
+        from app.schemas.ai_schemas import BiasDetectionResponse
+
+        # 1. Try active AI model for deep semantic DEI bias detection
+        try:
+            llm = get_chat_model(temperature=0.1, json_mode=True)
+            if llm:
+                structured_llm = llm.with_structured_output(BiasDetectionResponse)
+                prompt = f"""
+You are an expert Diversity, Equity & Inclusion (DEI) and Talent Acquisition compliance AI.
+Analyze the following interviewer feedback note for conscious or unconscious bias (e.g. gender bias, ageism, cultural assumptions, subjective personality traits like 'aggressive' or 'emotional', or vague exclusionary metrics like 'culture fit').
+
+INTERVIEWER NOTE:
+"{text}"
+
+Identify any biased phrases or exclusionary words.
+For each issue, classify its type (e.g., "Gender Bias", "Age Bias", "Subjective Trait Bias", "Vague Exclusionary Metric") and provide a concrete, objective rephrasing recommendation.
+Determine severity: "Clean" (no bias detected), "Medium" (1-2 subjective phrases), or "High" (3+ or severe discriminatory phrases).
+"""
+                result = structured_llm.invoke(prompt)
+                if result:
+                    flagged_list = []
+                    for item in result.flagged:
+                        flagged_list.append({
+                            "word": item.word,
+                            "type": item.type,
+                            "recommendation": item.recommendation
+                        })
+                    return {
+                        "flagged": flagged_list,
+                        "count": len(flagged_list),
+                        "severity": result.severity or ("Medium" if len(flagged_list) > 0 else "Clean")
+                    }
+        except Exception as e:
+            logger.error(f"Error in LLM AI Bias Detection: {e}")
+
+        # 2. Heuristic Rule-Based Fallback
         flagged = []
         lower_text = text.lower()
         

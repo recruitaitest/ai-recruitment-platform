@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { ShieldAlert, AlertCircle, Sparkles, RefreshCw, CheckCircle2, User } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { ShieldAlert, AlertCircle, Sparkles, RefreshCw, CheckCircle2, User, HelpCircle } from "lucide-react";
 import api from "@/lib/api";
 
 export function AIBiasDetectionWidget() {
@@ -13,6 +13,7 @@ export function AIBiasDetectionWidget() {
   >([]);
   const [severity, setSeverity] = useState("Clean");
   const [loading, setLoading] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     fetchRealCandidates();
@@ -24,11 +25,11 @@ export function AIBiasDetectionWidget() {
       const list = res.data || [];
       setCandidates(list);
       if (list.length > 0) {
-        const firstWithNote = list.find((c: any) => c.notes && c.notes.trim().length > 0) || list[0];
-        setSelectedCandidateId(String(firstWithNote.id));
-        const initialText = firstWithNote.notes || `${firstWithNote.name} demonstrated solid technical skills in round 1.`;
-        setSampleNote(initialText);
-        handleScanNote(initialText);
+        handleSelectCandidate(String(list[0].id), list);
+      } else {
+        const defaultText = "Candidate demonstrated solid analytical problem solving and concise system architecture during the interview.";
+        setSampleNote(defaultText);
+        handleScanNote(defaultText);
       }
     } catch {
       const defaultText = "Candidate demonstrates clear domain skills with no subjective bias.";
@@ -37,11 +38,32 @@ export function AIBiasDetectionWidget() {
     }
   };
 
-  const handleSelectCandidate = (candidateIdStr: string) => {
+  const handleSelectCandidate = async (candidateIdStr: string, candidateList = candidates) => {
     setSelectedCandidateId(candidateIdStr);
-    const candidate = candidates.find((c) => String(c.id) === candidateIdStr);
-    if (candidate) {
-      const noteText = candidate.notes || `${candidate.name} feedback: Solid performance during technical architecture session.`;
+    try {
+      const [notesRes, intRes] = await Promise.allSettled([
+        api.get(`/candidates/${candidateIdStr}/notes`),
+        api.get(`/interviews?candidate_id=${candidateIdStr}`)
+      ]);
+      
+      let foundFeedback = "";
+      if (notesRes.status === "fulfilled" && notesRes.value.data && Array.isArray(notesRes.value.data) && notesRes.value.data.length > 0) {
+        foundFeedback = notesRes.value.data[0].note || notesRes.value.data[0].content || "";
+      }
+      if (!foundFeedback && intRes.status === "fulfilled" && intRes.value.data && Array.isArray(intRes.value.data) && intRes.value.data.length > 0) {
+        const interviewWithFeedback = intRes.value.data.find((i: any) => i.feedback && i.feedback.trim().length > 0);
+        if (interviewWithFeedback) {
+          foundFeedback = interviewWithFeedback.feedback;
+        }
+      }
+      
+      const candidate = candidateList.find((c) => String(c.id) === candidateIdStr);
+      const noteText = foundFeedback || (candidate ? `${candidate.name} demonstrated solid domain competencies and articulate technical depth.` : "Solid technical interview performance.");
+      setSampleNote(noteText);
+      handleScanNote(noteText);
+    } catch {
+      const candidate = candidateList.find((c) => String(c.id) === candidateIdStr);
+      const noteText = candidate ? `${candidate.name} demonstrated solid technical skills in round 1.` : "Candidate demonstrates clear domain skills.";
       setSampleNote(noteText);
       handleScanNote(noteText);
     }
@@ -56,8 +78,8 @@ export function AIBiasDetectionWidget() {
     setLoading(true);
     try {
       const res = await api.post("/analytics/bias-detection", { note: text });
-      setFlaggedIssues(res.data.flagged || []);
-      setSeverity(res.data.severity || "Clean");
+      setFlaggedIssues(res.data?.flagged || []);
+      setSeverity(res.data?.severity || "Clean");
     } catch {
       const lower = text.toLowerCase();
       const issues = [];
@@ -77,6 +99,11 @@ export function AIBiasDetectionWidget() {
     }
   };
 
+  const setTestScenario = (text: string) => {
+    setSampleNote(text);
+    handleScanNote(text);
+  };
+
   return (
     <div className="rounded-[24px] border border-border bg-surface p-6 shadow-xl space-y-5">
       {/* Header */}
@@ -90,7 +117,7 @@ export function AIBiasDetectionWidget() {
               AI Bias Detection in Feedback
             </h2>
             <p className="text-xs text-muted mt-0.5">
-              Scans interviewer feedback notes for gender, age, or subjective bias to ensure objective evaluations
+              Scans interviewer feedback notes for gender, age, tone, or subjective bias to ensure objective evaluations
             </p>
           </div>
         </div>
@@ -101,22 +128,45 @@ export function AIBiasDetectionWidget() {
 
       {/* Select Candidate Note from Database */}
       {candidates.length > 0 && (
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex items-center gap-2 text-xs flex-wrap">
           <User className="w-4 h-4 text-purple-400" />
-          <span className="font-semibold text-text-primary">Select Candidate Note from DB:</span>
+          <span className="font-semibold text-text-primary">Load Feedback from Candidate:</span>
           <select
             value={selectedCandidateId}
             onChange={(e) => handleSelectCandidate(e.target.value)}
-            className="px-3 py-1.5 bg-secondary-surface border border-border rounded-xl text-xs font-semibold text-text-primary outline-none"
+            className="px-3 py-1.5 bg-secondary-surface border border-border rounded-xl text-xs font-semibold text-text-primary outline-none cursor-pointer"
           >
             {candidates.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name} ({c.notes ? "Has Notes" : "Standard Profile"})
+                {c.name}
               </option>
             ))}
           </select>
         </div>
       )}
+
+      {/* Quick Test Scenarios */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className="text-[11px] font-medium text-muted mr-1">Quick Bias Test Examples:</span>
+        <button
+          onClick={() => setTestScenario("Candidate seems overqualified for her age and might be emotional under high delivery pressure.")}
+          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all"
+        >
+          Gender & Age Bias Example
+        </button>
+        <button
+          onClick={() => setTestScenario("Candidate communicates well but might not be a strong culture fit for our energetic young team.")}
+          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition-all"
+        >
+          Culture Fit & Exclusionary Bias
+        </button>
+        <button
+          onClick={() => setTestScenario("Candidate demonstrated clear architectural grasp of distributed microservices, clean code structure, and concise communication.")}
+          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-all"
+        >
+          Clean Objective Feedback
+        </button>
+      </div>
 
       {/* Note Scanner Box */}
       <div className="space-y-2">
@@ -125,17 +175,20 @@ export function AIBiasDetectionWidget() {
           <button
             onClick={() => handleScanNote(sampleNote)}
             disabled={loading}
-            className="text-[11px] text-blue-400 hover:underline flex items-center gap-1 font-semibold disabled:opacity-50"
+            className="text-[11px] text-purple-400 hover:underline flex items-center gap-1 font-semibold disabled:opacity-50"
           >
             <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
-            {loading ? "Scanning..." : "Rescan Note"}
+            {loading ? "Scanning with AI..." : "Scan with AI"}
           </button>
         </label>
         <textarea
           value={sampleNote}
           onChange={(e) => {
             setSampleNote(e.target.value);
-            handleScanNote(e.target.value);
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+            debounceRef.current = setTimeout(() => {
+              handleScanNote(e.target.value);
+            }, 500);
           }}
           rows={3}
           placeholder="Type or paste interviewer feedback notes here to scan for biased language..."

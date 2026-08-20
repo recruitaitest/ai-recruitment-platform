@@ -227,3 +227,14 @@ class RejectCandidateRequest(BaseModel):
     email_body: Optional[str] = None
     send_email: bool = False
 
+# 1.16 AI Bias Detection in Feedback
+class FlaggedBiasIssue(BaseModel):
+    word: str
+    type: str
+    recommendation: str
+
+class BiasDetectionResponse(BaseModel):
+    severity: str
+    flagged: List[FlaggedBiasIssue] = []
+    count: int = 0
+
