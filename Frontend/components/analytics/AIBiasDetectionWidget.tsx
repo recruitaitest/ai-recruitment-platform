@@ -1,78 +1,126 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { ShieldAlert, AlertCircle, Sparkles, RefreshCw, CheckCircle2, User } from "lucide-react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { ShieldAlert, AlertCircle, Sparkles, RefreshCw, CheckCircle2, User, Star, Briefcase, Calendar } from "lucide-react";
 import api from "@/lib/api";
 
+interface InterviewRecord {
+  id: number;
+  candidate_id: number;
+  candidate_name?: string;
+  position_id?: number;
+  position_title?: string;
+  interview_type?: string;
+  interview_date?: string;
+  interview_time?: string;
+  status?: string;
+  feedback?: string;
+  overall_rating?: number;
+  technical_rating?: number;
+  communication_rating?: number;
+  recommendation?: string;
+  interviewer_name?: string;
+  panel_role?: string;
+}
+
 export function AIBiasDetectionWidget() {
-  const [candidates, setCandidates] = useState<Array<{ id: number; full_name?: string; name?: string; notes?: string }>>([]);
-  const [selectedCandidateId, setSelectedCandidateId] = useState<string>("");
-  const [sampleNote, setSampleNote] = useState("");
+  const [interviews, setInterviews] = useState<InterviewRecord[]>([]);
+  const [selectedType, setSelectedType] = useState<string>("All Types");
+  const [selectedInterviewId, setSelectedInterviewId] = useState<string>("");
+  const [feedbackNote, setFeedbackNote] = useState<string>("");
   const [flaggedIssues, setFlaggedIssues] = useState<
     Array<{ word: string; type: string; recommendation: string }>
   >([]);
-  const [severity, setSeverity] = useState("Clean");
-  const [loading, setLoading] = useState(false);
+  const [severity, setSeverity] = useState<string>("Clean");
+  const [loading, setLoading] = useState<boolean>(false);
+  const [fetchingInterviews, setFetchingInterviews] = useState<boolean>(true);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    fetchRealCandidates();
+    fetchCompletedInterviews();
   }, []);
 
-  const fetchRealCandidates = async () => {
+  const fetchCompletedInterviews = async () => {
     try {
-      const res = await api.get("/candidates");
-      const list = res.data || [];
-      setCandidates(list);
-      if (list.length > 0) {
-        handleSelectCandidate(String(list[0].id), list);
+      setFetchingInterviews(true);
+      const res = await api.get("/interviews");
+      const list: InterviewRecord[] = res.data || [];
+      
+      // Filter interviews that are completed or have feedback
+      const completedList = list.filter(
+        (i) => i.status?.toLowerCase() === "completed" || (i.feedback && i.feedback.trim().length > 0)
+      );
+
+      // If no completed interviews with feedback, include all interviews as fallback
+      const validList = completedList.length > 0 ? completedList : list;
+      setInterviews(validList);
+
+      if (validList.length > 0) {
+        const first = validList[0];
+        setSelectedInterviewId(String(first.id));
+        const initialText = first.feedback || `${first.candidate_name || "Candidate"} demonstrated solid problem solving and technical competencies during the session.`;
+        setFeedbackNote(initialText);
+        handleScanNote(initialText);
       } else {
         const defaultText = "Candidate demonstrated solid analytical problem solving and concise system architecture during the interview.";
-        setSampleNote(defaultText);
+        setFeedbackNote(defaultText);
         handleScanNote(defaultText);
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to fetch interviews for bias detection", err);
       const defaultText = "Candidate demonstrates clear domain skills with no subjective bias.";
-      setSampleNote(defaultText);
+      setFeedbackNote(defaultText);
       handleScanNote(defaultText);
+    } finally {
+      setFetchingInterviews(false);
     }
   };
 
-  const handleSelectCandidate = async (candidateIdStr: string, candidateList = candidates) => {
-    setSelectedCandidateId(candidateIdStr);
-    try {
-      const [notesRes, intRes] = await Promise.allSettled([
-        api.get(`/candidates/${candidateIdStr}/notes`),
-        api.get(`/interviews?candidate_id=${candidateIdStr}`)
-      ]);
-      
-      let foundFeedback = "";
-      if (notesRes.status === "fulfilled" && notesRes.value.data && Array.isArray(notesRes.value.data) && notesRes.value.data.length > 0) {
-        foundFeedback = notesRes.value.data[0].note || notesRes.value.data[0].content || "";
-      }
-      if (!foundFeedback && intRes.status === "fulfilled" && intRes.value.data && Array.isArray(intRes.value.data) && intRes.value.data.length > 0) {
-        const interviewWithFeedback = intRes.value.data.find((i: any) => i.feedback && i.feedback.trim().length > 0);
-        if (interviewWithFeedback) {
-          foundFeedback = interviewWithFeedback.feedback;
-        }
-      }
-      
-      const candidate = candidateList.find((c) => String(c.id) === candidateIdStr);
-      const candName = candidate?.full_name || candidate?.name || `Candidate #${candidateIdStr}`;
-      const noteText = foundFeedback || `${candName} demonstrated solid domain competencies and articulate technical depth during interview rounds.`;
-      setSampleNote(noteText);
-      handleScanNote(noteText);
-    } catch {
-      const candidate = candidateList.find((c) => String(c.id) === candidateIdStr);
-      const candName = candidate?.full_name || candidate?.name || `Candidate #${candidateIdStr}`;
-      const noteText = `${candName} demonstrated solid technical skills in round 1.`;
-      setSampleNote(noteText);
-      handleScanNote(noteText);
+  // Extract unique interview types
+  const interviewTypes = useMemo(() => {
+    const types = new Set<string>();
+    interviews.forEach((i) => {
+      if (i.interview_type) types.add(i.interview_type);
+    });
+    return ["All Types", ...Array.from(types)];
+  }, [interviews]);
+
+  // Filter interviews based on selected interview type
+  const filteredInterviews = useMemo(() => {
+    if (selectedType === "All Types") return interviews;
+    return interviews.filter((i) => i.interview_type === selectedType);
+  }, [interviews, selectedType]);
+
+  // When interview type changes, auto-select first matching interview
+  const handleTypeChange = (type: string) => {
+    setSelectedType(type);
+    const matching = type === "All Types" ? interviews : interviews.filter((i) => i.interview_type === type);
+    if (matching.length > 0) {
+      handleSelectInterview(String(matching[0].id), matching);
+    } else {
+      setSelectedInterviewId("");
+      setFeedbackNote("");
+      setFlaggedIssues([]);
+      setSeverity("Clean");
     }
   };
+
+  const handleSelectInterview = (interviewIdStr: string, list = filteredInterviews) => {
+    setSelectedInterviewId(interviewIdStr);
+    const interview = list.find((i) => String(i.id) === interviewIdStr);
+    if (interview) {
+      const text = interview.feedback || `${interview.candidate_name || "Candidate"} cleared the ${interview.interview_type || "interview"} round with solid domain knowledge.`;
+      setFeedbackNote(text);
+      handleScanNote(text);
+    }
+  };
+
+  const selectedInterview = useMemo(() => {
+    return interviews.find((i) => String(i.id) === selectedInterviewId);
+  }, [interviews, selectedInterviewId]);
 
   const handleScanNote = async (text: string) => {
-    if (!text.trim()) {
+    if (!text || !text.trim()) {
       setFlaggedIssues([]);
       setSeverity("Clean");
       return;
@@ -102,7 +150,7 @@ export function AIBiasDetectionWidget() {
   };
 
   const setTestScenario = (text: string) => {
-    setSampleNote(text);
+    setFeedbackNote(text);
     handleScanNote(text);
   };
 
@@ -128,42 +176,106 @@ export function AIBiasDetectionWidget() {
         </span>
       </div>
 
-      {/* Select Candidate Note from Database */}
-      {candidates.length > 0 && (
-        <div className="flex items-center gap-2 text-xs flex-wrap">
-          <User className="w-4 h-4 text-purple-400 shrink-0" />
-          <span className="font-semibold text-text-primary shrink-0">Load Feedback from Candidate:</span>
+      {/* Two Select Dropdowns: Interview Type & Completed Candidate */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Dropdown 1: Interview Type */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
+            <Briefcase className="w-3.5 h-3.5 text-purple-400" />
+            1. Interview Round Type:
+          </label>
           <select
-            value={selectedCandidateId}
-            onChange={(e) => handleSelectCandidate(e.target.value)}
-            className="px-3 py-1.5 min-w-[220px] max-w-[340px] bg-secondary-surface border border-border rounded-xl text-xs font-semibold text-text-primary outline-none cursor-pointer focus:border-purple-500/50"
+            value={selectedType}
+            onChange={(e) => handleTypeChange(e.target.value)}
+            className="w-full px-3 py-2 bg-secondary-surface border border-border rounded-xl text-xs font-semibold text-text-primary outline-none cursor-pointer focus:border-purple-500/50"
           >
-            {candidates.map((c) => {
-              const name = c.full_name || c.name || `Candidate #${c.id}`;
-              return (
-                <option key={c.id} value={c.id} className="bg-surface text-text-primary py-1">
-                  {name}
-                </option>
-              );
-            })}
+            {interviewTypes.map((t) => (
+              <option key={t} value={t} className="bg-surface text-text-primary py-1">
+                {t}
+              </option>
+            ))}
           </select>
+        </div>
+
+        {/* Dropdown 2: Completed Candidate */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
+            <User className="w-3.5 h-3.5 text-purple-400" />
+            2. Completed Candidate:
+          </label>
+          <select
+            value={selectedInterviewId}
+            onChange={(e) => handleSelectInterview(e.target.value)}
+            disabled={filteredInterviews.length === 0}
+            className="w-full px-3 py-2 bg-secondary-surface border border-border rounded-xl text-xs font-semibold text-text-primary outline-none cursor-pointer focus:border-purple-500/50 disabled:opacity-50"
+          >
+            {filteredInterviews.length > 0 ? (
+              filteredInterviews.map((i) => {
+                const name = i.candidate_name || `Candidate #${i.candidate_id}`;
+                const date = i.interview_date ? ` (${i.interview_date})` : "";
+                return (
+                  <option key={i.id} value={i.id} className="bg-surface text-text-primary py-1">
+                    {name}{date}
+                  </option>
+                );
+              })
+            ) : (
+              <option value="">No completed candidates in this round</option>
+            )}
+          </select>
+        </div>
+      </div>
+
+      {/* Selected Interview Details Metadata Card */}
+      {selectedInterview && (
+        <div className="p-3.5 rounded-xl bg-secondary-surface/40 border border-border flex items-center justify-between flex-wrap gap-2 text-xs">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="font-bold text-text-primary">
+              Candidate: <span className="text-purple-400 font-semibold">{selectedInterview.candidate_name || `Candidate #${selectedInterview.candidate_id}`}</span>
+            </span>
+            <span className="text-muted">|</span>
+            <span className="text-muted">
+              Interviewer: <strong className="text-text-primary font-semibold">{selectedInterview.interviewer_name || selectedInterview.panel_role || "Hiring Panel"}</strong>
+            </span>
+            {selectedInterview.interview_date && (
+              <>
+                <span className="text-muted">|</span>
+                <span className="text-muted flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-purple-400" /> {selectedInterview.interview_date}
+                </span>
+              </>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {selectedInterview.overall_rating && (
+              <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[11px] font-bold flex items-center gap-1">
+                <Star className="w-3 h-3 fill-amber-400" /> {selectedInterview.overall_rating}/5
+              </span>
+            )}
+            {selectedInterview.recommendation && (
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold">
+                {selectedInterview.recommendation}
+              </span>
+            )}
+          </div>
         </div>
       )}
 
       {/* Quick Test Scenarios */}
       <div className="flex items-center gap-1.5 flex-wrap">
-        <span className="text-[11px] font-medium text-muted mr-1">Quick Bias Test Examples:</span>
+        <span className="text-[11px] font-medium text-muted mr-1">DEI Test Scenarios:</span>
         <button
           onClick={() => setTestScenario("Candidate seems overqualified for her age and might be emotional under high delivery pressure.")}
           className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all"
         >
-          Gender & Age Bias Example
+          Gender & Age Bias Test
         </button>
         <button
           onClick={() => setTestScenario("Candidate communicates well but might not be a strong culture fit for our energetic young team.")}
           className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition-all"
         >
-          Culture Fit & Exclusionary Bias
+          Culture Fit Exclusion Test
         </button>
         <button
           onClick={() => setTestScenario("Candidate demonstrated clear architectural grasp of distributed microservices, clean code structure, and concise communication.")}
@@ -173,30 +285,30 @@ export function AIBiasDetectionWidget() {
         </button>
       </div>
 
-      {/* Note Scanner Box */}
+      {/* Note Scanner Box (Shows Interviewer's Feedback) */}
       <div className="space-y-2">
         <label className="block text-xs font-bold text-text-primary flex items-center justify-between">
-          <span>Interviewer Feedback Note Scanner</span>
+          <span>Interviewer Feedback Submitted:</span>
           <button
-            onClick={() => handleScanNote(sampleNote)}
+            onClick={() => handleScanNote(feedbackNote)}
             disabled={loading}
             className="text-[11px] text-purple-400 hover:underline flex items-center gap-1 font-semibold disabled:opacity-50"
           >
             <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
-            {loading ? "Scanning with AI..." : "Scan with AI"}
+            {loading ? "Scanning with AI..." : "Rescan with AI"}
           </button>
         </label>
         <textarea
-          value={sampleNote}
+          value={feedbackNote}
           onChange={(e) => {
-            setSampleNote(e.target.value);
+            setFeedbackNote(e.target.value);
             if (debounceRef.current) clearTimeout(debounceRef.current);
             debounceRef.current = setTimeout(() => {
               handleScanNote(e.target.value);
             }, 500);
           }}
           rows={3}
-          placeholder="Type or paste interviewer feedback notes here to scan for biased language..."
+          placeholder="Interviewer feedback note will appear here..."
           className="w-full p-3 bg-secondary-surface/40 border border-border rounded-xl text-xs text-text-primary outline-none focus:ring-1 focus:ring-purple-500/40 resize-none font-mono"
         />
       </div>
@@ -233,7 +345,7 @@ export function AIBiasDetectionWidget() {
       ) : (
         <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2 text-xs text-emerald-400 font-bold">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
-          <span>No biased keywords detected! Feedback note uses objective competency language.</span>
+          <span>No biased language detected! Feedback uses objective, competency-focused evaluation metrics.</span>
         </div>
       )}
     </div>
