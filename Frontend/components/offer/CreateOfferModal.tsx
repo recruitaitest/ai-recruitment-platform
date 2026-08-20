@@ -28,7 +28,7 @@ export default function CreateOfferModal({
   pipelineId,
   onOfferCreated,
 }: Props) {
-  const [salaryAmount, setSalaryAmount] = useState<string>("");
+  const [salaryAmount, setSalaryAmount] = useState<string>("12");
   const [currency, setCurrency] = useState<string>("₹");
   const [unit, setUnit] = useState<string>("LPA");
   const [customSalaryText, setCustomSalaryText] = useState<string>("");
@@ -71,7 +71,7 @@ export default function CreateOfferModal({
   }, [salaryAmount, currency, unit, isCustomSalary, customSalaryText]);
 
   const resetForm = () => {
-    setSalaryAmount("");
+    setSalaryAmount("12");
     setCurrency("₹");
     setUnit("LPA");
     setCustomSalaryText("");

@@ -50,7 +50,7 @@ export default function AIOfferRiskGauge({
       setLoading(true);
       const res = await predictAIOfferRisk({
         offered_ctc: ctcToUse,
-        expected_ctc: expectedCtc || ctcToUse,
+        expected_ctc: expectedCtc || 0,
         notice_period_days: noticePeriodDays,
         candidate_id: candidateId,
         candidate_name: candidateName,
@@ -77,12 +77,12 @@ export default function AIOfferRiskGauge({
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
         handlePredict(offeredCtc);
-      }, 750);
+      }, 350);
     }
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [offeredCtc, candidateId, positionId, autoAnalyze]);
+  }, [offeredCtc, candidateId, positionId, employmentType, autoAnalyze]);
 
   const getRiskColor = (level: string) => {
     switch (level?.toLowerCase()) {
