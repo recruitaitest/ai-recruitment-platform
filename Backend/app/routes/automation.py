@@ -128,6 +128,7 @@ def post_generate_offer_letter(payload: OfferLetterGenerateRequest, db: Session 
         offered_ctc=payload.offered_ctc,
         joining_date=payload.joining_date,
         location=payload.location or "Office / Hybrid",
+        candidate_name=payload.candidate_name,
         db=db
     )
 

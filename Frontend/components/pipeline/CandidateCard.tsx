@@ -17,6 +17,8 @@ interface CandidateCardProps {
     priority: "High" | "Medium" | "Low";
     avatar?: string;
     offerStatus?: "not_generated" | "generated" | "sent" | "accepted" | "declined";
+    offerId?: number;
+    interviewStatus?: "not_scheduled" | "scheduled" | "completed" | "cancelled";
     isHrInterviewPending?: boolean;
   };
   selected?: boolean;
@@ -184,6 +186,9 @@ export default function CandidateCard({
           candidateId={String(candidate.candidate_id || candidate.id)}
           pipelineId={Number(candidate.id) || undefined}
           candidateName={candidate.name}
+          offerStatus={candidate.offerStatus}
+          offerId={candidate.offerId}
+          interviewStatus={candidate.interviewStatus}
           isHrInterviewPending={isPendingHr}
           onMoveToStage={onMoveToStage}
           onViewProfile={onViewProfile}

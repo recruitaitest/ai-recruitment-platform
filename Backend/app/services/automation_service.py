@@ -305,45 +305,44 @@ def sweep_auto_advance_all_candidates(db: Session) -> int:
         return 0
 
 # ─── 3. Offer Letter Generator (Feature 2.8) ───────────────────────────────────
-def generate_offer_letter(candidate_id: int, position_title: str, offered_ctc: float, joining_date: str, location: str, db: Session) -> Dict[str, Any]:
+def generate_offer_letter(candidate_id: int, position_title: str, offered_ctc: float, joining_date: str, location: str, db: Session, candidate_name: Optional[str] = None) -> Dict[str, Any]:
     """
     Auto-populates offer letter template with candidate details and salary band.
     """
     candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
-    cand_name = candidate.full_name if candidate else "Valued Candidate"
+    cand_name = candidate_name or (candidate.full_name if candidate else "Valued Candidate")
+    cand_email = candidate.email if candidate else "candidate@email.com"
     
     ctc_formatted = f"₹{offered_ctc:,.2f}" if offered_ctc > 1000 else f"₹{offered_ctc} LPA"
 
-    offer_md = f"""# OFFICIAL LETTER OF OFFER
+    offer_text = f"""OFFICIAL LETTER OF OFFER
 
-**Date:** {datetime.now().strftime('%B %d, %Y')}
+Date: {datetime.now().strftime('%B %d, %Y')}
 
-**To:** {cand_name}  
-**Email:** {candidate.email if candidate else 'candidate@email.com'}  
+To: {cand_name}
+Email: {cand_email}
 
----
+Dear {cand_name},
 
-Dear **{cand_name}**,
+We are thrilled to offer you the position of {position_title} at our organization. Based on your impressive background and technical expertise demonstrated during the interview process, we believe you will be a fantastic addition to our team.
 
-We are thrilled to offer you the position of **{position_title}** at our company. Based on your impressive background and technical expertise demonstrated during the selection process, we believe you will be a fantastic addition to our team.
+Position & Compensation Details:
+• Title / Role: {position_title}
+• Total Fixed Compensation (CTC): {ctc_formatted}
+• Joining Date: {joining_date}
+• Work Location: {location}
 
-### Position & Compensation Details:
-- **Title / Role:** {position_title}
-- **Total Fixed Compensation (CTC):** {ctc_formatted}
-- **Start / Joining Date:** {joining_date}
-- **Work Location:** {location}
+Terms of Employment:
+1. Standard 3-month probation period applies from your date of joining.
+2. Confidentiality: Subject to company NDA and IP assignment agreements upon joining.
 
-### Terms of Employment:
-1. **Probation:** Standard 3-month probation period starting from your official start date.
-2. **Confidentiality:** Subject to company NDA and IP assignment agreements upon joining.
-
-Please confirm your acceptance of this offer by signing and returning a copy of this letter by **{(datetime.now() + timedelta(days=5)).strftime('%B %d, %Y')}**.
+Please confirm your acceptance of this offer by signing and returning a copy of this letter by {(datetime.now() + timedelta(days=5)).strftime('%B %d, %Y')}.
 
 We are excited about the prospect of working together!
 
-Sincerely,  
-**Talent Acquisition & HR Director**  
-*AI Recruitment Management Platform*
+Sincerely,
+Talent Acquisition & HR Team
+RecruitAI Intelligence Platform
 """
     return {
         "candidate_id": candidate_id,
@@ -351,7 +350,7 @@ Sincerely,
         "position_title": position_title,
         "offered_ctc": offered_ctc,
         "joining_date": joining_date,
-        "offer_letter_markdown": offer_md
+        "offer_letter_markdown": offer_text
     }
 
 # ─── 4. Webhook Dispatcher (Feature 2.12) ─────────────────────────────────────

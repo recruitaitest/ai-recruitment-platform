@@ -66,6 +66,7 @@ class BulkZipParseResponse(BaseModel):
 
 class OfferLetterGenerateRequest(BaseModel):
     candidate_id: int
+    candidate_name: Optional[str] = None
     position_title: str
     offered_ctc: float
     joining_date: str

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, DollarSign, Calendar, FileText, CheckCircle2, Clock, Briefcase } from "lucide-react";
+import { X, User, Briefcase, DollarSign, Calendar, FileText, CheckCircle2, Clock } from "lucide-react";
 import { getOffer } from "@/services/offerService";
 
 interface Props {
@@ -19,15 +19,9 @@ export default function ViewOfferModal({ open, onClose, offerId }: Props) {
     if (open && offerId) {
       setLoading(true);
       getOffer(offerId)
-        .then((data) => {
-          setOffer(data);
-        })
-        .catch((err) => {
-          console.error("Failed to load offer", err);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
+        .then((data) => setOffer(data))
+        .catch((err) => console.error("Failed to load offer:", err))
+        .finally(() => setLoading(false));
     } else {
       setOffer(null);
     }
@@ -38,6 +32,7 @@ export default function ViewOfferModal({ open, onClose, offerId }: Props) {
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+        {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -63,7 +58,7 @@ export default function ViewOfferModal({ open, onClose, offerId }: Props) {
           <div className="flex shrink-0 items-center justify-between border-b border-slate-100 dark:border-border px-6 py-5">
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-text-primary">
-                View Offer
+                Offer Details for {offer?.candidate_name || "Candidate"}
               </h2>
               <p className="mt-1 text-xs text-slate-500 dark:text-muted">
                 Candidate offer details and compensation package
@@ -140,7 +135,7 @@ export default function ViewOfferModal({ open, onClose, offerId }: Props) {
                 </div>
               </div>
             ) : (
-              <div className="text-slate-500 dark:text-muted text-sm py-4 text-center">Offer not found.</div>
+              <div className="text-center py-6 text-sm text-slate-500 dark:text-muted">Offer details not found.</div>
             )}
           </div>
 
@@ -148,7 +143,7 @@ export default function ViewOfferModal({ open, onClose, offerId }: Props) {
           <div className="flex shrink-0 items-center justify-end border-t border-slate-100 dark:border-border px-6 py-4 bg-slate-50/50 dark:bg-surface">
             <button
               onClick={onClose}
-              className="rounded-xl px-5 py-2.5 text-xs font-semibold text-text-primary bg-surface-hover hover:bg-surface-hover/80 transition-colors cursor-pointer"
+              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm transition-colors cursor-pointer"
             >
               Close
             </button>

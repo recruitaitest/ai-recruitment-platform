@@ -14,6 +14,7 @@ import RescheduleInterviewModal from "../interviews/RescheduleInterviewModal";
 import CreateOfferModal from "../offer/CreateOfferModal";
 import ViewOfferModal from "../offer/ViewOfferModal";
 import EditOfferModal from "../offer/EditOfferModal";
+import SendOfferModal from "../offer/SendOfferModal";
 import AddNoteModal from "./AddNoteModal";
 import CalendarModal from "./CalendarModal";
 import ConfirmScreeningModal from "./ConfirmScreeningModal";
@@ -96,6 +97,8 @@ export default function PipelineBoard() {
 
  const [viewOfferModalOpen, setViewOfferModalOpen] = useState(false);
  const [editOfferModalOpen, setEditOfferModalOpen] = useState(false);
+ const [sendOfferModalOpen, setSendOfferModalOpen] = useState(false);
+ const [selectedOfferCandidate, setSelectedOfferCandidate] = useState<any>(null);
  const [selectedOfferId, setSelectedOfferId] = useState<number | undefined>();
 
  const [viewInterviewModalOpen, setViewInterviewModalOpen] = useState(false);
@@ -235,31 +238,58 @@ export default function PipelineBoard() {
         else mappedOfferStatus = rawStatus;
       }
 
-      // Check if Technical feedback is submitted but HR interview is not scheduled yet
+      // Check if Technical / HR feedback is submitted
       const candidateInterviews = (interviewsData || []).filter(
-        (i: any) => Number(i.candidate_id) === Number(item.candidate_id)
+        (i: any) =>
+          (i.candidate_id != null && item.candidate_id != null && String(i.candidate_id) === String(item.candidate_id)) ||
+          (i.pipeline_id != null && item.id != null && String(i.pipeline_id) === String(item.id))
       );
 
-      const techInterview = candidateInterviews.find((i: any) =>
-        (i.interview_type || "").toLowerCase().includes("tech")
-      );
-      const hrInterview = candidateInterviews.find((i: any) =>
-        (i.interview_type || "").toLowerCase().includes("hr")
-      );
+      const techInterview = candidateInterviews.find((i: any) => {
+        const itype = (i.interview_type || "").toLowerCase();
+        return itype.includes("tech") || (!itype.includes("hr") && !itype.includes("screen"));
+      });
+
+      const hrInterview = candidateInterviews.find((i: any) => {
+        const itype = (i.interview_type || "").toLowerCase();
+        return itype.includes("hr") || itype.includes("human");
+      });
 
       const techFeedbackDone =
         techInterview &&
         (techInterview.status === "Completed" ||
-          Boolean(techInterview.feedback) ||
+          (typeof techInterview.feedback === "string" && techInterview.feedback.trim().length > 0) ||
           Boolean(techInterview.overall_rating) ||
-          techInterview.recommendation === "Pass");
+          techInterview.recommendation === "Pass" ||
+          techInterview.recommendation === "Hire" ||
+          techInterview.recommendation === "Strong Hire");
 
       const hrScheduled =
         hrInterview &&
         (hrInterview.status === "Scheduled" || hrInterview.status === "Completed");
 
-      const isHrInterviewPending =
-        item.stage === "Technical Interview" && Boolean(techFeedbackDone) && !hrScheduled;
+      const hrFeedbackDone =
+        hrInterview &&
+        (hrInterview.status === "Completed" ||
+          (typeof hrInterview.feedback === "string" && hrInterview.feedback.trim().length > 0) ||
+          Boolean(hrInterview.overall_rating) ||
+          hrInterview.recommendation === "Pass" ||
+          hrInterview.recommendation === "Hire" ||
+          hrInterview.recommendation === "Strong Hire");
+
+      const isTechStage = item.stage === "Technical Interview" || item.stage === "Technical Round" || item.stage === "Technical";
+      const isHrStage = item.stage === "HR Round" || item.stage === "HR Interview" || item.stage === "HR";
+
+      const isHrInterviewPending = isTechStage && Boolean(techFeedbackDone) && !hrScheduled;
+
+      let interviewStatus: "not_scheduled" | "scheduled" | "completed" | "cancelled" = "not_scheduled";
+      if (isTechStage) {
+        if (techFeedbackDone) interviewStatus = "completed";
+        else if (techInterview) interviewStatus = "scheduled";
+      } else if (isHrStage) {
+        if (hrFeedbackDone) interviewStatus = "completed";
+        else if (hrInterview) interviewStatus = "scheduled";
+      }
 
       return {
         id: String(item.id),
@@ -272,6 +302,7 @@ export default function PipelineBoard() {
         notes: item.notes,
         offerStatus: mappedOfferStatus,
         offerId: offer?.id,
+        interviewStatus,
         avatar: `https://i.pravatar.cc/150?img=${index + 1}`,
         isHrInterviewPending,
       };
@@ -614,16 +645,16 @@ export default function PipelineBoard() {
     setOfferModalOpen(true);
   };
 
-  const handleSendOffer = async (candidateId: string) => {
+  const handleSendOffer = (candidateId: string) => {
     const candidate = candidates.find(c => c.id === candidateId || String(c.candidate_id) === String(candidateId));
-    if (!candidate || !candidate.offerId) return;
-    try {
-      await updateOfferStatus(candidate.offerId, "Sent");
-      setSuccessMsg(`Offer sent to ${candidate.name}`);
-      await fetchPipelines();
-    } catch (e) {
-      setError("Failed to send offer.");
+    if (!candidate) return;
+    if (!candidate.offerId) {
+      toast.error("Please create an offer draft first before sending.");
+      return;
     }
+    setSelectedOfferId(candidate.offerId);
+    setSelectedOfferCandidate(candidate);
+    setSendOfferModalOpen(true);
   };
 
   const handleResendOffer = async (candidateId: string) => {
@@ -1067,12 +1098,25 @@ export default function PipelineBoard() {
  onClose={() => setViewOfferModalOpen(false)}
  offerId={selectedOfferId}
  />
- <EditOfferModal
- open={editOfferModalOpen}
- onClose={() => setEditOfferModalOpen(false)}
- offerId={selectedOfferId}
- onOfferUpdated={fetchPipelines}
- />
+  <EditOfferModal
+    open={editOfferModalOpen}
+    onClose={() => setEditOfferModalOpen(false)}
+    offerId={selectedOfferId}
+    onOfferUpdated={fetchPipelines}
+  />
+  <SendOfferModal
+    open={sendOfferModalOpen}
+    onClose={() => {
+      setSendOfferModalOpen(false);
+      setSelectedOfferCandidate(null);
+    }}
+    offerId={selectedOfferId}
+    candidateName={selectedOfferCandidate?.name}
+    onOfferSent={async () => {
+      await fetchPipelines();
+      setSuccessMsg(`Offer letter sent to ${selectedOfferCandidate?.name}`);
+    }}
+  />
  <ViewInterviewModal
  open={viewInterviewModalOpen}
  onClose={() => {

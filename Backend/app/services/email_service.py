@@ -475,7 +475,7 @@ class EmailService:
 
     @staticmethod
     def send_offer_email(to_email: str, candidate_name: str, position_title: str, salary: str = "", joining_date: str = "") -> bool:
-        subject = f"Job Offer: {position_title}"
+        subject = f"Official Job Offer Letter for {candidate_name} - {position_title}"
         html_content = f"""
         <html>
             <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; padding: 20px;">

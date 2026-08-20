@@ -6,67 +6,72 @@ import { X, UploadCloud, File, AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface SendOfferModalProps {
- open: boolean;
- onClose: () => void;
- offerId?: number;
- onOfferSent: () => void;
+  open: boolean;
+  onClose: () => void;
+  offerId?: number;
+  candidateName?: string;
+  onOfferSent: () => void;
 }
 
 export default function SendOfferModal({
- open,
- onClose,
- offerId,
- onOfferSent,
+  open,
+  onClose,
+  offerId,
+  candidateName,
+  onOfferSent,
 }: SendOfferModalProps) {
- const [file, setFile] = useState<File | null>(null);
- const [isSending, setIsSending] = useState(false);
- const fileInputRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [isSending, setIsSending] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
- useEffect(() => {
- if (!open) {
- setFile(null);
- setIsSending(false);
- }
- }, [open]);
+  useEffect(() => {
+    if (!open) {
+      setFile(null);
+      setIsSending(false);
+    }
+  }, [open]);
 
- const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
- if (e.target.files && e.target.files[0]) {
- const selected = e.target.files[0];
- if (selected.type !== "application/pdf") {
- toast.error("Please upload a PDF file.");
- return;
- }
- setFile(selected);
- }
- };
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const selected = e.target.files[0];
+      if (selected.type !== "application/pdf") {
+        toast.error("Please upload a PDF file.");
+        return;
+      }
+      setFile(selected);
+    }
+  };
 
- const handleSend = async () => {
- if (!file || !offerId) return;
+  const handleSend = async () => {
+    if (!file || !offerId) {
+      toast.error("Please upload the signed offer letter PDF first.");
+      return;
+    }
 
- setIsSending(true);
- const formData = new FormData();
- formData.append("file", file);
+    setIsSending(true);
+    const formData = new FormData();
+    formData.append("file", file);
 
- try {
- const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/offers/${offerId}/upload-letter`, {
- method: "POST",
- body: formData,
- });
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/offers/${offerId}/upload-letter`, {
+        method: "POST",
+        body: formData,
+      });
 
- if (!res.ok) {
- throw new Error("Failed to send offer");
- }
+      if (!res.ok) {
+        throw new Error("Failed to send offer");
+      }
 
- toast.success("Offer letter uploaded and sent to candidate!");
- onOfferSent();
- onClose();
- } catch (error) {
- console.error(error);
- toast.error("An error occurred while sending the offer.");
- } finally {
- setIsSending(false);
- }
- };
+      toast.success("Offer letter uploaded and sent to candidate!");
+      onOfferSent();
+      onClose();
+    } catch (error) {
+      console.error(error);
+      toast.error("An error occurred while sending the offer.");
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -96,7 +101,7 @@ export default function SendOfferModal({
             <div className="flex shrink-0 items-center justify-between border-b border-slate-100 dark:border-border px-6 py-5">
               <div>
                 <h2 className="text-xl font-bold text-slate-900 dark:text-text-primary">
-                  Send Offer Letter
+                  Send Offer Letter to {candidateName || "Candidate"}
                 </h2>
                 <p className="mt-1 text-xs text-slate-500 dark:text-muted">
                   Attach signed letter and notify candidate
@@ -128,55 +133,65 @@ export default function SendOfferModal({
                 } ${isSending ? "opacity-50 pointer-events-none" : ""}`}
               >
                 <input
-                  type="file"
                   ref={fileInputRef}
-                  onChange={handleFileChange}
+                  type="file"
                   accept="application/pdf"
+                  onChange={handleFileChange}
                   className="hidden"
                 />
+
                 {file ? (
-                  <>
-                    <div className="rounded-full bg-indigo-100 dark:bg-indigo-500/20 p-3 text-indigo-600 dark:text-indigo-400 mb-3">
+                  <div className="flex flex-col items-center text-center">
+                    <div className="mb-3 rounded-2xl bg-indigo-50 dark:bg-indigo-500/20 p-3 text-indigo-600 dark:text-indigo-400">
                       <File className="h-8 w-8" />
                     </div>
-                    <p className="text-sm font-semibold text-text-primary text-center truncate w-full px-4">
-                      {file.name}
+                    <p className="text-sm font-semibold text-slate-900 dark:text-text-primary">{file.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-muted mt-0.5">
+                      {(file.size / 1024 / 1024).toFixed(2)} MB
                     </p>
-                    <p className="text-xs text-muted mt-1">
-                      Click to replace PDF
-                    </p>
-                  </>
+                    <span className="mt-3 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+                      Change File
+                    </span>
+                  </div>
                 ) : (
-                  <>
-                    <div className="rounded-full bg-slate-100 dark:bg-slate-800 p-3 text-slate-500 dark:text-slate-400 mb-3">
+                  <div className="flex flex-col items-center text-center">
+                    <div className="mb-3 rounded-2xl bg-slate-100 dark:bg-surface-hover p-3 text-slate-500 dark:text-muted">
                       <UploadCloud className="h-8 w-8" />
                     </div>
-                    <p className="text-sm font-semibold text-text-primary">
+                    <p className="text-sm font-semibold text-slate-900 dark:text-text-primary">
                       Click to upload PDF
                     </p>
-                    <p className="text-xs text-muted mt-1">
-                      Max file size 5MB (PDF only)
+                    <p className="text-xs text-slate-400 dark:text-muted mt-1">
+                      PDF only (Max 10MB)
                     </p>
-                  </>
+                  </div>
                 )}
               </div>
             </div>
 
             <div className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-100 dark:border-border px-6 py-4 bg-slate-50/50 dark:bg-surface">
               <button
+                type="button"
                 onClick={onClose}
                 disabled={isSending}
-                className="rounded-xl px-4 py-2 text-xs font-semibold text-text-primary bg-surface-hover hover:bg-surface-hover/80 transition-colors disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-border bg-white dark:bg-surface text-slate-700 dark:text-text-secondary text-sm font-semibold hover:bg-slate-50 dark:hover:bg-surface-hover transition-colors disabled:opacity-50 cursor-pointer"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleSend}
                 disabled={!file || isSending}
-                className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2 text-xs font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
-                {isSending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                Send Offer
+                {isSending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  "Send Offer"
+                )}
               </button>
             </div>
           </motion.div>

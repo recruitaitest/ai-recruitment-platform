@@ -38,6 +38,7 @@ export interface WebhookEndpoint {
 
 export interface OfferLetterRequest {
   candidate_id: number;
+  candidate_name?: string;
   position_title: string;
   offered_ctc: number;
   joining_date: string;

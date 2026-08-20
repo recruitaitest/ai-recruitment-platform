@@ -58,6 +58,10 @@ export default function OfferDrawer({ open, onClose, offerId, onEdit, onDelete, 
 
   const handleSendOffer = async () => {
     if (!offer) return;
+    if (!offer.offer_letter) {
+      toast.error("Please upload the signed offer letter PDF first before sending.");
+      return;
+    }
     try {
       await updateOfferStatus(offer.id, "Sent");
       toast.success("Offer sent successfully!");
@@ -131,7 +135,9 @@ export default function OfferDrawer({ open, onClose, offerId, onEdit, onDelete, 
               {/* Header */}
               <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-5 bg-surface-hover/30">
                 <div>
-                  <h2 className="text-xl font-bold text-text-primary">Offer Details</h2>
+                  <h2 className="text-xl font-bold text-text-primary">
+                    Offer for {offer?.candidate_name || (offerId ? `#${offerId}` : "Candidate")}
+                  </h2>
                   <p className="text-xs text-muted mt-1">
                     ID: #{offerId}
                   </p>
@@ -315,7 +321,8 @@ export default function OfferDrawer({ open, onClose, offerId, onEdit, onDelete, 
                     </button>
                     <button 
                       onClick={handleSendOffer}
-                      disabled={offer.status === "Sent" || offer.status === "Accepted"}
+                      disabled={offer.status === "Sent" || offer.status === "Accepted" || !offer.offer_letter}
+                      title={!offer.offer_letter ? "Please upload offer letter PDF first before sending" : "Send Offer"}
                       className="flex items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-medium text-white transition hover:bg-primary-hover active:scale-[0.97] focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {offer.status === "Sent" || offer.status === "Accepted" ? (

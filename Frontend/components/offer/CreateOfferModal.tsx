@@ -130,7 +130,7 @@ export default function CreateOfferModal({
           <div className="flex shrink-0 items-center justify-between border-b border-slate-100 dark:border-border px-6 py-5">
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-text-primary">
-                Create Offer
+                Create Offer Letter for {candidateName || "Candidate"}
               </h2>
               <p className="mt-1 text-xs text-slate-500 dark:text-muted">
                 Prepare candidate compensation, timeline, and employment terms
@@ -270,7 +270,8 @@ export default function CreateOfferModal({
                 try {
                   const { generateOfferLetterApi } = await import("@/services/automationService");
                   const res = await generateOfferLetterApi({
-                    candidate_id: candidateId,
+                    candidate_id: Number(candidateId) || 0,
+                    candidate_name: candidateName,
                     position_title: positionTitle || "Software Engineer",
                     offered_ctc: parseFloat(salary.replace(/[^0-9.]/g, "")) || 1200000,
                     joining_date: joiningDate,

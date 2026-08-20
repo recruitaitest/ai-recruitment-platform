@@ -26,6 +26,7 @@ import {
  RefreshCw,
  AlertTriangle,
  CalendarDays,
+ CheckCircle2,
  Lock,
 } from "lucide-react";
 
@@ -39,7 +40,7 @@ export type OfferStatus = "not_generated" | "generated" | "sent" | "accepted" | 
 
 // ─── Interview Sub-state ──────────────────────────────────────────────────────
 
-export type InterviewStatus = "not_scheduled" | "scheduled" | "completed";
+export type InterviewStatus = "not_scheduled" | "scheduled" | "completed" | "cancelled";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -90,6 +91,7 @@ export interface CandidateQuickActionsProps {
 
  // Sub-states
  offerStatus?: OfferStatus;
+ offerId?: number;
  interviewStatus?: InterviewStatus;
  isHrInterviewPending?: boolean;
 
@@ -233,100 +235,142 @@ const STAGE_CONFIG: Record<string, ConfigFactory> = {
  },
 
  "Technical Interview": (id, props, call, offerId, setConfirm) => {
-    if (props.isHrInterviewPending) {
-        return {
-            stageIcon: <Calendar className="h-4 w-4 text-red-400" />,
-            stageColor: "text-red-400",
-            primary: can(props.userRole, "schedule_interview") ? {
-                label: "Schedule HR Interview",
-                icon: <Calendar className="h-4 w-4" />,
-                colorClass: "text-white font-bold",
-                bgClass: "bg-red-600 hover:bg-red-500 shadow-md shadow-red-500/20",
-                borderClass: "border-red-600",
-                onClick: () => call(props.onMoveToStage, "HR Round"),
-            } : null,
-            secondary: [
-                can(props.userRole, "submit_feedback") && { label: "Edit Technical Feedback", icon: <ClipboardEdit className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onSubmitFeedback, "Technical Interview") },
-                can(props.userRole, "view_interview") && { label: "View Technical Interview", icon: <CalendarDays className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewInterview) },
-                can(props.userRole, "view_profile") && { label: "View Profile", icon: <Eye className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewProfile) },
-                can(props.userRole, "add_note") && { label: "Add Note", icon: <MessageSquarePlus className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onAddNote) },
-                can(props.userRole, "open_resume") && { label: "Open Resume", icon: <FileSearch className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onOpenResume) },
-                can(props.userRole, "view_timeline") && { label: "View Timeline", icon: <History className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewTimeline) },
-                can(props.userRole, "remove_candidate") && { label: "Remove Candidate", icon: <XCircle className="h-3.5 w-3.5" />, colorClass: "text-red-400", bgHover: "hover:bg-red-500/10", onClick: () => setConfirm?.("remove") },
-            ].filter(Boolean) as ActionItem[],
-            showReject: can(props.userRole, "reject"),
-        };
-    }
+		const isCompleted = Boolean(props.isHrInterviewPending || props.interviewStatus === "completed");
+		if (isCompleted) {
+			return {
+				statusBadge: {
+					label: "✓ Technical Feedback Submitted",
+					icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
+					colorClass: "text-emerald-600 dark:text-emerald-400 font-semibold",
+					bgClass: "bg-emerald-50 dark:bg-emerald-950/40",
+					borderClass: "border-emerald-200 dark:border-emerald-800/40",
+				},
+				stageIcon: <Calendar className="h-4 w-4 text-red-400" />,
+				stageColor: "text-red-400",
+				primary: can(props.userRole, "schedule_interview") ? {
+					label: "Schedule HR Interview",
+					icon: <Calendar className="h-4 w-4" />,
+					colorClass: "text-white font-bold",
+					bgClass: "bg-red-600 hover:bg-red-500 shadow-md shadow-red-500/20",
+					borderClass: "border-red-600",
+					onClick: () => call(props.onMoveToStage, "HR Round"),
+				} : null,
+				secondary: [
+					can(props.userRole, "submit_feedback") && { label: "Edit Technical Feedback", icon: <ClipboardEdit className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onSubmitFeedback, "Technical Interview") },
+					can(props.userRole, "view_interview") && { label: "View Technical Interview", icon: <CalendarDays className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewInterview) },
+					can(props.userRole, "view_profile") && { label: "View Profile", icon: <Eye className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewProfile) },
+					can(props.userRole, "add_note") && { label: "Add Note", icon: <MessageSquarePlus className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onAddNote) },
+					can(props.userRole, "open_resume") && { label: "Open Resume", icon: <FileSearch className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onOpenResume) },
+					can(props.userRole, "view_timeline") && { label: "View Timeline", icon: <History className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewTimeline) },
+					can(props.userRole, "remove_candidate") && { label: "Remove Candidate", icon: <XCircle className="h-3.5 w-3.5" />, colorClass: "text-red-400", bgHover: "hover:bg-red-500/10", onClick: () => setConfirm?.("remove") },
+				].filter(Boolean) as ActionItem[],
+				showReject: can(props.userRole, "reject"),
+			};
+		}
 
- const hasInterview = props.interviewStatus && props.interviewStatus !== "not_scheduled";
- return {
- primary: hasInterview
- ? (can(props.userRole, "submit_feedback") ? {
- label: "Submit Feedback",
- icon: <ClipboardEdit className="h-4 w-4" />,
- colorClass: "text-violet-300",
- bgClass: "bg-violet-500/10",
- borderClass: "border-violet-500/20",
- onClick: () => call(props.onSubmitFeedback, "Technical Interview"),
- } : null)
- : (can(props.userRole, "schedule_interview") ? {
- label: "Schedule Technical Interview",
- icon: <Calendar className="h-4 w-4" />,
- colorClass: "text-violet-300",
- bgClass: "bg-violet-500/10",
- borderClass: "border-violet-500/20",
- onClick: () => call(props.onMoveToStage, "Technical Interview"),
- } : null),
- secondary: [
- hasInterview && can(props.userRole, "reschedule_interview") && { label: "Reschedule Interview", icon: <Pencil className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onRescheduleInterview) },
- hasInterview && can(props.userRole, "view_interview") && { label: "View Interview Details", icon: <CalendarDays className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewInterview) },
- hasInterview && can(props.userRole, "open_calendar") && { label: "Open Calendar", icon: <CalendarDays className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onOpenCalendar) },
- can(props.userRole, "view_profile") && { label: "View Profile", icon: <Eye className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewProfile) },
- can(props.userRole, "add_note") && { label: "Add Note", icon: <MessageSquarePlus className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onAddNote) },
- can(props.userRole, "open_resume") && { label: "Open Resume", icon: <FileSearch className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onOpenResume) },
- can(props.userRole, "view_timeline") && { label: "View Timeline", icon: <History className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewTimeline) },
- can(props.userRole, "remove_candidate") && { label: "Remove Candidate", icon: <XCircle className="h-3.5 w-3.5" />, colorClass: "text-red-400", bgHover: "hover:bg-red-500/10", onClick: () => setConfirm?.("remove") },
- ].filter(Boolean) as ActionItem[],
- showReject: can(props.userRole, "reject"),
- };
- },
+		const hasInterview = props.interviewStatus && props.interviewStatus !== "not_scheduled";
+		return {
+			primary: hasInterview
+				? (can(props.userRole, "submit_feedback") ? {
+						label: "Submit Feedback",
+						icon: <ClipboardEdit className="h-4 w-4" />,
+						colorClass: "text-violet-300",
+						bgClass: "bg-violet-500/10",
+						borderClass: "border-violet-500/20",
+						onClick: () => call(props.onSubmitFeedback, "Technical Interview"),
+					} : null)
+				: (can(props.userRole, "schedule_interview") ? {
+						label: "Schedule Technical Interview",
+						icon: <Calendar className="h-4 w-4" />,
+						colorClass: "text-violet-300",
+						bgClass: "bg-violet-500/10",
+						borderClass: "border-violet-500/20",
+						onClick: () => call(props.onMoveToStage, "Technical Interview"),
+					} : null),
+			secondary: [
+				hasInterview && can(props.userRole, "reschedule_interview") && { label: "Reschedule Interview", icon: <Pencil className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onRescheduleInterview) },
+				hasInterview && can(props.userRole, "view_interview") && { label: "View Interview Details", icon: <CalendarDays className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewInterview) },
+				hasInterview && can(props.userRole, "open_calendar") && { label: "Open Calendar", icon: <CalendarDays className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onOpenCalendar) },
+				can(props.userRole, "view_profile") && { label: "View Profile", icon: <Eye className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewProfile) },
+				can(props.userRole, "add_note") && { label: "Add Note", icon: <MessageSquarePlus className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onAddNote) },
+				can(props.userRole, "open_resume") && { label: "Open Resume", icon: <FileSearch className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onOpenResume) },
+				can(props.userRole, "view_timeline") && { label: "View Timeline", icon: <History className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewTimeline) },
+				can(props.userRole, "remove_candidate") && { label: "Remove Candidate", icon: <XCircle className="h-3.5 w-3.5" />, colorClass: "text-red-400", bgHover: "hover:bg-red-500/10", onClick: () => setConfirm?.("remove") },
+			].filter(Boolean) as ActionItem[],
+			showReject: can(props.userRole, "reject"),
+		};
+	},
 
- "HR Round": (id, props, call, offerId, setConfirm) => {
- const hasInterview = props.interviewStatus && props.interviewStatus !== "not_scheduled";
- return {
- primary: hasInterview
- ? (can(props.userRole, "submit_feedback") ? {
- label: "Submit Feedback",
- icon: <ClipboardEdit className="h-4 w-4" />,
- colorClass: "text-emerald-300",
- bgClass: "bg-emerald-500/10",
- borderClass: "border-emerald-500/20",
- onClick: () => call(props.onSubmitFeedback, "HR Round"),
- } : null)
- : (can(props.userRole, "schedule_interview") ? {
- label: "Schedule HR Interview",
- icon: <Calendar className="h-4 w-4" />,
- colorClass: "text-emerald-300",
- bgClass: "bg-emerald-500/10",
- borderClass: "border-emerald-500/20",
- onClick: () => call(props.onMoveToStage, "HR Round"),
- } : null),
- secondary: [
- { label: "View Technical Feedback", icon: <ClipboardEdit className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewInterview) },
- hasInterview && can(props.userRole, "reschedule_interview") && { label: "Reschedule Interview", icon: <Pencil className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onRescheduleInterview) },
- hasInterview && can(props.userRole, "view_interview") && { label: "View Interview Details", icon: <CalendarDays className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewInterview) },
- hasInterview && can(props.userRole, "open_calendar") && { label: "Open Calendar", icon: <CalendarDays className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onOpenCalendar) },
- can(props.userRole, "view_profile") && { label: "View Profile", icon: <Eye className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewProfile) },
- can(props.userRole, "add_note") && { label: "Add Note", icon: <MessageSquarePlus className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onAddNote) },
- can(props.userRole, "open_resume") && { label: "Open Resume", icon: <FileSearch className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onOpenResume) },
- can(props.userRole, "view_timeline") && { label: "View Timeline", icon: <History className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewTimeline) },
- can(props.userRole, "remove_candidate") && { label: "Remove Candidate", icon: <XCircle className="h-3.5 w-3.5" />, colorClass: "text-red-400", bgHover: "hover:bg-red-500/10", onClick: () => setConfirm?.("remove") },
- ].filter(Boolean) as ActionItem[],
- showReject: can(props.userRole, "reject"),
- };
- },
+	"HR Round": (id, props, call, offerId, setConfirm) => {
+		const isCompleted = props.interviewStatus === "completed";
+		if (isCompleted) {
+			return {
+				statusBadge: {
+					label: "✓ HR Feedback Submitted",
+					icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
+					colorClass: "text-emerald-600 dark:text-emerald-400 font-semibold",
+					bgClass: "bg-emerald-50 dark:bg-emerald-950/40",
+					borderClass: "border-emerald-200 dark:border-emerald-800/40",
+				},
+				stageIcon: <Calendar className="h-4 w-4 text-emerald-400" />,
+				stageColor: "text-emerald-400",
+				primary: can(props.userRole, "generate_offer") ? {
+					label: "Generate Offer",
+					icon: <Gift className="h-4 w-4" />,
+					colorClass: "text-emerald-300",
+					bgClass: "bg-emerald-500/10",
+					borderClass: "border-emerald-500/20",
+					onClick: () => call(props.onGenerateOffer),
+				} : null,
+				secondary: [
+					can(props.userRole, "submit_feedback") && { label: "Edit HR Feedback", icon: <ClipboardEdit className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onSubmitFeedback, "HR Round") },
+					can(props.userRole, "view_interview") && { label: "View HR Interview Details", icon: <CalendarDays className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewInterview) },
+					{ label: "View Technical Feedback", icon: <ClipboardEdit className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewInterview) },
+					can(props.userRole, "view_profile") && { label: "View Profile", icon: <Eye className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewProfile) },
+					can(props.userRole, "add_note") && { label: "Add Note", icon: <MessageSquarePlus className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onAddNote) },
+					can(props.userRole, "open_resume") && { label: "Open Resume", icon: <FileSearch className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onOpenResume) },
+					can(props.userRole, "view_timeline") && { label: "View Timeline", icon: <History className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewTimeline) },
+					can(props.userRole, "remove_candidate") && { label: "Remove Candidate", icon: <XCircle className="h-3.5 w-3.5" />, colorClass: "text-red-400", bgHover: "hover:bg-red-500/10", onClick: () => setConfirm?.("remove") },
+				].filter(Boolean) as ActionItem[],
+				showReject: can(props.userRole, "reject"),
+			};
+		}
 
- // Offer stage: splits into sub-states; offerId passed in for view/edit/updateStatus
+		const hasInterview = props.interviewStatus && props.interviewStatus !== "not_scheduled";
+		return {
+			primary: hasInterview
+				? (can(props.userRole, "submit_feedback") ? {
+						label: "Submit Feedback",
+						icon: <ClipboardEdit className="h-4 w-4" />,
+						colorClass: "text-emerald-300",
+						bgClass: "bg-emerald-500/10",
+						borderClass: "border-emerald-500/20",
+						onClick: () => call(props.onSubmitFeedback, "HR Round"),
+					} : null)
+				: (can(props.userRole, "schedule_interview") ? {
+						label: "Schedule HR Interview",
+						icon: <Calendar className="h-4 w-4" />,
+						colorClass: "text-emerald-300",
+						bgClass: "bg-emerald-500/10",
+						borderClass: "border-emerald-500/20",
+						onClick: () => call(props.onMoveToStage, "HR Round"),
+					} : null),
+			secondary: [
+				{ label: "View Technical Feedback", icon: <ClipboardEdit className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewInterview) },
+				hasInterview && can(props.userRole, "reschedule_interview") && { label: "Reschedule Interview", icon: <Pencil className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onRescheduleInterview) },
+				hasInterview && can(props.userRole, "view_interview") && { label: "View Interview Details", icon: <CalendarDays className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewInterview) },
+				hasInterview && can(props.userRole, "open_calendar") && { label: "Open Calendar", icon: <CalendarDays className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onOpenCalendar) },
+				can(props.userRole, "view_profile") && { label: "View Profile", icon: <Eye className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewProfile) },
+				can(props.userRole, "add_note") && { label: "Add Note", icon: <MessageSquarePlus className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onAddNote) },
+				can(props.userRole, "open_resume") && { label: "Open Resume", icon: <FileSearch className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onOpenResume) },
+				can(props.userRole, "view_timeline") && { label: "View Timeline", icon: <History className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewTimeline) },
+				can(props.userRole, "remove_candidate") && { label: "Remove Candidate", icon: <XCircle className="h-3.5 w-3.5" />, colorClass: "text-red-400", bgHover: "hover:bg-red-500/10", onClick: () => setConfirm?.("remove") },
+			].filter(Boolean) as ActionItem[],
+			showReject: can(props.userRole, "reject"),
+		};
+	},
+
+	// Offer stage: splits into sub-states; offerId passed in for view/edit/updateStatus
  Offer: (id, props, call, offerId, setConfirm) => {
  const status = props.offerStatus ?? "not_generated";
  const accepted = status === "accepted";
