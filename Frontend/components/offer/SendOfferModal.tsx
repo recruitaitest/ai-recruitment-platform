@@ -68,108 +68,120 @@ export default function SendOfferModal({
  }
  };
 
- return (
- <AnimatePresence>
- {open && (
- <>
- <motion.div
- initial={{ opacity: 0 }}
- animate={{ opacity: 1 }}
- exit={{ opacity: 0 }}
- onClick={!isSending ? onClose : undefined}
- className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
- />
+  return (
+    <AnimatePresence>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={!isSending ? onClose : undefined}
+            className="fixed inset-0 bg-slate-950/40 dark:bg-black/70 backdrop-blur-sm"
+          />
 
- <motion.div
- initial={{ opacity: 0, scale: 0.95, y: 20 }}
- animate={{ opacity: 1, scale: 1, y: 0 }}
- exit={{ opacity: 0, scale: 0.95, y: 20 }}
- className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card shadow-2xl"
- >
- <div className="flex items-center justify-between border-b border-border px-6 py-5">
- <h2 className="text-xl font-semibold text-text-primary">
- Send Offer Letter
- </h2>
- <button
- onClick={onClose}
- disabled={isSending}
- className="rounded-xl p-2 text-muted hover:bg-secondary-surface hover:text-text-primary transition disabled:opacity-50"
- >
- <X className="h-5 w-5" />
- </button>
- </div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ duration: 0.2 }}
+            className="
+              relative w-full max-w-md overflow-hidden rounded-2xl
+              bg-white dark:bg-surface
+              border border-slate-200 dark:border-border
+              shadow-2xl shadow-slate-900/15 dark:shadow-black/60
+              z-10 flex flex-col
+            "
+          >
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-100 dark:border-border px-6 py-5">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-text-primary">
+                  Send Offer Letter
+                </h2>
+                <p className="mt-1 text-xs text-slate-500 dark:text-muted">
+                  Attach signed letter and notify candidate
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                disabled={isSending}
+                className="rounded-full p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-surface-hover dark:hover:text-text-primary transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
 
- <div className="p-6">
- <div className="mb-4 flex items-start gap-3 rounded-xl border border-primary/20 bg-primary-soft p-4 text-primary">
- <AlertCircle className="h-5 w-5 shrink-0" />
- <p className="text-sm leading-relaxed">
- Please upload the signed offer letter as a PDF. Once uploaded, an email will be automatically sent to the candidate with the attachment, and the offer status will be updated to &quot;Sent&quot;.
- </p>
- </div>
+            <div className="p-6 space-y-4">
+              <div className="flex items-start gap-3 rounded-xl border border-indigo-500/20 bg-indigo-500/10 p-4 text-indigo-700 dark:text-indigo-300">
+                <AlertCircle className="h-5 w-5 shrink-0 text-indigo-500 mt-0.5" />
+                <p className="text-xs leading-relaxed">
+                  Please upload the signed offer letter as a PDF. Once uploaded, an email will be automatically sent to the candidate with the attachment, and the offer status will be updated to &quot;Sent&quot;.
+                </p>
+              </div>
 
- <div 
- onClick={() => !isSending && fileInputRef.current?.click()}
- className={`mt-6 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 transition ${
- file 
- ? "border-primary bg-primary/5" 
- : "border-border bg-secondary-surface/50 hover:border-slate-500 hover:bg-secondary-surface"
- } ${isSending ? "opacity-50 pointer-events-none" : ""}`}
- >
- <input
- type="file"
- ref={fileInputRef}
- onChange={handleFileChange}
- accept="application/pdf"
- className="hidden"
- />
- {file ? (
- <>
- <div className="rounded-full bg-primary-soft p-3 text-primary mb-3">
- <File className="h-8 w-8" />
- </div>
- <p className="text-sm font-medium text-primary text-center truncate w-full px-4">
- {file.name}
- </p>
- <p className="text-xs text-muted mt-1">
- Click to replace
- </p>
- </>
- ) : (
- <>
- <div className="rounded-full bg-slate-700 p-3 text-secondary mb-3">
- <UploadCloud className="h-8 w-8" />
- </div>
- <p className="text-sm font-medium text-primary">
- Click to upload PDF
- </p>
- <p className="text-xs text-muted mt-1">
- Max file size 5MB
- </p>
- </>
- )}
- </div>
- </div>
+              <div
+                onClick={() => !isSending && fileInputRef.current?.click()}
+                className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 transition ${
+                  file
+                    ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-500/10"
+                    : "border-slate-200 dark:border-border bg-slate-50/50 dark:bg-surface-hover/40 hover:border-indigo-400 hover:bg-indigo-50/20"
+                } ${isSending ? "opacity-50 pointer-events-none" : ""}`}
+              >
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept="application/pdf"
+                  className="hidden"
+                />
+                {file ? (
+                  <>
+                    <div className="rounded-full bg-indigo-100 dark:bg-indigo-500/20 p-3 text-indigo-600 dark:text-indigo-400 mb-3">
+                      <File className="h-8 w-8" />
+                    </div>
+                    <p className="text-sm font-semibold text-text-primary text-center truncate w-full px-4">
+                      {file.name}
+                    </p>
+                    <p className="text-xs text-muted mt-1">
+                      Click to replace PDF
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="rounded-full bg-slate-100 dark:bg-slate-800 p-3 text-slate-500 dark:text-slate-400 mb-3">
+                      <UploadCloud className="h-8 w-8" />
+                    </div>
+                    <p className="text-sm font-semibold text-text-primary">
+                      Click to upload PDF
+                    </p>
+                    <p className="text-xs text-muted mt-1">
+                      Max file size 5MB (PDF only)
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
 
- <div className="flex items-center justify-end gap-3 border-t border-border px-6 py-5">
- <button
- onClick={onClose}
- disabled={isSending}
- className="rounded-xl border border-border px-5 py-2.5 text-sm font-medium text-secondary hover:bg-secondary-surface transition disabled:opacity-50"
- >
- Cancel
- </button>
- <button
- onClick={handleSend}
- disabled={!file || isSending}
- className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-white transition hover:bg-primary-hover active:scale-[0.97] focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
- >
- {isSending && <Loader2 className="h-4 w-4 animate-spin" />}
- Send Offer
- </button>
- </div>
- </motion.div>
- </>
- )}
- </AnimatePresence>
- );
+            <div className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-100 dark:border-border px-6 py-4 bg-slate-50/50 dark:bg-surface">
+              <button
+                onClick={onClose}
+                disabled={isSending}
+                className="rounded-xl px-4 py-2 text-xs font-semibold text-text-primary bg-surface-hover hover:bg-surface-hover/80 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSend}
+                disabled={!file || isSending}
+                className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2 text-xs font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm"
+              >
+                {isSending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Send Offer
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
 }

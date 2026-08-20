@@ -135,6 +135,11 @@ export default function PipelineBoard() {
   };
 
   const handleConfirmBulkStage = async (targetStage: string) => {
+    if (targetStage === "Hired") {
+      toast.error("Candidates cannot be bulk-moved to Hired. The stage updates to Hired automatically when offers are accepted.");
+      return;
+    }
+
     const targetCandidates = candidates.filter((c) => selectedCardIds.has(c.id));
     if (targetCandidates.length === 0) {
       setError("Please select at least one candidate first.");
@@ -384,6 +389,11 @@ export default function PipelineBoard() {
       return;
     }
 
+    if (newStage === "Hired") {
+      toast.error("Candidates cannot be moved manually to Hired. The stage updates to Hired automatically when their offer is marked as Accepted in the Offers page.");
+      return;
+    }
+
     if (newStage === "Offer") {
       setOfferCandidate(candidate);
       setOfferModalOpen(true);
@@ -520,11 +530,12 @@ export default function PipelineBoard() {
       const stageToType: Record<string, string[]> = {
         "Technical Interview": ["Technical", "Technical Interview"],
         "HR Round": ["HR Round", "HR Interview", "HR"],
+        "Screening": ["Screening", "Initial"],
       };
 
-      const expectedTypes = stageToType[currentStage] || [];
+      const expectedTypes = stageToType[currentStage] || [currentStage];
 
-      // Find matching interview
+      // Find matching scheduled interview for this specific round
       let interview = (interviews || []).find(
         (item: any) =>
           Number(item.candidate_id) === Number(candidate.candidate_id) &&
@@ -532,7 +543,7 @@ export default function PipelineBoard() {
           item.status === "Scheduled"
       );
 
-      // Fallback: match by candidate + correct type (any status)
+      // Fallback: match by candidate + correct round type (any status)
       if (!interview) {
         interview = (interviews || []).find(
           (item: any) =>
@@ -541,16 +552,9 @@ export default function PipelineBoard() {
         );
       }
 
-      // Final fallback: match any interview for this candidate
       if (!interview) {
-        interview = (interviews || []).find(
-          (item: any) =>
-            Number(item.candidate_id) === Number(candidate.candidate_id)
-        );
-      }
-
-      if (!interview) {
-        toast.error("No matching interview found for this candidate.");
+        const roundName = currentStage === "HR Round" ? "HR" : currentStage === "Technical Interview" ? "Technical" : currentStage;
+        toast.error(`Please schedule an ${roundName} interview first before submitting feedback.`);
         return;
       }
 
@@ -782,15 +786,20 @@ export default function PipelineBoard() {
  return;
  }
 
- if (newStage === "Offer") {
- setOfferCandidate(draggedCandidate);
- setOfferModalOpen(true);
- updateCandidateStage(candidateId, newStage);
- return;
- }
+    if (newStage === "Hired") {
+      toast.error("Candidates cannot be dragged directly to Hired. The stage updates to Hired automatically when their offer is marked as Accepted in the Offers page.");
+      return;
+    }
 
- updateCandidateStage(candidateId, newStage);
- };
+    if (newStage === "Offer") {
+      setOfferCandidate(draggedCandidate);
+      setOfferModalOpen(true);
+      updateCandidateStage(candidateId, newStage);
+      return;
+    }
+
+    updateCandidateStage(candidateId, newStage);
+  };
 
  const handleDeselectAll = () => {
     setSelectedCardIds(new Set());

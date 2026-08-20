@@ -640,7 +640,7 @@ export default function CandidateQuickActions(props: CandidateQuickActionsProps)
 
  // Fetch interviews whenever in an interview stage and menu opens
  useEffect(() => {
- if (!isOpen || !candidateId) return;
+ if (!candidateId) return;
  if (stage === "Technical Interview" || stage === "HR Round" || stage === "Screening") {
  getInterviews()
  .then((data: any[]) => {
@@ -666,7 +666,7 @@ export default function CandidateQuickActions(props: CandidateQuickActionsProps)
  })
  .catch(() => setFetchedInterviewStatus(null));
  }
- }, [isOpen, stage, candidateId]);
+ }, [stage, candidateId]);
 
  // Use fetched status as source of truth when available; fall back to prop
  const resolvedOfferStatus: OfferStatus =

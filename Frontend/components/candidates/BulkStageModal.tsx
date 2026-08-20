@@ -19,7 +19,6 @@ const STAGES = [
   "Technical Interview",
   "HR Round",
   "Offer",
-  "Hired",
   "Rejected"
 ];
 
