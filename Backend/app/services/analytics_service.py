@@ -1,5 +1,6 @@
 import datetime
 import logging
+import re
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract, desc, and_, or_
@@ -20,23 +21,44 @@ class AnalyticsService:
         recruiter_id: Optional[int] = None,
     ):
         start_date = None
+        end_date = None
         now = datetime.datetime.now(datetime.timezone.utc)
+        curr_year = now.year
+
         if date_range:
-            dr = date_range.lower()
-            if "today" in dr:
+            dr = date_range.lower().strip()
+            
+            # Extract year if present (e.g. "Q2 2026", "2025")
+            year_match = re.findall(r"\b(20\d\d)\b", dr)
+            target_year = int(year_match[0]) if year_match else curr_year
+
+            if "q1" in dr:
+                start_date = datetime.datetime(target_year, 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
+                end_date = datetime.datetime(target_year, 3, 31, 23, 59, 59, tzinfo=datetime.timezone.utc)
+            elif "q2" in dr:
+                start_date = datetime.datetime(target_year, 4, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
+                end_date = datetime.datetime(target_year, 6, 30, 23, 59, 59, tzinfo=datetime.timezone.utc)
+            elif "q3" in dr:
+                start_date = datetime.datetime(target_year, 7, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
+                end_date = datetime.datetime(target_year, 9, 30, 23, 59, 59, tzinfo=datetime.timezone.utc)
+            elif "q4" in dr:
+                start_date = datetime.datetime(target_year, 10, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
+                end_date = datetime.datetime(target_year, 12, 31, 23, 59, 59, tzinfo=datetime.timezone.utc)
+            elif "today" in dr:
                 start_date = now - datetime.timedelta(days=1)
             elif "7" in dr:
                 start_date = now - datetime.timedelta(days=7)
             elif "30" in dr:
                 start_date = now - datetime.timedelta(days=30)
-            elif "90" in dr or "quarter" in dr:
+            elif "90" in dr:
                 start_date = now - datetime.timedelta(days=90)
-            elif "year" in dr:
-                start_date = datetime.datetime(now.year, 1, 1, tzinfo=datetime.timezone.utc)
+            elif "year" in dr: # "year-to-date", "this year"
+                start_date = datetime.datetime(target_year, 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
             elif "all" in dr:
                 start_date = None
+                end_date = None
 
-        return start_date, position_id, recruiter_id
+        return start_date, end_date, position_id, recruiter_id
 
     @staticmethod
     def dashboard_analytics(
@@ -45,12 +67,14 @@ class AnalyticsService:
         position_id: Optional[int] = None,
         recruiter_id: Optional[int] = None,
     ):
-        start_date, pos_id, rec_id = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
+        start_date, end_date, pos_id, rec_id = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
         
         try:
             cand_q = db.query(Candidate)
             if start_date:
                 cand_q = cand_q.filter(Candidate.created_at >= start_date)
+            if end_date:
+                cand_q = cand_q.filter(Candidate.created_at <= end_date)
             if pos_id:
                 cand_q = cand_q.filter(Candidate.applied_position_id == pos_id)
             total_candidates = cand_q.count()
@@ -70,6 +94,8 @@ class AnalyticsService:
             int_q = db.query(Interview)
             if start_date:
                 int_q = int_q.filter(Interview.interview_date >= start_date.strftime("%Y-%m-%d"))
+            if end_date:
+                int_q = int_q.filter(Interview.interview_date <= end_date.strftime("%Y-%m-%d"))
             if pos_id:
                 int_q = int_q.filter(Interview.position_id == pos_id)
             total_interviews = int_q.count()
@@ -80,6 +106,8 @@ class AnalyticsService:
             pipe_q = db.query(Pipeline)
             if start_date:
                 pipe_q = pipe_q.filter(Pipeline.created_at >= start_date)
+            if end_date:
+                pipe_q = pipe_q.filter(Pipeline.created_at <= end_date)
             if pos_id:
                 pipe_q = pipe_q.filter(Pipeline.position_id == pos_id)
             total_pipeline_records = pipe_q.count()
@@ -103,12 +131,14 @@ class AnalyticsService:
         position_id: Optional[int] = None,
         recruiter_id: Optional[int] = None,
     ):
-        start_date, pos_id, _ = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
+        start_date, end_date, pos_id, _ = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
         stages_order = ["Applied", "Screening", "Technical Interview", "HR Round", "Offer", "Hired", "Rejected"]
         try:
             q = db.query(Pipeline.stage, func.count(Pipeline.id))
             if start_date:
                 q = q.filter(Pipeline.created_at >= start_date)
+            if end_date:
+                q = q.filter(Pipeline.created_at <= end_date)
             if pos_id:
                 q = q.filter(Pipeline.position_id == pos_id)
             
@@ -132,11 +162,13 @@ class AnalyticsService:
         position_id: Optional[int] = None,
         recruiter_id: Optional[int] = None,
     ):
-        start_date, pos_id, _ = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
+        start_date, end_date, pos_id, _ = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
         try:
             q = db.query(Candidate.skills).filter(Candidate.skills != None, Candidate.skills != "")
             if start_date:
                 q = q.filter(Candidate.created_at >= start_date)
+            if end_date:
+                q = q.filter(Candidate.created_at <= end_date)
             if pos_id:
                 q = q.filter(Candidate.applied_position_id == pos_id)
                 
@@ -167,11 +199,13 @@ class AnalyticsService:
         position_id: Optional[int] = None,
         recruiter_id: Optional[int] = None,
     ):
-        start_date, pos_id, _ = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
+        start_date, end_date, pos_id, _ = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
         try:
             q = db.query(Interview.status, func.count(Interview.id))
             if start_date:
                 q = q.filter(Interview.interview_date >= start_date.strftime("%Y-%m-%d"))
+            if end_date:
+                q = q.filter(Interview.interview_date <= end_date.strftime("%Y-%m-%d"))
             if pos_id:
                 q = q.filter(Interview.position_id == pos_id)
             results = q.group_by(Interview.status).all()
@@ -192,7 +226,7 @@ class AnalyticsService:
         position_id: Optional[int] = None,
         recruiter_id: Optional[int] = None,
     ):
-        start_date, pos_id, _ = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
+        start_date, end_date, pos_id, _ = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
         months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         month_counts = {m: 0 for m in months}
         try:
@@ -205,6 +239,8 @@ class AnalyticsService:
             )
             if start_date:
                 q = q.filter(Pipeline.created_at >= start_date)
+            if end_date:
+                q = q.filter(Pipeline.created_at <= end_date)
             if pos_id:
                 q = q.filter(Pipeline.position_id == pos_id)
                 
@@ -225,12 +261,14 @@ class AnalyticsService:
         position_id: Optional[int] = None,
         recruiter_id: Optional[int] = None,
     ):
-        start_date, pos_id, _ = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
+        start_date, end_date, pos_id, _ = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
         results = []
         try:
             q = db.query(Pipeline).filter(Pipeline.stage == "Hired")
             if start_date:
                 q = q.filter(Pipeline.created_at >= start_date)
+            if end_date:
+                q = q.filter(Pipeline.created_at <= end_date)
             if pos_id:
                 q = q.filter(Pipeline.position_id == pos_id)
                 
@@ -276,11 +314,13 @@ class AnalyticsService:
         position_id: Optional[int] = None,
         recruiter_id: Optional[int] = None,
     ):
-        start_date, pos_id, _ = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
+        start_date, end_date, pos_id, _ = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
         try:
             offer_q = db.query(Offer)
             if start_date:
                 offer_q = offer_q.filter(Offer.created_at >= start_date)
+            if end_date:
+                offer_q = offer_q.filter(Offer.created_at <= end_date)
             if pos_id:
                 offer_q = offer_q.filter(Offer.position_id == pos_id)
                 
@@ -292,6 +332,8 @@ class AnalyticsService:
                 pipe_q = db.query(Pipeline)
                 if start_date:
                     pipe_q = pipe_q.filter(Pipeline.created_at >= start_date)
+                if end_date:
+                    pipe_q = pipe_q.filter(Pipeline.created_at <= end_date)
                 if pos_id:
                     pipe_q = pipe_q.filter(Pipeline.position_id == pos_id)
                     
@@ -299,7 +341,7 @@ class AnalyticsService:
                 accepted_offers = pipe_q.filter(Pipeline.stage == "Hired").count()
                 declined_offers = pipe_q.filter(Pipeline.stage == "Rejected").count()
 
-            accept_rate = round((accepted_offers / max(1, total_offers)) * 100) if total_offers > 0 else 100
+            accept_rate = round((accepted_offers / max(1, total_offers)) * 100) if total_offers > 0 else 0
             
             reasons = []
             if declined_offers > 0:
@@ -320,7 +362,7 @@ class AnalyticsService:
             }
         except Exception as e:
             logger.error(f"Error in offer_decline_analytics: {e}", exc_info=True)
-            return {"total_offers": 0, "accepted_offers": 0, "declined_offers": 0, "accept_rate": 100, "reasons": []}
+            return {"total_offers": 0, "accepted_offers": 0, "declined_offers": 0, "accept_rate": 0, "reasons": []}
 
     @staticmethod
     def interview_success_predictor(
@@ -329,17 +371,18 @@ class AnalyticsService:
         position_id: Optional[int] = None,
         recruiter_id: Optional[int] = None,
     ):
-        start_date, pos_id, _ = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
+        start_date, end_date, pos_id, _ = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
         try:
             q = db.query(Interview)
             if start_date:
                 q = q.filter(Interview.interview_date >= start_date.strftime("%Y-%m-%d"))
+            if end_date:
+                q = q.filter(Interview.interview_date <= end_date.strftime("%Y-%m-%d"))
             if pos_id:
                 q = q.filter(Interview.position_id == pos_id)
                 
             total_interviews = q.count()
             if total_interviews == 0:
-                total_cand = db.query(Candidate).count()
                 return {
                     "insights": [
                         {
@@ -410,7 +453,7 @@ class AnalyticsService:
         position_id: Optional[int] = None,
         recruiter_id: Optional[int] = None,
     ):
-        start_date, pos_id, _ = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
+        start_date, end_date, pos_id, _ = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
         channels_def = [
             {"channel": "Manual Upload / Direct Site", "source_keys": ["manual", "direct", "upload"], "color": "bg-indigo-500", "text": "text-indigo-400"},
             {"channel": "LinkedIn Recruiter", "source_keys": ["linkedin"], "color": "bg-blue-500", "text": "text-blue-400"},
@@ -422,6 +465,8 @@ class AnalyticsService:
             q = db.query(Candidate)
             if start_date:
                 q = q.filter(Candidate.created_at >= start_date)
+            if end_date:
+                q = q.filter(Candidate.created_at <= end_date)
             if pos_id:
                 q = q.filter(Candidate.applied_position_id == pos_id)
                 
@@ -465,18 +510,24 @@ class AnalyticsService:
         position_id: Optional[int] = None,
         recruiter_id: Optional[int] = None,
     ):
-        start_date, pos_id, _ = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
+        start_date, end_date, pos_id, _ = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
         try:
             q = db.query(Pipeline).filter(Pipeline.stage == "Rejected")
             if start_date:
                 q = q.filter(Pipeline.created_at >= start_date)
+            if end_date:
+                q = q.filter(Pipeline.created_at <= end_date)
             if pos_id:
                 q = q.filter(Pipeline.position_id == pos_id)
                 
             rejected_count = q.count()
             if rejected_count == 0:
-                cand_rejected = db.query(Candidate).filter(Candidate.status == "Rejected").count()
-                rejected_count = cand_rejected
+                cand_q = db.query(Candidate).filter(Candidate.status == "Rejected")
+                if start_date:
+                    cand_q = cand_q.filter(Candidate.created_at >= start_date)
+                if end_date:
+                    cand_q = cand_q.filter(Candidate.created_at <= end_date)
+                rejected_count = cand_q.count()
 
             if rejected_count == 0:
                 return []
@@ -500,11 +551,13 @@ class AnalyticsService:
         position_id: Optional[int] = None,
         recruiter_id: Optional[int] = None,
     ):
-        start_date, pos_id, _ = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
+        start_date, end_date, pos_id, _ = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
         try:
             q = db.query(Candidate.source, func.count(Candidate.id))
             if start_date:
                 q = q.filter(Candidate.created_at >= start_date)
+            if end_date:
+                q = q.filter(Candidate.created_at <= end_date)
             if pos_id:
                 q = q.filter(Candidate.applied_position_id == pos_id)
             results = q.group_by(Candidate.source).all()
@@ -521,6 +574,61 @@ class AnalyticsService:
         except Exception as e:
             logger.error(f"Error in source_analytics: {e}", exc_info=True)
             return [{"source": "Direct Upload", "count": 0}]
+
+    @staticmethod
+    def generate_ai_recommendations(db: Session):
+        from app.services.llm_factory import get_chat_model
+        import json
+        
+        total_candidates = db.query(Candidate).count()
+        total_positions = db.query(Position).count()
+        total_interviews = db.query(Interview).count()
+        
+        pipeline_stats = AnalyticsService.pipeline_statistics(db)
+        top_skills_dict = AnalyticsService.top_skills(db)
+        top_5_skills = list(top_skills_dict.items())[:5]
+        
+        prompt = f"""
+        You are an expert technical recruiter AI. Analyze the following live system statistics from our recruitment database:
+        - Total Candidates: {total_candidates}
+        - Open Positions: {total_positions}
+        - Scheduled Interviews: {total_interviews}
+        - Pipeline Distribution: {pipeline_stats}
+        - Top Candidate Skills: {top_5_skills}
+        
+        Generate exactly 3 actionable, insightful recommendations for the HR/Recruitment team based on these exact metrics. 
+        Return ONLY a JSON array of 3 objects with keys: "id", "title", "description", "action", "impact", "priority".
+        """
+        
+        try:
+            model = get_chat_model(temperature=0.7, json_mode=True)
+            if model:
+                response = model.invoke(prompt)
+                content = response.content.strip()
+                if content.startswith("```json"):
+                    content = content[7:]
+                if content.endswith("```"):
+                    content = content[:-3]
+                if content.startswith("```"):
+                    content = content[3:]
+                parsed = json.loads(content.strip())
+                if isinstance(parsed, dict) and "recommendations" in parsed:
+                    parsed = parsed["recommendations"]
+                if isinstance(parsed, list):
+                    return parsed
+        except Exception as e:
+            logger.error(f"Error generating AI recommendations: {e}")
+            
+        return [
+            {
+                "id": "1",
+                "title": "Fast-Track Pipeline Velocity",
+                "description": f"Currently {total_candidates} candidates across {total_positions} active job roles. Review technical interview bottlenecks.",
+                "action": "Review Pipeline",
+                "impact": "Save 5 hours/week",
+                "priority": "high",
+            }
+        ]
 
     @staticmethod
     def bias_detection_scan(text: str):

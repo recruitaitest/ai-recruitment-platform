@@ -24,14 +24,17 @@ export function OfferDeclineAnalytics({ filters }: OfferDeclineAnalyticsProps) {
 
   const fetchData = async () => {
     try {
-      const res = await getOfferDeclineAnalytics({ ...filters, dateRange: filters?.dateRange || timeRange });
+      const res = await getOfferDeclineAnalytics({
+        ...filters,
+        dateRange: timeRange,
+      });
       setData(res);
     } catch {
       setData({
         total_offers: 0,
         accepted_offers: 0,
         declined_offers: 0,
-        accept_rate: 100,
+        accept_rate: 0,
         reasons: [],
       });
     }

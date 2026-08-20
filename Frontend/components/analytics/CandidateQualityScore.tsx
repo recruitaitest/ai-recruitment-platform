@@ -20,7 +20,10 @@ export function CandidateQualityScore({ filters }: CandidateQualityScoreProps) {
 
   const fetchQualityScoreData = async () => {
     try {
-      const res = await getCandidateQualityScore({ ...filters, dateRange: filters?.dateRange || selectedQuarter });
+      const res = await getCandidateQualityScore({
+        ...filters,
+        dateRange: selectedQuarter,
+      });
       setChannels(res?.channels || []);
     } catch {
       setChannels([]);
