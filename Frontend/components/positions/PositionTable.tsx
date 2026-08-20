@@ -247,7 +247,7 @@ export default function PositionTable({
                       onChange={() => onTogglePublish?.(position.id, !!position.is_published)}
                       className="sr-only peer"
                     />
-                    <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-500 shadow-2xs"></div>
+                    <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none dark:bg-surface-hover rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-border peer-checked:bg-emerald-500 shadow-2xs"></div>
                   </label>
 
                   <span className={`text-[11px] font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap ${

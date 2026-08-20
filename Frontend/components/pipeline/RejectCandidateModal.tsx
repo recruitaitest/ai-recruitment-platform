@@ -170,10 +170,10 @@ export default function RejectCandidateModal({
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
-          className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-surface dark:bg-[#151D2F] shadow-2xl z-10"
+          className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-surface shadow-2xl z-10"
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-border px-6 py-5 sticky top-0 bg-surface dark:bg-[#151D2F] z-10">
+          <div className="flex items-center justify-between border-b border-border px-6 py-5 sticky top-0 bg-surface z-10">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 flex items-center justify-center text-rose-600 dark:text-rose-400 shadow-2xs">
                 <AlertTriangle className="w-5 h-5" />

@@ -108,7 +108,7 @@ export default function PipelineColumn({
         transition-all
         ${isOver
           ? "border-indigo-500/50 bg-indigo-50/50 dark:bg-indigo-500/10"
-          : "border-slate-200/60 dark:border-[#2A3441] bg-slate-50/50 dark:bg-[#131927]"
+          : "border-slate-200/60 dark:border-border bg-slate-50/50 dark:bg-[#0A0C1E]"
         }
       `}
     >
@@ -146,11 +146,10 @@ export default function PipelineColumn({
             <button
               type="button"
               onClick={() => onSelectAllInStage(columnCandidateIds)}
-              className={`text-[11px] font-semibold flex items-center gap-1 px-2 py-1 rounded-lg border transition ${
-                allColumnSelected
+              className={`text-[11px] font-semibold flex items-center gap-1 px-2 py-1 rounded-lg border transition ${allColumnSelected
                   ? "bg-blue-600 text-white border-blue-600 shadow-sm"
                   : "bg-secondary-surface/60 text-muted hover:text-text-primary border-border"
-              }`}
+                }`}
               title={allColumnSelected ? "Deselect all candidates in this stage" : "Select all candidates in this stage for bulk actions"}
             >
               <CheckSquare className="w-3 h-3" />
@@ -204,10 +203,10 @@ export default function PipelineColumn({
                 justify-center
                 rounded-2xl
                 border border-dashed
-                border-slate-300 dark:border-slate-700
-                bg-slate-50/50 dark:bg-[#1A2333]/50
+                border-slate-300 dark:border-border
+                bg-slate-50/50 dark:bg-surface/40
                 text-sm
-                text-slate-400
+                text-slate-400 dark:text-muted
               "
             >
               No candidates

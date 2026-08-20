@@ -109,9 +109,9 @@ export default function CandidateCard({
       {...(isDraggable ? listeners : {})}
       className={`
         group relative rounded-2xl border
-        border-slate-200 dark:border-slate-700/50
+        border-slate-200 dark:border-border
         border-l-[4px] ${accentBorder}
-        bg-white dark:bg-[#1E293B] p-4
+        bg-white dark:bg-surface p-4
         shadow-sm hover:shadow-md dark:shadow-black/20
         transition-all ${isDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}
         ${isDragging ? "rotate-2 opacity-70 shadow-2xl ring-2 ring-indigo-500/50" : ""}

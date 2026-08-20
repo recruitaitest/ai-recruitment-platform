@@ -154,21 +154,21 @@ export default function EditPositionModal({
       <motion.div
         initial={{ scale: 0.95, y: 10 }}
         animate={{ scale: 1, y: 0 }}
-        className="relative w-full max-w-3xl max-h-[90vh] flex flex-col rounded-2xl bg-white dark:bg-[#1B2337] border border-slate-200 dark:border-[#26324A] shadow-2xl overflow-hidden"
+        className="relative w-full max-w-3xl max-h-[90vh] flex flex-col rounded-2xl bg-white dark:bg-surface border border-slate-200 dark:border-border shadow-2xl overflow-hidden"
       >
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 dark:border-slate-800/80 px-6 py-5">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 dark:border-border px-6 py-5">
           <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-text-primary">
               Edit Position
             </h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-sm text-slate-500 dark:text-muted">
               Update position details
             </p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-full p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
+            className="rounded-full p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-surface-hover dark:hover:text-text-primary transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -178,7 +178,7 @@ export default function EditPositionModal({
         <div className="grid gap-6 p-6 md:grid-cols-2 overflow-y-auto flex-1">
           {/* Title */}
           <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+            <label className="mb-2 block text-sm font-semibold text-text-primary">
               Position Title
             </label>
             <input
@@ -186,19 +186,19 @@ export default function EditPositionModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Senior Frontend Developer"
-              className="w-full rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white px-4 py-3 outline-none text-sm font-medium"
+              className="w-full rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border text-text-primary px-4 py-3 outline-none text-sm font-medium"
             />
           </div>
 
           {/* Department */}
           <div>
-            <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+            <label className="mb-2 block text-sm font-semibold text-text-primary">
               Department
             </label>
             <select
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
-              className="w-full rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white px-4 py-3 outline-none text-sm font-medium"
+              className="w-full rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border text-text-primary px-4 py-3 outline-none text-sm font-medium"
             >
               <option>Engineering</option>
               <option>Design</option>
@@ -211,7 +211,7 @@ export default function EditPositionModal({
 
           {/* Location */}
           <div>
-            <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+            <label className="mb-2 block text-sm font-semibold text-text-primary">
               Location
             </label>
             <input
@@ -219,20 +219,20 @@ export default function EditPositionModal({
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="Bangalore"
-              className="w-full rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white px-4 py-3 outline-none text-sm font-medium"
+              className="w-full rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border text-text-primary px-4 py-3 outline-none text-sm font-medium"
             />
           </div>
 
           {/* Structured Experience Input */}
           <div>
-            <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+            <label className="mb-2 block text-sm font-semibold text-text-primary">
               Experience Range (Years)
             </label>
             <div className="grid grid-cols-2 gap-2">
               <select
                 value={minExp}
                 onChange={(e) => handleMinExpChange(e.target.value)}
-                className="w-full rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white px-3 py-3 text-xs font-medium outline-none"
+                className="w-full rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border text-text-primary px-3 py-3 text-xs font-medium outline-none"
               >
                 {EXP_OPTIONS.map((opt) => (
                   <option key={`edit-min-${opt}`} value={opt}>
@@ -243,7 +243,7 @@ export default function EditPositionModal({
               <select
                 value={maxExp}
                 onChange={(e) => setMaxExp(e.target.value)}
-                className="w-full rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white px-3 py-3 text-xs font-medium outline-none"
+                className="w-full rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border text-text-primary px-3 py-3 text-xs font-medium outline-none"
               >
                 {EXP_OPTIONS.map((opt) => (
                   <option key={`edit-max-${opt}`} value={opt}>
@@ -256,14 +256,14 @@ export default function EditPositionModal({
 
           {/* Structured Salary Range Input */}
           <div>
-            <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+            <label className="mb-2 block text-sm font-semibold text-text-primary">
               {salaryPeriod === "Monthly" ? "Monthly Salary Amount" : "Salary Range"}
             </label>
             <div className="flex items-center gap-1.5">
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
-                className="rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white px-2.5 py-3 text-xs font-semibold outline-none shrink-0"
+                className="rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border text-text-primary px-2.5 py-3 text-xs font-semibold outline-none shrink-0"
               >
                 <option value="₹">₹ (INR)</option>
                 <option value="$">$ (USD)</option>
@@ -279,7 +279,7 @@ export default function EditPositionModal({
                   value={minSalary}
                   onChange={(e) => handleMinSalaryChange(e.target.value)}
                   placeholder="40000"
-                  className="w-full rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white px-3 py-3 text-xs font-medium outline-none placeholder:text-slate-400"
+                  className="w-full rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border text-text-primary px-3 py-3 text-xs font-medium outline-none placeholder:text-muted"
                 />
               ) : (
                 /* Min - Max Range Inputs */
@@ -290,16 +290,16 @@ export default function EditPositionModal({
                     value={minSalary}
                     onChange={(e) => handleMinSalaryChange(e.target.value)}
                     placeholder="Min"
-                    className="w-full rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white px-3 py-3 text-xs font-medium outline-none placeholder:text-slate-400"
+                    className="w-full rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border text-text-primary px-3 py-3 text-xs font-medium outline-none placeholder:text-muted"
                   />
-                  <span className="text-slate-400 font-bold text-xs">-</span>
+                  <span className="text-muted font-bold text-xs">-</span>
                   <input
                     type="number"
                     min={0}
                     value={maxSalary}
                     onChange={(e) => handleMaxSalaryChange(e.target.value)}
                     placeholder="Max"
-                    className="w-full rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white px-3 py-3 text-xs font-medium outline-none placeholder:text-slate-400"
+                    className="w-full rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border text-text-primary px-3 py-3 text-xs font-medium outline-none placeholder:text-muted"
                   />
                 </>
               )}
@@ -312,7 +312,7 @@ export default function EditPositionModal({
                     setMinSalary("40000");
                   }
                 }}
-                className="rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white px-2.5 py-3 text-xs font-semibold outline-none shrink-0"
+                className="rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border text-text-primary px-2.5 py-3 text-xs font-semibold outline-none shrink-0"
               >
                 <option value="LPA">LPA</option>
                 <option value="Monthly">Monthly</option>
@@ -323,7 +323,7 @@ export default function EditPositionModal({
 
           {/* Skills Tag Input */}
           <div className="md:col-span-2 space-y-2">
-            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+            <label className="block text-sm font-semibold text-text-primary">
               Skills & Requirements (Tag Chips)
             </label>
             <SkillsTagInput
@@ -335,7 +335,7 @@ export default function EditPositionModal({
 
           {/* Always Display Job Description Field */}
           <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+            <label className="mb-2 block text-sm font-semibold text-text-primary">
               Job Description (Markdown)
             </label>
             <textarea
@@ -343,16 +343,16 @@ export default function EditPositionModal({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Enter job description details..."
               rows={5}
-              className="w-full rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white px-4 py-3 outline-none font-mono text-xs leading-relaxed placeholder:text-slate-400"
+              className="w-full rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border text-text-primary px-4 py-3 outline-none font-mono text-xs leading-relaxed placeholder:text-muted"
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800/80 px-6 py-4">
+        <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border px-6 py-4">
           <button
             onClick={onClose}
-            className="rounded-xl px-5 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
+            className="rounded-xl px-5 py-2.5 text-sm font-semibold text-text-primary bg-surface-hover hover:bg-surface-hover/80 transition-colors"
           >
             Cancel
           </button>

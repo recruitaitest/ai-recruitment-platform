@@ -56,8 +56,8 @@ export default function ConnectMailboxModal({
             transition={{ type: "spring", stiffness: 350, damping: 25 }}
             className="
               relative w-full max-w-lg overflow-hidden rounded-2xl
-              bg-white dark:bg-[#1B2337]
-              border border-slate-200 dark:border-[#26324A]
+              bg-white dark:bg-surface
+              border border-slate-200 dark:border-border
               shadow-2xl shadow-slate-900/15 dark:shadow-black/60
               z-10
             "
@@ -66,24 +66,24 @@ export default function ConnectMailboxModal({
             <div className="h-1.5 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-rose-500" />
 
             {/* Header */}
-            <div className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100 dark:border-slate-800/80">
+            <div className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100 dark:border-border">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-text-primary">
                     Connect Mailbox
                   </h2>
                   <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-0.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40">
                     <Sparkles className="h-3 w-3" /> Auto Sync
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                <p className="mt-1 text-sm text-slate-500 dark:text-muted">
                   Connect recruiter inboxes for automated resume ingestion.
                 </p>
               </div>
 
               <button
                 onClick={onClose}
-                className="rounded-full p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
+                className="rounded-full p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-surface-hover dark:hover:text-text-primary transition-colors"
                 title="Close"
               >
                 <X className="h-5 w-5" />
@@ -98,8 +98,8 @@ export default function ConnectMailboxModal({
                 disabled={isLoading}
                 className={`
                   group w-full text-left rounded-2xl p-5
-                  bg-slate-50 hover:bg-indigo-50/60 dark:bg-[#161C2C] dark:hover:bg-indigo-950/30
-                  border border-slate-200/80 hover:border-indigo-500/40 dark:border-slate-800 dark:hover:border-indigo-500/40
+                  bg-slate-50 hover:bg-indigo-50/60 dark:bg-surface-hover/50 dark:hover:bg-surface-hover
+                  border border-slate-200/80 hover:border-indigo-500/40 dark:border-border dark:hover:border-primary/40
                   shadow-sm hover:shadow-md
                   transition-all duration-200
                   ${isLoading ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}
@@ -112,13 +112,13 @@ export default function ConnectMailboxModal({
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                      <h3 className="text-base font-bold text-slate-900 dark:text-text-primary group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                         Microsoft Office365
                       </h3>
                       <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
                     </div>
 
-                    <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    <p className="mt-1 text-xs text-slate-600 dark:text-text-secondary leading-relaxed">
                       Sync recruiter inboxes & shared mailboxes via Microsoft Graph API.
                     </p>
 
@@ -136,8 +136,8 @@ export default function ConnectMailboxModal({
                 disabled={isLoading}
                 className={`
                   group w-full text-left rounded-2xl p-5
-                  bg-slate-50 hover:bg-rose-50/60 dark:bg-[#161C2C] dark:hover:bg-rose-950/30
-                  border border-slate-200/80 hover:border-rose-500/40 dark:border-slate-800 dark:hover:border-rose-500/40
+                  bg-slate-50 hover:bg-rose-50/60 dark:bg-surface-hover/50 dark:hover:bg-surface-hover
+                  border border-slate-200/80 hover:border-rose-500/40 dark:border-border dark:hover:border-rose-500/40
                   shadow-sm hover:shadow-md
                   transition-all duration-200
                   ${isLoading ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}
@@ -150,13 +150,13 @@ export default function ConnectMailboxModal({
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">
+                      <h3 className="text-base font-bold text-slate-900 dark:text-text-primary group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">
                         Google Gmail
                       </h3>
                       <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-rose-600 dark:group-hover:text-rose-400 group-hover:translate-x-1 transition-all" />
                     </div>
 
-                    <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    <p className="mt-1 text-xs text-slate-600 dark:text-text-secondary leading-relaxed">
                       Connect Gmail accounts for automated candidate email & resume processing.
                     </p>
 
@@ -169,8 +169,8 @@ export default function ConnectMailboxModal({
               </button>
 
               {/* Footer Notice */}
-              <div className="rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 p-4">
-                <p className="text-xs text-indigo-900 dark:text-indigo-200 leading-relaxed">
+              <div className="rounded-xl bg-indigo-50/80 dark:bg-primary-soft/40 border border-indigo-100 dark:border-primary/30 p-4">
+                <p className="text-xs text-indigo-900 dark:text-text-primary leading-relaxed">
                   <strong className="font-semibold">Automated Ingestion:</strong> Connected mailboxes will automatically sync applicant emails, extract PDF/DOCX resume attachments, and generate candidate profiles in real time.
                 </p>
               </div>

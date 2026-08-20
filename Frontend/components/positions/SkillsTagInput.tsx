@@ -34,7 +34,7 @@ export default function SkillsTagInput({ tags = [], onChange, placeholder = "Typ
   };
 
   return (
-    <div className="w-full min-h-[52px] rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 p-2.5 flex flex-wrap items-center gap-2 focus-within:border-indigo-500/50 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all">
+    <div className="w-full min-h-[52px] rounded-xl bg-slate-50 dark:bg-surface-hover/40 border border-slate-200/80 dark:border-border p-2.5 flex flex-wrap items-center gap-2 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/50 transition-all">
       {tags.map((tag, idx) => (
         <span
           key={idx}
@@ -57,7 +57,7 @@ export default function SkillsTagInput({ tags = [], onChange, placeholder = "Typ
         onKeyDown={handleKeyDown}
         onBlur={() => inputValue && addTag(inputValue)}
         placeholder={tags.length === 0 ? placeholder : "Add skill..."}
-        className="flex-1 min-w-[140px] bg-transparent text-sm text-slate-900 dark:text-white outline-none placeholder:text-slate-400 py-1 px-1"
+        className="flex-1 min-w-[140px] bg-transparent text-sm text-slate-900 dark:text-text-primary outline-none placeholder:text-slate-400 dark:placeholder:text-muted py-1 px-1"
       />
     </div>
   );

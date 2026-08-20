@@ -342,12 +342,12 @@ export default function ScheduleInterviewModal({
   const hasErrors = Object.values(errors).some(Boolean);
 
   const fieldClass = (hasError: boolean) =>
-    `w-full rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white px-4 py-3 outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition ${
+    `w-full rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border text-text-primary px-4 py-3 outline-none focus:border-primary/50 text-sm transition ${
       touched && hasError ? "border-red-500 bg-red-50 dark:bg-red-950/20" : ""
     }`;
 
   const dateTimeClass = (hasError: boolean) =>
-    `flex items-center gap-3 rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white px-4 py-3 transition focus-within:border-indigo-500/50 focus-within:ring-1 focus-within:ring-indigo-500/50 ${
+    `flex items-center gap-3 rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border text-text-primary px-4 py-3 transition focus-within:border-primary/50 ${
       touched && hasError ? "border-red-500 bg-red-50 dark:bg-red-950/20" : ""
     }`;
 
@@ -440,18 +440,18 @@ export default function ScheduleInterviewModal({
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.25 }}
-          className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-white dark:bg-[#1B2337] border border-slate-200 dark:border-[#26324A] shadow-2xl shadow-slate-900/15 dark:shadow-black/60 overflow-hidden"
+          className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-white dark:bg-surface border border-slate-200 dark:border-border shadow-2xl shadow-slate-900/15 dark:shadow-black/60 overflow-hidden"
         >
-          <div className="flex shrink-0 items-center justify-between border-b border-slate-100 dark:border-slate-800/80 px-6 py-5">
+          <div className="flex shrink-0 items-center justify-between border-b border-slate-100 dark:border-border px-6 py-5">
             <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Schedule Interview</h2>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-text-primary">Schedule Interview</h2>
+              <p className="mt-1 text-xs text-slate-500 dark:text-muted">
                 Setup candidate interview session, panel members, and logistics
               </p>
             </div>
             <button
               onClick={onClose}
-              className="rounded-full p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
+              className="rounded-full p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-surface-hover dark:hover:text-text-primary transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
@@ -470,12 +470,12 @@ export default function ScheduleInterviewModal({
             )}
 
             <div>
-              <label className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <label className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-text-primary">
                 <UserIcon className="h-3.5 w-3.5 text-indigo-500" /> Candidate <span className="text-red-400">*</span>
               </label>
               {candidateId ? (
-                <div className="rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 px-4 py-3">
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                <div className="rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border px-4 py-3">
+                  <p className="text-sm font-semibold text-text-primary">
                     {candidateName}
                   </p>
                 </div>
@@ -505,12 +505,12 @@ export default function ScheduleInterviewModal({
             </div>
 
             <div>
-              <label className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <label className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-text-primary">
                 <Briefcase className="h-3.5 w-3.5 text-indigo-500" /> Position <span className="text-red-400">*</span>
               </label>
               {positionId ? (
-                <div className="rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 px-4 py-3">
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                <div className="rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border px-4 py-3">
+                  <p className="text-sm font-semibold text-text-primary">
                     {positionTitle}
                   </p>
                 </div>
@@ -540,7 +540,7 @@ export default function ScheduleInterviewModal({
             </div>
 
             <div>
-              <label className="mb-2 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <label className="mb-2 block text-xs font-semibold text-text-primary">
                 Interview Type <span className="text-red-400">*</span>
               </label>
               <div className="grid grid-cols-2 gap-3">
@@ -550,7 +550,7 @@ export default function ScheduleInterviewModal({
                   className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 font-semibold text-sm transition ${
                     interviewType === "Technical Interview"
                       ? "border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shadow-sm"
-                      : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#161C2C] text-slate-600 dark:text-slate-300 hover:border-slate-300"
+                      : "border-slate-200 dark:border-border bg-slate-50 dark:bg-surface-hover/40 text-slate-600 dark:text-text-secondary hover:border-slate-300 dark:hover:border-border"
                   }`}
                 >
                   <Shield className="h-4 w-4" />
@@ -563,7 +563,7 @@ export default function ScheduleInterviewModal({
                   className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 font-semibold text-sm transition ${
                     interviewType === "HR Interview"
                       ? "border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shadow-sm"
-                      : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#161C2C] text-slate-600 dark:text-slate-300 hover:border-slate-300"
+                      : "border-slate-200 dark:border-border bg-slate-50 dark:bg-surface-hover/40 text-slate-600 dark:text-text-secondary hover:border-slate-300 dark:hover:border-border"
                   }`}
                 >
                   <UserCheck className="h-4 w-4" />
@@ -573,7 +573,7 @@ export default function ScheduleInterviewModal({
             </div>
 
             <div>
-              <label className="mb-2 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <label className="mb-2 block text-xs font-semibold text-text-primary">
                 Interview Mode <span className="text-red-400">*</span>
               </label>
               <div className="grid grid-cols-3 gap-3">
@@ -585,7 +585,7 @@ export default function ScheduleInterviewModal({
                     className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-semibold transition ${
                       mode === m
                         ? "border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shadow-sm"
-                        : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#161C2C] text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                        : "border-slate-200 dark:border-border bg-slate-50 dark:bg-surface-hover/40 text-slate-600 dark:text-text-secondary hover:border-slate-300 dark:hover:border-border"
                     }`}
                   >
                     {m === "Online" && <Video className="h-4 w-4" />}
@@ -599,7 +599,7 @@ export default function ScheduleInterviewModal({
 
             {mode === "Online" && (
               <div>
-                <label className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <label className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-text-primary">
                   Meeting Link <span className="text-red-400">*</span>
                 </label>
                 <input
@@ -620,9 +620,9 @@ export default function ScheduleInterviewModal({
             {mode === "In-Person" && (
               <div className="space-y-3">
                 <div>
-                  <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-text-primary">
                     <span className="flex items-center gap-1">Location / Venue Address <span className="text-red-400">*</span></span>
-                    <span className="text-[10px] text-slate-400">Physical venue address</span>
+                    <span className="text-[10px] text-muted">Physical venue address</span>
                   </label>
                   <input
                     type="text"
@@ -639,9 +639,9 @@ export default function ScheduleInterviewModal({
                 </div>
 
                 <div>
-                  <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    <span className="flex items-center gap-1">Google Maps Link <span className="text-[10px] text-slate-400 font-normal">(Optional)</span></span>
-                    <span className="text-[10px] text-slate-400">Direct navigation URL</span>
+                  <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-text-primary">
+                    <span className="flex items-center gap-1">Google Maps Link <span className="text-[10px] text-muted font-normal">(Optional)</span></span>
+                    <span className="text-[10px] text-muted">Direct navigation URL</span>
                   </label>
                   <input
                     type="url"
@@ -663,10 +663,10 @@ export default function ScheduleInterviewModal({
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <label className="flex items-center gap-1 text-xs font-semibold text-text-primary">
                     Interview Date <span className="text-red-400">*</span>
                   </label>
-                  <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] font-medium text-slate-500 dark:text-muted bg-slate-100 dark:bg-surface-hover px-2 py-0.5 rounded-full">
                     Mon – Sat only
                   </span>
                 </div>
@@ -680,7 +680,7 @@ export default function ScheduleInterviewModal({
                       setDate(e.target.value);
                       setScheduleError(null);
                     }}
-                    className="w-full bg-transparent text-sm text-slate-900 dark:text-white outline-none cursor-pointer"
+                    className="w-full bg-transparent text-sm text-slate-900 dark:text-text-primary outline-none cursor-pointer"
                   />
                 </div>
                 {touched && isDateSunday && (
@@ -695,10 +695,10 @@ export default function ScheduleInterviewModal({
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <label className="flex items-center gap-1 text-xs font-semibold text-text-primary">
                     Interview Time <span className="text-red-400">*</span>
                   </label>
-                  <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] font-medium text-slate-500 dark:text-muted bg-slate-100 dark:bg-surface-hover px-2 py-0.5 rounded-full">
                     09:00 AM – 06:00 PM
                   </span>
                 </div>
@@ -713,7 +713,7 @@ export default function ScheduleInterviewModal({
                       setTime(e.target.value);
                       setScheduleError(null);
                     }}
-                    className="w-full bg-transparent text-sm text-slate-900 dark:text-white outline-none cursor-pointer"
+                    className="w-full bg-transparent text-sm text-slate-900 dark:text-text-primary outline-none cursor-pointer"
                   />
                 </div>
                 {touched && !time && (
@@ -731,7 +731,7 @@ export default function ScheduleInterviewModal({
             </div>
 
             <div>
-              <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-text-primary">
                 <span className="flex items-center gap-1">Interview Panel Role <span className="text-red-400">*</span></span>
                 <span className="text-[10px] text-indigo-400">
                   {interviewType === "Technical Interview" ? "Hiring Manager / Tech Lead roles" : "HR / Recruiter roles"}
@@ -740,7 +740,7 @@ export default function ScheduleInterviewModal({
               <select
                 value={panelMember}
                 onChange={(e) => setPanelMember(e.target.value)}
-                className="w-full rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white px-4 py-3 outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 text-sm"
+                className="w-full rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border text-text-primary px-4 py-3 outline-none focus:border-primary/50 text-sm"
               >
                 {availableRoles.length > 0 ? (
                   availableRoles.map((r) => (
@@ -757,14 +757,14 @@ export default function ScheduleInterviewModal({
             </div>
 
             <div>
-              <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-text-primary">
                 <span className="flex items-center gap-1">Interviewer User <span className="text-red-400">*</span></span>
-                <span className="text-[10px] text-slate-400">Assigned user conducting assessment</span>
+                <span className="text-[10px] text-muted">Assigned user conducting assessment</span>
               </label>
               <select
                 value={panelUser}
                 onChange={(e) => setPanelUser(e.target.value)}
-                className="w-full rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white px-4 py-3 outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 text-sm"
+                className="w-full rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border text-text-primary px-4 py-3 outline-none focus:border-primary/50 text-sm"
               >
                 {availableUsers.length > 0 ? (
                   availableUsers.map((u) => (
@@ -781,7 +781,7 @@ export default function ScheduleInterviewModal({
             </div>
 
             <div>
-              <label className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <label className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-text-primary">
                 <FileText className="h-3.5 w-3.5 text-indigo-500" /> Interview Notes & Instructions
               </label>
               <textarea
@@ -789,16 +789,16 @@ export default function ScheduleInterviewModal({
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Add interview instructions, preparation checklist, or internal evaluation notes..."
-                className="w-full rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white px-4 py-3 outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 placeholder:text-slate-400 text-sm"
+                className="w-full rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border text-text-primary px-4 py-3 outline-none focus:border-primary/50 placeholder:text-muted text-sm"
               />
             </div>
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800/80 px-6 py-4">
+          <div className="flex items-center justify-end gap-3 border-t border-slate-100 dark:border-border px-6 py-4">
             <button
               onClick={onClose}
-              className="rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              className="rounded-xl border border-slate-200 dark:border-border px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-text-primary hover:bg-slate-100 dark:hover:bg-surface-hover transition"
             >
               Cancel
             </button>
@@ -834,18 +834,18 @@ export default function ScheduleInterviewModal({
       {/* Delete Interview Confirmation Modal */}
       {deleteConfirmId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1B2337] p-6 shadow-2xl space-y-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-border bg-white dark:bg-surface p-6 shadow-2xl space-y-4">
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500">
                 <Trash2 className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Cancel Interview</h3>
-                <p className="text-xs text-slate-500">This will remove this interview session.</p>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-text-primary">Cancel Interview</h3>
+                <p className="text-xs text-muted">This will remove this interview session.</p>
               </div>
             </div>
 
-            <p className="text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-[#161C2C] p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+            <p className="text-sm text-text-secondary bg-surface-hover/50 p-3 rounded-xl border border-border">
               Are you sure you want to cancel this interview session?
             </p>
 
@@ -853,7 +853,7 @@ export default function ScheduleInterviewModal({
               <button
                 type="button"
                 onClick={() => setDeleteConfirmId(null)}
-                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-border text-xs font-semibold text-slate-700 dark:text-text-primary hover:bg-slate-100 dark:hover:bg-surface-hover transition"
               >
                 Keep Interview
               </button>

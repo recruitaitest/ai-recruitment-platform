@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
@@ -117,6 +117,7 @@ export function LoginForm() {
  const {
  register,
  handleSubmit,
+ setValue,
  formState: { errors },
  } = useForm<LoginFormData>({
  resolver: zodResolver(loginSchema),
@@ -127,11 +128,33 @@ export function LoginForm() {
  },
  })
 
+ useEffect(() => {
+    try {
+      const savedEmail = localStorage.getItem('remembered_email')
+      const rememberMePref = localStorage.getItem('remember_me') === 'true'
+
+      if (savedEmail && rememberMePref) {
+        setValue('email', savedEmail)
+        setValue('rememberMe', true)
+      }
+    } catch (e) {
+      console.error('Failed to load remembered email', e)
+    }
+  }, [setValue])
+
  const onSubmit = async (data: LoginFormData) => {
  try {
  setIsLoading(true)
  setGeneralError('')
  setLoginMethod('form')
+
+ if (data.rememberMe) {
+        localStorage.setItem('remembered_email', data.email)
+        localStorage.setItem('remember_me', 'true')
+      } else {
+        localStorage.removeItem('remembered_email')
+        localStorage.removeItem('remember_me')
+      }
 
  const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + '/auth/login', {
  method: 'POST',

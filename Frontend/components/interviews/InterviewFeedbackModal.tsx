@@ -81,11 +81,10 @@ export default function InterviewFeedbackModal({
  };
 
  if (!open) return null;
+  const selectClass =
+    "w-full rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border text-text-primary px-4 py-3 outline-none focus:border-primary/50 text-sm";
 
- const selectClass =
-    "w-full rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white px-4 py-3 outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50";
-
- return (
+  return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -95,17 +94,17 @@ export default function InterviewFeedbackModal({
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.25 }}
-        className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-white dark:bg-[#1B2337] border border-slate-200 dark:border-[#26324A] shadow-2xl shadow-slate-900/15 dark:shadow-black/60 overflow-hidden"
+        className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-white dark:bg-surface border border-slate-200 dark:border-border shadow-2xl shadow-slate-900/15 dark:shadow-black/60 overflow-hidden"
       >
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 dark:border-slate-800/80 px-6 py-5">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 dark:border-border px-6 py-5">
           <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Interview Feedback</h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Submit candidate evaluation</p>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-text-primary">Interview Feedback</h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-muted">Submit candidate evaluation</p>
           </div>
           <button
             onClick={() => { resetForm(); onClose(); }}
-            className="rounded-full p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
+            className="rounded-full p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-surface-hover dark:hover:text-text-primary transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -121,9 +120,9 @@ export default function InterviewFeedbackModal({
               { label: "Position", value: positionTitle },
               { label: "Interview", value: interviewType },
             ].map(({ label, value }) => (
-              <div key={label} className="rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 p-4">
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</p>
-                <p className="mt-1 font-semibold text-slate-900 dark:text-white">{value}</p>
+              <div key={label} className="rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border p-4">
+                <p className="text-xs font-semibold text-muted">{label}</p>
+                <p className="mt-1 font-semibold text-text-primary">{value}</p>
               </div>
             ))}
           </div>
@@ -136,7 +135,7 @@ export default function InterviewFeedbackModal({
             { label: "Problem Solving Rating",value: problemSolvingRating, setter: setProblemSolvingRating },
           ].map(({ label, value, setter }) => (
             <div key={label}>
-              <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">{label}</label>
+              <label className="mb-2 block text-sm font-semibold text-text-primary">{label}</label>
               <select
                 value={value}
                 onChange={(e) => setter(e.target.value)}
@@ -151,7 +150,7 @@ export default function InterviewFeedbackModal({
 
           {/* Recommendation */}
           <div>
-            <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">Recommendation</label>
+            <label className="mb-2 block text-sm font-semibold text-text-primary">Recommendation</label>
             <select
               value={recommendation}
               onChange={(e) => setRecommendation(e.target.value)}
@@ -166,7 +165,7 @@ export default function InterviewFeedbackModal({
           {/* Comments */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">Comments & Evaluation</label>
+              <label className="block text-sm font-semibold text-text-primary">Comments & Evaluation</label>
               <AIScorecardAutoFillButton
                 onAutoFill={(ratings, summary) => {
                   if (summary) setComments(summary);
@@ -186,16 +185,16 @@ export default function InterviewFeedbackModal({
               value={comments}
               onChange={(e) => setComments(e.target.value)}
               placeholder="Add interview feedback..."
-              className="w-full rounded-xl bg-slate-50 dark:bg-[#161C2C] border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white px-4 py-3 outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 placeholder:text-slate-400"
+              className="w-full rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border text-text-primary px-4 py-3 outline-none focus:border-primary/50 placeholder:text-muted text-sm"
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex shrink-0 items-center justify-end gap-4 border-t border-slate-100 dark:border-slate-800/80 px-6 py-5">
+        <div className="flex shrink-0 items-center justify-end gap-4 border-t border-slate-100 dark:border-border px-6 py-5">
           <button
-            onClick={() => { resetForm(); onClose(); }} // ✅ Fix #2: resets form on cancel
-            className="rounded-xl px-5 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
+            onClick={() => { resetForm(); onClose(); }}
+            className="rounded-xl px-5 py-2.5 text-sm font-semibold text-text-primary bg-surface-hover hover:bg-surface-hover/80 transition-colors"
           >
             Cancel
           </button>

@@ -55,21 +55,21 @@ export default function PositionDrawer({
         initial={{ x: 500 }}
         animate={{ x: 0 }}
         transition={{ duration: 0.3 }}
-        className="absolute right-0 top-0 h-full w-full max-w-xl overflow-y-auto border-l border-slate-200 dark:border-[#26324A] bg-white dark:bg-[#1B2337] shadow-2xl"
+        className="absolute right-0 top-0 h-full w-full max-w-xl overflow-y-auto border-l border-border bg-surface shadow-2xl"
       >
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 dark:border-slate-800/80 px-6 py-5">
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-5">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+            <h2 className="text-2xl font-bold text-text-primary">
               {position.title}
             </h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-sm text-muted">
               Position Details
             </p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-full p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
+            className="rounded-full p-2 text-muted hover:text-text-primary hover:bg-surface-hover transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -79,37 +79,37 @@ export default function PositionDrawer({
         <div className="space-y-6 p-6">
           {/* Details */}
           <div className="grid gap-4">
-            <div className="flex items-center gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-[#161C2C] p-4">
+            <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface-hover/50 p-4">
               <MapPin className="h-5 w-5 text-indigo-400" />
               <div>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                <p className="text-sm font-medium text-muted">
                   Location
                 </p>
-                <p className="font-semibold text-slate-900 dark:text-white">
+                <p className="font-semibold text-text-primary">
                   {position.location}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-[#161C2C] p-4">
+            <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface-hover/50 p-4">
               <Briefcase className="h-5 w-5 text-indigo-500" />
               <div>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                <p className="text-sm font-medium text-muted">
                   Department
                 </p>
-                <p className="font-semibold text-slate-900 dark:text-white">
+                <p className="font-semibold text-text-primary">
                   {position.department}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-[#161C2C] p-4">
+            <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface-hover/50 p-4">
               <Users className="h-5 w-5 text-emerald-500" />
               <div>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                <p className="text-sm font-medium text-muted">
                   Applicants
                 </p>
-                <p className="font-semibold text-slate-900 dark:text-white">
+                <p className="font-semibold text-text-primary">
                   {position.applicants}
                 </p>
               </div>
@@ -117,11 +117,11 @@ export default function PositionDrawer({
           </div>
 
           {/* Required Skills */}
-          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-[#161C2C] p-5">
+          <div className="rounded-2xl border border-border bg-surface-hover/50 p-5">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-blue-500" />
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                <h3 className="text-base font-bold text-text-primary">
                   Required Skills
                 </h3>
               </div>
@@ -131,13 +131,13 @@ export default function PositionDrawer({
             </div>
 
             {(!position.skills || position.skills.length === 0) ? (
-              <p className="text-xs text-slate-400">No specific skills listed for this position.</p>
+              <p className="text-xs text-muted">No specific skills listed for this position.</p>
             ) : (
               <div className="flex flex-wrap gap-2 pt-1">
                 {position.skills.map((skill, idx) => (
                   <span
                     key={`${skill}-${idx}`}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-white dark:bg-[#1B2337] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-2xs hover:border-blue-500/40 transition-all"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-surface text-text-primary border border-border shadow-2xs hover:border-blue-500/40 transition-all"
                   >
                     <Code2 className="w-3 h-3 text-blue-500/80 shrink-0" />
                     {skill.trim()}
@@ -175,30 +175,30 @@ export default function PositionDrawer({
           })()}
 
           {/* AI Recommended Candidates */}
-          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-[#161C2C] p-5">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+          <div className="rounded-2xl border border-border bg-surface-hover/50 p-5">
+            <h3 className="text-lg font-bold text-text-primary">
               AI Recommended Candidates
             </h3>
             <div className="mt-4 space-y-4">
               {matchingCandidates.length === 0 ? (
-                <p className="text-slate-500 dark:text-slate-400">
+                <p className="text-muted">
                   No recommendations available
                 </p>
               ) : (
                 matchingCandidates.slice(0, 5).map((candidate, index) => (
                   <div
                     key={candidate.candidate_id}
-                    className="rounded-xl bg-white dark:bg-[#1B2337] border border-slate-200/50 dark:border-slate-800 p-4 shadow-sm"
+                    className="rounded-xl bg-surface border border-border p-4 shadow-sm"
                   >
                     <div className="flex justify-between mb-2">
-                      <span className="text-slate-900 dark:text-white font-semibold">
+                      <span className="text-text-primary font-semibold">
                         #{index + 1} {candidate.candidate_name}
                       </span>
                       <span className="text-indigo-600 dark:text-indigo-400 font-bold">
                         {candidate.match_score}%
                       </span>
                     </div>
-                    <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full">
+                    <div className="w-full h-2 bg-surface-hover rounded-full">
                       <div
                         className="h-2 rounded-full bg-indigo-500"
                         style={{ width: `${candidate.match_score}%` }}
@@ -211,8 +211,8 @@ export default function PositionDrawer({
           </div>
 
           {/* Actions */}
-          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-[#161C2C] p-5">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+          <div className="rounded-2xl border border-border bg-surface-hover/50 p-5">
+            <h3 className="text-lg font-bold text-text-primary">
               Actions
             </h3>
             <div className="mt-5 space-y-4">
@@ -227,7 +227,7 @@ export default function PositionDrawer({
 
               <button
                 onClick={() => router.push(`/pipeline?positionId=${position.id}`)}
-                className="w-full rounded-xl bg-slate-200 dark:bg-slate-700 px-5 py-3 text-sm font-semibold text-slate-800 dark:text-white hover:bg-slate-300 dark:hover:bg-slate-600 transition"
+                className="w-full rounded-xl bg-slate-200 dark:bg-surface border border-transparent dark:border-border px-5 py-3 text-sm font-semibold text-slate-800 dark:text-text-primary hover:bg-slate-300 dark:hover:bg-surface-hover transition"
               >
                 View Pipeline
               </button>

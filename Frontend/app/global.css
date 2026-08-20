@@ -1,5 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -57,36 +55,36 @@
   }
 
   input:-webkit-autofill,
-  input:-webkit-autofill:hover, 
-  input:-webkit-autofill:focus, 
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
   input:-webkit-autofill:active {
     -webkit-text-fill-color: #FFFFFF !important;
     transition: background-color 50000s ease-in-out 0s !important;
   }
 
   .dark {
-    --color-bg: #161C2C;
-    --color-surface: #1B2337;
-    --color-surface-hover: #242E46;
-    --color-border: #26324A;
-    --color-text-primary: #FFFFFF;
-    --color-text-secondary: #94A3B8;
+    --color-bg: #00020F;
+    --color-surface: #0E122E;
+    --color-surface-hover: #161C44;
+    --color-border: #161C44;
+    --color-text-primary: #F0F1F4;
+    --color-text-secondary: #A7ADBE;
 
-    --color-primary: #505AF6;
-    --color-primary-hover: #434CE4;
-    --color-primary-soft: rgba(80, 90, 246, 0.15);
+    --color-primary: #194EFF;
+    --color-primary-hover: #3362FF;
+    --color-primary-soft: rgba(25, 78, 255, 0.15);
 
-    --color-ai-accent: #6366F1;
-    --color-ai-accent-soft: rgba(99, 102, 241, 0.15);
+    --color-ai-accent: #6689FF;
+    --color-ai-accent-soft: rgba(102, 137, 255, 0.15);
 
-    --color-success: #34D399;
-    --color-warning: #FBBF24;
-    --color-danger: #F87171;
-    --color-info: #22D3EE;
+    --color-success: #10B981;
+    --color-warning: #F59E0B;
+    --color-danger: #EF4444;
+    --color-info: #38BDF8;
 
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--color-border);
-    --shadow-elevated: 0 12px 32px -4px rgba(0, 0, 0, 0.6), 0 0 20px rgba(80, 90, 246, 0.15), 0 0 0 1px var(--color-border);
+    --shadow-sm: 0 1px 3px rgba(0, 2, 15, 0.5);
+    --shadow-md: 0 4px 16px rgba(0, 2, 15, 0.6), 0 0 0 1px #161C44;
+    --shadow-elevated: 0 16px 48px -8px rgba(0, 2, 15, 0.9), 0 0 24px -4px rgba(25, 78, 255, 0.18), 0 0 0 1px #1F275F;
 
     /* Compatibility aliases */
     --background: var(--color-bg);
@@ -133,11 +131,12 @@
 }
 
 @layer components {
+
   /* Common UI Elements */
   .btn-primary {
     @apply bg-primary text-white hover:opacity-90 transition-opacity rounded-xl px-4 py-2 font-medium;
   }
-  
+
   .btn-secondary {
     @apply bg-surface text-text-primary border border-border hover:bg-surface-hover transition-colors rounded-xl px-4 py-2 font-medium;
   }
@@ -240,6 +239,8 @@
   @apply bg-surface border border-border shadow-elevated;
 }
 
-input, textarea, select {
+input,
+textarea,
+select {
   @apply bg-surface text-text-primary border border-border focus:border-primary focus:ring-1 focus:ring-primary;
 }

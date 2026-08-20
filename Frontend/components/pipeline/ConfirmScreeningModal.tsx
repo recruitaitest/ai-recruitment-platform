@@ -50,9 +50,9 @@ export default function ConfirmScreeningModal({
  initial={{ opacity: 0, scale: 0.95, y: 20 }}
  animate={{ opacity: 1, scale: 1, y: 0 }}
  exit={{ opacity: 0, scale: 0.95, y: 20 }}
- className="fixed left-1/2 top-1/2 z-[100] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-surface dark:bg-[#151D2F] shadow-2xl overflow-hidden"
+ className="fixed left-1/2 top-1/2 z-[100] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-surface shadow-2xl overflow-hidden"
  >
- <div className="flex items-center justify-between border-b border-border px-6 py-5 bg-surface dark:bg-[#151D2F]">
+ <div className="flex items-center justify-between border-b border-border px-6 py-5 bg-surface">
  <h2 className="text-xl font-semibold text-text-primary">
  Move to Screening
  </h2>
