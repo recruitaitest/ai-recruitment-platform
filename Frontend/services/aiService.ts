@@ -103,6 +103,11 @@ export const predictAIOfferRisk = async (data: {
   notice_period_days?: number;
   work_mode_matched?: boolean;
   has_competing_offers?: boolean;
+  candidate_id?: number;
+  candidate_name?: string;
+  position_id?: number;
+  position_title?: string;
+  employment_type?: string;
 }) => {
   if (!checkAiTokenAvailability(5)) return null;
   try {

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, User, Briefcase, DollarSign, Calendar, FileText, Sparkles } from "lucide-react";
+import { X, User, Briefcase, DollarSign, Calendar, FileText, Sparkles, Coins, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { createOffer } from "@/services/offerService";
 import AIOfferRiskGauge from "@/components/ai/AIOfferRiskGauge";
@@ -28,7 +28,12 @@ export default function CreateOfferModal({
   pipelineId,
   onOfferCreated,
 }: Props) {
-  const [salary, setSalary] = useState("");
+  const [salaryAmount, setSalaryAmount] = useState<string>("");
+  const [currency, setCurrency] = useState<string>("₹");
+  const [unit, setUnit] = useState<string>("LPA");
+  const [customSalaryText, setCustomSalaryText] = useState<string>("");
+  const [isCustomSalary, setIsCustomSalary] = useState(false);
+
   const [employmentType, setEmploymentType] = useState("Full Time");
   const [joiningDate, setJoiningDate] = useState("");
   const [offerExpiry, setOfferExpiry] = useState("");
@@ -36,8 +41,41 @@ export default function CreateOfferModal({
   const [loading, setLoading] = useState(false);
   const [touched, setTouched] = useState(false);
 
+  // Compute calculated Annual CTC in numbers (for AI risk predictor and offer generation)
+  const annualCtcNumber = useMemo(() => {
+    if (isCustomSalary) {
+      const match = customSalaryText.replace(/[^0-9.]/g, "");
+      return parseFloat(match) || 0;
+    }
+    const num = parseFloat(salaryAmount) || 0;
+    if (num <= 0) return 0;
+    if (unit === "LPA") return num * 100000;
+    if (unit === "Per Month") return num * 12;
+    return num; // Per Year
+  }, [salaryAmount, unit, isCustomSalary, customSalaryText]);
+
+  // Compute formatted salary string stored in DB & offer letter
+  const finalSalaryString = useMemo(() => {
+    if (isCustomSalary) return customSalaryText.trim();
+    const num = parseFloat(salaryAmount) || 0;
+    if (num <= 0) return "";
+    if (unit === "LPA") {
+      const annual = (num * 100000).toLocaleString("en-IN");
+      return `${currency}${num} LPA (${currency}${annual} / year)`;
+    }
+    if (unit === "Per Month") {
+      const annual = (num * 12).toLocaleString();
+      return `${currency}${num.toLocaleString()} / month (${currency}${annual} / year)`;
+    }
+    return `${currency}${num.toLocaleString()} / year`;
+  }, [salaryAmount, currency, unit, isCustomSalary, customSalaryText]);
+
   const resetForm = () => {
-    setSalary("");
+    setSalaryAmount("");
+    setCurrency("₹");
+    setUnit("LPA");
+    setCustomSalaryText("");
+    setIsCustomSalary(false);
     setEmploymentType("Full Time");
     setJoiningDate("");
     setOfferExpiry("");
@@ -52,7 +90,7 @@ export default function CreateOfferModal({
   }, [open]);
 
   const errors = {
-    salary: !salary,
+    salary: !finalSalaryString,
     joiningDate: !joiningDate,
     offerExpiry: !offerExpiry,
   };
@@ -77,7 +115,7 @@ export default function CreateOfferModal({
         candidate_id: candidateId,
         position_id: positionId,
         pipeline_id: pipelineId,
-        salary,
+        salary: finalSalaryString,
         employment_type: employmentType,
         joining_date: joiningDate,
         offer_expiry: offerExpiry,
@@ -95,6 +133,8 @@ export default function CreateOfferModal({
       setLoading(false);
     }
   };
+
+  const QUICK_LPA_PRESETS = [6, 8, 10, 12, 15, 18, 20, 25, 30];
 
   if (!open) return null;
 
@@ -149,49 +189,156 @@ export default function CreateOfferModal({
 
           {/* Body */}
           <div className="space-y-5 px-6 py-6 overflow-y-auto flex-1">
-            {/* Candidate Name */}
-            <div>
-              <label className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-text-primary">
-                <User className="h-3.5 w-3.5 text-indigo-500" /> Candidate
-              </label>
-              <div className="rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border px-4 py-3">
-                <p className="text-sm font-semibold text-text-primary">
-                  {candidateName || "Candidate"}
-                </p>
+            {/* Candidate & Position Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-text-primary">
+                  <User className="h-3.5 w-3.5 text-indigo-500" /> Candidate
+                </label>
+                <div className="rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border px-4 py-2.5">
+                  <p className="text-sm font-semibold text-text-primary truncate">
+                    {candidateName || "Candidate"}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-text-primary">
+                  <Briefcase className="h-3.5 w-3.5 text-indigo-500" /> Position
+                </label>
+                <div className="rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border px-4 py-2.5">
+                  <p className="text-sm font-semibold text-text-primary truncate">
+                    {positionTitle || "Position"}
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* Position */}
-            <div>
-              <label className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-text-primary">
-                <Briefcase className="h-3.5 w-3.5 text-indigo-500" /> Position
-              </label>
-              <div className="rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border px-4 py-3">
-                <p className="text-sm font-semibold text-text-primary">
-                  {positionTitle || "Position"}
-                </p>
+            {/* Salary Package Configuration */}
+            <div className="rounded-2xl border border-slate-200 dark:border-border bg-slate-50/50 dark:bg-surface-hover/20 p-4 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <label className="flex items-center gap-1 text-xs font-bold text-text-primary">
+                  <Coins className="h-4 w-4 text-indigo-600 dark:text-indigo-400" /> 
+                  Salary Package & Compensation <span className="text-red-500">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsCustomSalary(!isCustomSalary)}
+                  className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                >
+                  {isCustomSalary ? "← Use Numeric Amount" : "Switch to Freeform Text"}
+                </button>
               </div>
-            </div>
 
-            {/* Salary */}
-            <div>
-              <label className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-text-primary">
-                <DollarSign className="h-3.5 w-3.5 text-indigo-500" /> Salary Package <span className="text-red-400">*</span>
-              </label>
-              <input
-                value={salary}
-                onChange={(e) => setSalary(e.target.value)}
-                placeholder="e.g. 12 LPA or $120,000 / year"
-                className={fieldClass(errors.salary)}
-              />
-              {touched && errors.salary && (
-                <p className="mt-1 text-xs text-red-400">Salary is required.</p>
+              {!isCustomSalary ? (
+                <div className="space-y-3">
+                  {/* Currency, Amount, and Unit inputs */}
+                  <div className="flex items-center gap-2">
+                    {/* Currency Selector */}
+                    <select
+                      value={currency}
+                      onChange={(e) => setCurrency(e.target.value)}
+                      className="w-24 rounded-xl bg-white dark:bg-surface border border-border text-text-primary px-3 py-2.5 text-sm font-semibold outline-none focus:border-primary/50 cursor-pointer shadow-sm"
+                    >
+                      <option value="₹">₹ INR</option>
+                      <option value="$">$ USD</option>
+                      <option value="€">€ EUR</option>
+                      <option value="£">£ GBP</option>
+                    </select>
+
+                    {/* Numeric Salary Input */}
+                    <div className="relative flex-1">
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={salaryAmount}
+                        onChange={(e) => setSalaryAmount(e.target.value)}
+                        placeholder={unit === "LPA" ? "e.g. 15" : "e.g. 1500000"}
+                        className={`w-full rounded-xl bg-white dark:bg-surface border text-text-primary px-4 py-2.5 outline-none focus:border-primary/50 text-sm font-semibold shadow-sm transition ${
+                          touched && errors.salary ? "border-red-500" : "border-border"
+                        }`}
+                      />
+                    </div>
+
+                    {/* Unit Selector */}
+                    <select
+                      value={unit}
+                      onChange={(e) => setUnit(e.target.value)}
+                      className="w-36 rounded-xl bg-white dark:bg-surface border border-border text-text-primary px-3 py-2.5 text-sm font-semibold outline-none focus:border-primary/50 cursor-pointer shadow-sm"
+                    >
+                      <option value="LPA">LPA (Lakhs/Yr)</option>
+                      <option value="Per Year">/ Year (Annual)</option>
+                      <option value="Per Month">/ Month</option>
+                    </select>
+                  </div>
+
+                  {/* Quick Preset Buttons */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[11px] font-medium text-slate-400 dark:text-muted mr-1">
+                      Quick LPA:
+                    </span>
+                    {QUICK_LPA_PRESETS.map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => {
+                          setCurrency("₹");
+                          setUnit("LPA");
+                          setSalaryAmount(String(p));
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer border ${
+                          salaryAmount === String(p) && unit === "LPA"
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                            : "bg-white dark:bg-surface text-slate-700 dark:text-text-secondary border-slate-200 dark:border-border hover:bg-slate-100 dark:hover:bg-surface-hover"
+                        }`}
+                      >
+                        {p} LPA
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Calculated Output Pill */}
+                  {finalSalaryString && (
+                    <div className="flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-800/40 text-xs">
+                      <span className="text-slate-600 dark:text-muted font-medium">
+                        Offer Letter Format:
+                      </span>
+                      <span className="font-bold text-indigo-700 dark:text-indigo-400">
+                        {finalSalaryString}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <input
+                    type="text"
+                    value={customSalaryText}
+                    onChange={(e) => setCustomSalaryText(e.target.value)}
+                    placeholder="e.g. ₹15,00,000 per annum + 10% performance bonus"
+                    className={`w-full rounded-xl bg-white dark:bg-surface border text-text-primary px-4 py-2.5 outline-none focus:border-primary/50 text-sm font-medium shadow-sm transition ${
+                      touched && errors.salary ? "border-red-500" : "border-border"
+                    }`}
+                  />
+                </div>
               )}
 
-              <div className="mt-4">
-                <AIOfferRiskGauge offeredCtc={parseFloat(salary.replace(/[^0-9.]/g, "")) || 1200000} />
-              </div>
+              {touched && errors.salary && (
+                <p className="text-xs text-red-500 font-medium">Salary package amount is required.</p>
+              )}
             </div>
+
+            {/* AI Offer Acceptance Risk Gauge */}
+            <AIOfferRiskGauge 
+              offeredCtc={annualCtcNumber || 1200000}
+              candidateId={candidateId}
+              candidateName={candidateName}
+              positionId={positionId}
+              positionTitle={positionTitle}
+              employmentType={employmentType}
+              autoAnalyze={true}
+            />
 
             {/* Employment Type */}
             <div>
@@ -243,7 +390,7 @@ export default function CreateOfferModal({
               </div>
             </div>
 
-            {/* Notes */}
+            {/* Notes / Terms */}
             <div>
               <label className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-text-primary">
                 <FileText className="h-3.5 w-3.5 text-indigo-500" /> Notes / Terms
@@ -259,12 +406,12 @@ export default function CreateOfferModal({
           </div>
 
           {/* Footer */}
-          <div className="flex shrink-0 items-center justify-between border-t border-slate-100 dark:border-border px-6 py-4 bg-slate-50/50 dark:bg-surface">
+          <div className="flex shrink-0 items-center justify-between border-t border-slate-100 dark:border-border px-6 py-4 bg-slate-50/50 dark:bg-surface flex-wrap gap-3">
             <button
               type="button"
               onClick={async () => {
-                if (!candidateId || !joiningDate || !salary) {
-                  toast.error("Please fill Salary and Joining Date first to auto-generate offer letter.");
+                if (!candidateId || !joiningDate || !finalSalaryString) {
+                  toast.error("Please enter Salary and Joining Date first to auto-generate offer letter.");
                   return;
                 }
                 try {
@@ -273,7 +420,7 @@ export default function CreateOfferModal({
                     candidate_id: Number(candidateId) || 0,
                     candidate_name: candidateName,
                     position_title: positionTitle || "Software Engineer",
-                    offered_ctc: parseFloat(salary.replace(/[^0-9.]/g, "")) || 1200000,
+                    offered_ctc: annualCtcNumber || 1200000,
                     joining_date: joiningDate,
                   });
                   setNotes(res.offer_letter_markdown);

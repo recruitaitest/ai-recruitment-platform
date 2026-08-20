@@ -88,8 +88,8 @@ def post_analyze_feedback(req: FeedbackAnalysisRequest):
 
 # 1.7 Predictive Offer Acceptance
 @router.post("/predict-offer-risk", response_model=OfferRiskResponse)
-def post_predict_offer_risk(req: OfferRiskRequest):
-    return predict_offer_acceptance(req)
+def post_predict_offer_risk(req: OfferRiskRequest, db: Session = Depends(get_db)):
+    return predict_offer_acceptance(req, db=db)
 
 # 1.8 Sourcing Suggestions
 @router.get("/sourcing-suggestions/{position_id}", response_model=SourcingSuggestionsResponse)

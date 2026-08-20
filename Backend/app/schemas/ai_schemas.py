@@ -102,6 +102,11 @@ class OfferRiskRequest(BaseModel):
     notice_period_days: Optional[int] = 30
     work_mode_matched: Optional[bool] = True
     has_competing_offers: Optional[bool] = False
+    candidate_id: Optional[int] = None
+    candidate_name: Optional[str] = None
+    position_id: Optional[int] = None
+    position_title: Optional[str] = None
+    employment_type: Optional[str] = None
 
 class OfferRiskResponse(BaseModel):
     acceptance_probability_pct: float

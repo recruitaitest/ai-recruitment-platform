@@ -310,50 +310,137 @@ Return JSON with:
         )
 
 # --- 1.7 Predictive Offer Acceptance Likelihood ---
-def predict_offer_acceptance(req: OfferRiskRequest) -> OfferRiskResponse:
-    base_prob = 70.0
+def predict_offer_acceptance(req: OfferRiskRequest, db: Session = None) -> OfferRiskResponse:
+    # 1. Fetch contextual candidate & position details if available
+    cand_info = ""
+    pos_info = ""
+    interview_info = ""
+    
+    if db:
+        try:
+            if req.candidate_id:
+                cand = db.query(Candidate).filter(Candidate.id == req.candidate_id).first()
+                if cand:
+                    cand_info = f"Name: {cand.name}, Skills: {cand.skills}, Experience: {cand.experience} years, Current Location: {cand.location}"
+                    
+                    # Fetch interview signals
+                    from app.models.interview import Interview
+                    interviews = db.query(Interview).filter(Interview.candidate_id == req.candidate_id).all()
+                    if interviews:
+                        evals = []
+                        for i in interviews:
+                            if i.feedback or i.overall_rating or i.recommendation:
+                                evals.append(f"Round '{i.interview_type}': Rating={i.overall_rating}/5, Rec='{i.recommendation}', Feedback='{i.feedback}'")
+                        if evals:
+                            interview_info = " | ".join(evals)
+                            
+            if req.position_id:
+                pos = db.query(Position).filter(Position.id == req.position_id).first()
+                if pos:
+                    pos_info = f"Role: {pos.title}, Required Skills: {pos.required_skills}, Location: {pos.location}, Department: {pos.department}"
+        except Exception as err:
+            logger.warning(f"Failed to fetch enriched context for offer risk prediction: {err}")
+
+    # Fallback to request strings if DB query didn't populate
+    if not cand_info and req.candidate_name:
+        cand_info = f"Name: {req.candidate_name}"
+    if not pos_info and req.position_title:
+        pos_info = f"Role: {req.position_title}"
+
+    # 2. Try LLM Structured Prediction
+    try:
+        llm = get_chat_model(temperature=0.2, json_mode=True)
+        if llm:
+            structured_llm = llm.with_structured_output(OfferRiskResponse)
+            prompt = f"""
+You are an expert Executive Compensation & Talent Acquisition Risk Analyst.
+Analyze the following offer proposal and accurately predict the candidate's offer acceptance probability, risk factors, positive alignment signals, and strategic recommendations to secure acceptance.
+
+CANDIDATE CONTEXT:
+{cand_info or 'Candidate evaluating compensation offer.'}
+
+POSITION CONTEXT:
+{pos_info or (req.position_title or 'Target Open Position')}
+
+INTERVIEW EVALUATION SIGNALS:
+{interview_info or 'Candidate passed evaluation rounds successfully.'}
+
+OFFER COMPENSATION DETAILS:
+- Offered CTC: {req.offered_ctc}
+- Expected CTC: {req.expected_ctc or 'Market Competitive'}
+- Current CTC: {req.current_ctc or 'Confidential'}
+- Market Benchmark: {req.market_benchmark_median or 'Standard'}
+- Notice Period: {req.notice_period_days} days
+- Work Mode Match: {req.work_mode_matched}
+- Competing Offers: {req.has_competing_offers}
+- Employment Type: {req.employment_type or 'Full Time'}
+
+Evaluate:
+1. Compensation competitiveness against candidate experience and market standards.
+2. Risk of counter-offers or drop-offs based on notice period and market demand.
+3. Realistic Acceptance Probability (between 15% and 95%).
+4. Risk Level: "Low" (>=80%), "Medium" (60-79%), or "High" (<60%).
+5. 2-3 specific Risk Factors.
+6. 2-3 Positive Alignment Signals.
+7. 2-3 Strategic Actionable Recommendations (e.g. joining bonus, expedited onboarding, hiring manager connect).
+8. Optional suggested CTC adjustment if below benchmark.
+"""
+            result = structured_llm.invoke(prompt)
+            if result and getattr(result, "acceptance_probability_pct", None) is not None:
+                return result
+    except Exception as e:
+        logger.error(f"Error in LLM Offer Acceptance Prediction: {e}")
+
+    # 3. Dynamic Heuristic Fallback Engine
+    base_prob = 75.0
     risk_factors = []
     positive_signals = []
     advice = []
     suggested_ctc = 0.0
     
-    # CTC evaluation
     offered = req.offered_ctc
-    expected = req.expected_ctc or offered
+    expected = req.expected_ctc or (offered * 0.95)
     if expected > 0:
         ratio = offered / expected
-        if ratio >= 1.05:
+        if ratio >= 1.15:
             base_prob += 15
-            positive_signals.append("Offered CTC exceeds candidate expected CTC")
+            positive_signals.append(f"Offered CTC ({offered:,.0f}) is 15%+ above candidate baseline expectation")
+        elif ratio >= 1.0:
+            base_prob += 8
+            positive_signals.append("Offered CTC meets candidate target expectation")
         elif ratio < 0.9:
             base_prob -= 20
-            risk_factors.append(f"Offered CTC ({offered}) is below candidate expectation ({expected})")
-            suggested_ctc = expected
-            advice.append(f"Consider matching expected CTC of {expected} to boost acceptance probability.")
+            risk_factors.append(f"Offered CTC ({offered:,.0f}) is below candidate expectation ({expected:,.0f})")
+            suggested_ctc = round(expected, -3)
+            advice.append(f"Consider adjusting offer closer to {expected:,.0f} or adding a performance sign-on bonus.")
             
-    # Notice Period
     if req.notice_period_days and req.notice_period_days > 60:
         base_prob -= 15
-        risk_factors.append(f"Long notice period ({req.notice_period_days} days) increases buy-out & competing offer risk")
-        advice.append("Offer a joining bonus or buyout clause to secure early release.")
+        risk_factors.append(f"Long notice period ({req.notice_period_days} days) significantly increases counter-offer drop risk")
+        advice.append("Offer a joining buyout bonus to negotiate early release.")
     elif req.notice_period_days and req.notice_period_days <= 30:
         base_prob += 10
         positive_signals.append("Short notice period (<30 days) minimizes drop-off risk")
         
     if req.has_competing_offers:
         base_prob -= 15
-        risk_factors.append("Candidate has active competing offers")
-        advice.append("Schedule a 1-on-1 call with Hiring Manager to highlight team impact & growth.")
+        risk_factors.append("Candidate has active competing offers in the market")
+        advice.append("Schedule a 1-on-1 impact call with the engineering/department lead.")
+    else:
+        positive_signals.append("No active competing offers reported by candidate")
         
-    final_prob = min(max(round(base_prob, 1), 10.0), 95.0)
-    risk_level = "Low" if final_prob >= 85 else "Medium" if final_prob >= 60 else "High"
+    if interview_info:
+        positive_signals.append("Strong technical & culture alignment verified in interview rounds")
+        
+    final_prob = min(max(round(base_prob, 1), 15.0), 95.0)
+    risk_level = "Low" if final_prob >= 80 else "Medium" if final_prob >= 60 else "High"
     
     return OfferRiskResponse(
         acceptance_probability_pct=final_prob,
         risk_level=risk_level,
-        risk_factors=risk_factors or ["Standard market competition"],
-        positive_signals=positive_signals or ["Role aligns with candidate profile"],
-        strategic_advice=advice or ["Maintain regular check-in communication during notice period"],
+        risk_factors=risk_factors or ["Standard market counter-offer competition"],
+        positive_signals=positive_signals or ["Role compensation aligns with market bandwidth"],
+        strategic_advice=advice or ["Maintain regular weekly touchpoints during the candidate notice period"],
         suggested_ctc_adjustment=suggested_ctc
     )
 
