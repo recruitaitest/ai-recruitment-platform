@@ -1117,14 +1117,15 @@ export default function PipelineBoard() {
       setSuccessMsg(`Offer letter sent to ${selectedOfferCandidate?.name}`);
     }}
   />
- <ViewInterviewModal
- open={viewInterviewModalOpen}
- onClose={() => {
- setViewInterviewModalOpen(false);
- setSelectedCandidate(null);
- }}
- candidateId={selectedCandidate?.candidate_id}
- />
+  <ViewInterviewModal
+    open={viewInterviewModalOpen}
+    onClose={() => {
+      setViewInterviewModalOpen(false);
+      setSelectedCandidate(null);
+    }}
+    candidateId={selectedCandidate?.candidate_id}
+    candidateName={selectedCandidate?.name}
+  />
  <RescheduleInterviewModal
  open={rescheduleInterviewModalOpen}
  onClose={() => {

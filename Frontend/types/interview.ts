@@ -28,4 +28,5 @@ export interface Interview {
     status: string;
     feedback?: string;
     overall_rating?: number;
+    recommendation?: string;
 }
