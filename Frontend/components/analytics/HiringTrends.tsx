@@ -1,6 +1,8 @@
 "use client";
+import { useEffect, useState } from "react";
 import Highcharts from "highcharts";
 import HighchartsReact from "highcharts-react-official";
+import { AnalyticsFilterParams, getHiringTrends } from "@/services/analyticsService";
 
 if (typeof Highcharts === "object") {
     Highcharts.setOptions({
@@ -10,8 +12,6 @@ if (typeof Highcharts === "object") {
     });
 }
 
-import { useEffect, useState } from "react";
-import { getHiringTrends } from "@/services/analyticsService";
 const chartOptions = {
     chart: {
         type: "spline",
@@ -102,8 +102,6 @@ const chartOptions = {
     ],
 };
 
-import { AnalyticsFilterParams, getHiringTrends } from "@/services/analyticsService";
-
 interface HiringTrendsProps {
     filters?: AnalyticsFilterParams;
 }
@@ -145,25 +143,24 @@ export function HiringTrends({ filters }: HiringTrendsProps) {
             {/* Header */}
             <div className="mb-8">
 
-                <h2 className="text-3xl font-bold text-text-primary">
+                <h2 className="text-2xl font-bold text-text-primary">
                     Hiring Trends
                 </h2>
 
-                <p className="text-text-secondary mt-2">
-                    Monthly hiring growth and recruitment performance
+                <p className="text-text-secondary mt-2 text-sm">
+                    Monthly recruitment growth
                 </p>
 
             </div>
 
             {/* Chart */}
-            <div className="h-[300px] md:h-[350px] xl:h-[400px]">
+            <div className="w-full">
 
-                <div className="h-[400px]">
-                    <HighchartsReact
-                        highcharts={Highcharts}
-                        options={dynamicChartOptions}
-                    />
-                </div>
+                <HighchartsReact
+                    highcharts={Highcharts}
+                    options={dynamicChartOptions}
+                />
+
             </div>
 
         </div>
