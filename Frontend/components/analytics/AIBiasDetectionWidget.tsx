@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { ShieldAlert, AlertCircle, Sparkles, RefreshCw, CheckCircle2, User, HelpCircle } from "lucide-react";
+import { ShieldAlert, AlertCircle, Sparkles, RefreshCw, CheckCircle2, User } from "lucide-react";
 import api from "@/lib/api";
 
 export function AIBiasDetectionWidget() {
-  const [candidates, setCandidates] = useState<Array<{ id: number; name: string; notes?: string }>>([]);
+  const [candidates, setCandidates] = useState<Array<{ id: number; full_name?: string; name?: string; notes?: string }>>([]);
   const [selectedCandidateId, setSelectedCandidateId] = useState<string>("");
   const [sampleNote, setSampleNote] = useState("");
   const [flaggedIssues, setFlaggedIssues] = useState<
@@ -58,12 +58,14 @@ export function AIBiasDetectionWidget() {
       }
       
       const candidate = candidateList.find((c) => String(c.id) === candidateIdStr);
-      const noteText = foundFeedback || (candidate ? `${candidate.name} demonstrated solid domain competencies and articulate technical depth.` : "Solid technical interview performance.");
+      const candName = candidate?.full_name || candidate?.name || `Candidate #${candidateIdStr}`;
+      const noteText = foundFeedback || `${candName} demonstrated solid domain competencies and articulate technical depth during interview rounds.`;
       setSampleNote(noteText);
       handleScanNote(noteText);
     } catch {
       const candidate = candidateList.find((c) => String(c.id) === candidateIdStr);
-      const noteText = candidate ? `${candidate.name} demonstrated solid technical skills in round 1.` : "Candidate demonstrates clear domain skills.";
+      const candName = candidate?.full_name || candidate?.name || `Candidate #${candidateIdStr}`;
+      const noteText = `${candName} demonstrated solid technical skills in round 1.`;
       setSampleNote(noteText);
       handleScanNote(noteText);
     }
@@ -129,18 +131,21 @@ export function AIBiasDetectionWidget() {
       {/* Select Candidate Note from Database */}
       {candidates.length > 0 && (
         <div className="flex items-center gap-2 text-xs flex-wrap">
-          <User className="w-4 h-4 text-purple-400" />
-          <span className="font-semibold text-text-primary">Load Feedback from Candidate:</span>
+          <User className="w-4 h-4 text-purple-400 shrink-0" />
+          <span className="font-semibold text-text-primary shrink-0">Load Feedback from Candidate:</span>
           <select
             value={selectedCandidateId}
             onChange={(e) => handleSelectCandidate(e.target.value)}
-            className="px-3 py-1.5 bg-secondary-surface border border-border rounded-xl text-xs font-semibold text-text-primary outline-none cursor-pointer"
+            className="px-3 py-1.5 min-w-[220px] max-w-[340px] bg-secondary-surface border border-border rounded-xl text-xs font-semibold text-text-primary outline-none cursor-pointer focus:border-purple-500/50"
           >
-            {candidates.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
+            {candidates.map((c) => {
+              const name = c.full_name || c.name || `Candidate #${c.id}`;
+              return (
+                <option key={c.id} value={c.id} className="bg-surface text-text-primary py-1">
+                  {name}
+                </option>
+              );
+            })}
           </select>
         </div>
       )}
