@@ -9,6 +9,7 @@ interface OfferDeclineAnalyticsProps {
 }
 
 export function OfferDeclineAnalytics({ filters }: OfferDeclineAnalyticsProps) {
+  const [timeRange, setTimeRange] = useState("Q3 2026");
   const [data, setData] = useState<{
     total_offers: number;
     accepted_offers: number;
@@ -19,11 +20,11 @@ export function OfferDeclineAnalytics({ filters }: OfferDeclineAnalyticsProps) {
 
   useEffect(() => {
     fetchData();
-  }, [filters?.dateRange, filters?.recruiterId, filters?.roleId]);
+  }, [timeRange, filters?.dateRange, filters?.recruiterId, filters?.roleId]);
 
   const fetchData = async () => {
     try {
-      const res = await getOfferDeclineAnalytics(filters);
+      const res = await getOfferDeclineAnalytics({ ...filters, dateRange: filters?.dateRange || timeRange });
       setData(res);
     } catch {
       setData({
