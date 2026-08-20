@@ -207,53 +207,77 @@ export default function PipelineBoard() {
     try {
       const response = await api.get("/pipelines");
       const data = response.data || [];
+    let offersData: any[] = [];
+    let interviewsData: any[] = [];
+    try {
+      [offersData, interviewsData] = await Promise.all([
+        getOffers().catch(() => []),
+        getInterviews().catch(() => []),
+      ]);
+    } catch (err) {
+      console.error("Failed to fetch auxiliary pipeline data", err);
+    }
 
- let offersData: any[] = [];
- try {
- offersData = await getOffers();
- } catch (err) {
- console.error("Failed to fetch offers", err);
- }
+    const offerMap = (offersData || []).reduce((acc: any, offer: any) => {
+      acc[offer.pipeline_id] = offer;
+      return acc;
+    }, {});
 
- const offerMap = offersData.reduce((acc: any, offer: any) => {
- acc[offer.pipeline_id] = offer;
- return acc;
- }, {});
+    const formattedCandidates = data.map((item: any, index: number) => {
+      const offer = offerMap[item.id];
+      let mappedOfferStatus = "not_generated";
+      if (offer) {
+        const rawStatus = (offer.status || "").toLowerCase();
+        if (rawStatus === "draft") mappedOfferStatus = "generated";
+        else if (rawStatus === "sent") mappedOfferStatus = "sent";
+        else if (rawStatus === "accepted") mappedOfferStatus = "accepted";
+        else if (rawStatus === "declined") mappedOfferStatus = "declined";
+        else mappedOfferStatus = rawStatus;
+      }
 
- const formattedCandidates =
- data.map(
- (
- item: any,
- index: number
- ) => {
- const offer = offerMap[item.id];
- let mappedOfferStatus = "not_generated";
- if (offer) {
- const rawStatus = (offer.status || "").toLowerCase();
- if (rawStatus === "draft") mappedOfferStatus = "generated";
- else if (rawStatus === "sent") mappedOfferStatus = "sent";
- else if (rawStatus === "accepted") mappedOfferStatus = "accepted";
- else if (rawStatus === "declined") mappedOfferStatus = "declined";
- else mappedOfferStatus = rawStatus;
- }
+      // Check if Technical feedback is submitted but HR interview is not scheduled yet
+      const candidateInterviews = (interviewsData || []).filter(
+        (i: any) => Number(i.candidate_id) === Number(item.candidate_id)
+      );
 
- return {
- id: String(item.id),
- candidate_id: item.candidate_id,
- position_id: item.position_id,
- name: item.candidate_name,
- role: item.position_title,
- stage: item.stage,
- priority: "Medium",
- notes: item.notes,
- offerStatus: mappedOfferStatus,
- offerId: offer?.id,
- avatar: `https://i.pravatar.cc/150?img=${index + 1}`,
- };
- }
- );
+      const techInterview = candidateInterviews.find((i: any) =>
+        (i.interview_type || "").toLowerCase().includes("tech")
+      );
+      const hrInterview = candidateInterviews.find((i: any) =>
+        (i.interview_type || "").toLowerCase().includes("hr")
+      );
 
- setCandidates(formattedCandidates);
+      const techFeedbackDone =
+        techInterview &&
+        (techInterview.status === "Completed" ||
+          Boolean(techInterview.feedback) ||
+          Boolean(techInterview.overall_rating) ||
+          techInterview.recommendation === "Pass");
+
+      const hrScheduled =
+        hrInterview &&
+        (hrInterview.status === "Scheduled" || hrInterview.status === "Completed");
+
+      const isHrInterviewPending =
+        item.stage === "Technical Interview" && Boolean(techFeedbackDone) && !hrScheduled;
+
+      return {
+        id: String(item.id),
+        candidate_id: item.candidate_id,
+        position_id: item.position_id,
+        name: item.candidate_name,
+        role: item.position_title,
+        stage: item.stage,
+        priority: "Medium",
+        notes: item.notes,
+        offerStatus: mappedOfferStatus,
+        offerId: offer?.id,
+        avatar: `https://i.pravatar.cc/150?img=${index + 1}`,
+        isHrInterviewPending,
+      };
+    });
+
+    setCandidates(formattedCandidates);
 
  } catch (error) {
  console.log(error);
@@ -362,11 +386,19 @@ export default function PipelineBoard() {
     );
     if (!candidate) return;
 
-    // Require feedback first, not direct scheduling/offer
-    if (
-      (candidate.stage === "Technical Interview" && newStage === "HR Round") ||
-      (candidate.stage === "HR Round" && newStage === "Offer")
-    ) {
+    // Handle stage transitions
+    if (candidate.stage === "Technical Interview" && newStage === "HR Round") {
+      if ((candidate as any).isHrInterviewPending) {
+        setSelectedCandidate(candidate);
+        setPendingStage("HR Round");
+        setScheduleModalOpen(true);
+        return;
+      }
+      handleSubmitFeedback(candidateId);
+      return;
+    }
+
+    if (candidate.stage === "HR Round" && newStage === "Offer") {
       handleSubmitFeedback(candidateId);
       return;
     }
@@ -714,77 +746,82 @@ export default function PipelineBoard() {
     updateCandidateStage(candidateId, "Applied");
   };
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
- if (!over) return;
+    if (!over) return;
 
- const candidateId = String(active.id);
- const overId = String(over.id);
+    const candidateId = String(active.id);
+    const overId = String(over.id);
 
- const targetCandidate = candidates.find(
- (candidate) => candidate.id === overId
- );
+    const targetCandidate = candidates.find(
+      (candidate) => candidate.id === overId
+    );
 
- const newStage = stages.includes(overId)
- ? overId
- : targetCandidate?.stage;
+    const newStage = stages.includes(overId)
+      ? overId
+      : targetCandidate?.stage;
 
- if (!newStage) return;
+    if (!newStage) return;
 
- const draggedCandidate = candidates.find(
- (c) => c.id === candidateId
- );
- if (!draggedCandidate) return;
+    const draggedCandidate = candidates.find(
+      (c) => c.id === candidateId
+    );
+    if (!draggedCandidate) return;
 
- // Same stage — no-op
- if (draggedCandidate.stage === newStage) return;
+    // Same stage — no-op
+    if (draggedCandidate.stage === newStage) return;
 
- // Validate stage progression: only allow moving to the immediately next stage or to "Rejected"
- const currentStageIndex = stages.indexOf(draggedCandidate.stage);
- const targetStageIndex = stages.indexOf(newStage);
+    // Validate stage progression: only allow moving to the immediately next stage or to "Rejected"
+    const currentStageIndex = stages.indexOf(draggedCandidate.stage);
+    const targetStageIndex = stages.indexOf(newStage);
 
- // "Rejected" (last in stages array) can always be a target from any stage
- const isRejectTarget = newStage === "Rejected";
- // Only allow moving to the immediately next stage in the pipeline
- const isNextStage = targetStageIndex === currentStageIndex + 1;
+    // "Rejected" (last in stages array) can always be a target from any stage
+    const isRejectTarget = newStage === "Rejected";
+    // Only allow moving to the immediately next stage in the pipeline
+    const isNextStage = targetStageIndex === currentStageIndex + 1;
 
- if (!isNextStage && !isRejectTarget) {
- setError(
- `Cannot move ${draggedCandidate.name} from "${draggedCandidate.stage}" to "${newStage}". ` +
- `Candidates can only be moved to the next stage ("${stages[currentStageIndex + 1] || "N/A"}") or to "Rejected".`
- );
- // Auto-clear after 4 seconds
- setTimeout(() => setError(null), 4000);
- return;
- }
+    if (!isNextStage && !isRejectTarget) {
+      setError(
+        `Cannot move ${draggedCandidate.name} from "${draggedCandidate.stage}" to "${newStage}". ` +
+        `Candidates can only be moved to the next stage ("${stages[currentStageIndex + 1] || "N/A"}") or to "Rejected".`
+      );
+      setTimeout(() => setError(null), 4000);
+      return;
+    }
 
- // Require feedback first, not direct scheduling/offer
- if (
- (draggedCandidate.stage === "Technical Interview" && newStage === "HR Round") ||
- (draggedCandidate.stage === "HR Round" && newStage === "Offer")
- ) {
- // Open feedback modal for the interview
- // The onFeedbackSubmitted callback handles HR Round scheduling / Offer Modal
- handleSubmitFeedback(candidateId);
- return;
- }
+    // Handle stage transitions
+    if (draggedCandidate.stage === "Technical Interview" && newStage === "HR Round") {
+      if ((draggedCandidate as any).isHrInterviewPending) {
+        setSelectedCandidate(draggedCandidate);
+        setPendingStage("HR Round");
+        setScheduleModalOpen(true);
+        return;
+      }
+      handleSubmitFeedback(candidateId);
+      return;
+    }
 
- if (draggedCandidate.stage === "Applied" && newStage === "Screening") {
- setScreeningCandidate(draggedCandidate);
- setConfirmScreeningOpen(true);
- return;
- }
+    if (draggedCandidate.stage === "HR Round" && newStage === "Offer") {
+      handleSubmitFeedback(candidateId);
+      return;
+    }
 
- if (
- newStage === "Technical Interview" ||
- newStage === "HR Round"
- ) {
- setSelectedCandidate(draggedCandidate);
- setPendingStage(newStage);
- setScheduleModalOpen(true);
- return;
- }
+    if (draggedCandidate.stage === "Applied" && newStage === "Screening") {
+      setScreeningCandidate(draggedCandidate);
+      setConfirmScreeningOpen(true);
+      return;
+    }
+
+    if (
+      newStage === "Technical Interview" ||
+      newStage === "HR Round"
+    ) {
+      setSelectedCandidate(draggedCandidate);
+      setPendingStage(newStage);
+      setScheduleModalOpen(true);
+      return;
+    }
 
     if (newStage === "Hired") {
       toast.error("Candidates cannot be dragged directly to Hired. The stage updates to Hired automatically when their offer is marked as Accepted in the Offers page.");

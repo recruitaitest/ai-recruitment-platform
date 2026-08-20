@@ -91,6 +91,7 @@ export interface CandidateQuickActionsProps {
  // Sub-states
  offerStatus?: OfferStatus;
  interviewStatus?: InterviewStatus;
+ isHrInterviewPending?: boolean;
 
  // Role-based permissions
  userRole?: UserRole;
@@ -232,6 +233,31 @@ const STAGE_CONFIG: Record<string, ConfigFactory> = {
  },
 
  "Technical Interview": (id, props, call, offerId, setConfirm) => {
+    if (props.isHrInterviewPending) {
+        return {
+            stageIcon: <Calendar className="h-4 w-4 text-red-400" />,
+            stageColor: "text-red-400",
+            primary: can(props.userRole, "schedule_interview") ? {
+                label: "Schedule HR Interview",
+                icon: <Calendar className="h-4 w-4" />,
+                colorClass: "text-white font-bold",
+                bgClass: "bg-red-600 hover:bg-red-500 shadow-md shadow-red-500/20",
+                borderClass: "border-red-600",
+                onClick: () => call(props.onMoveToStage, "HR Round"),
+            } : null,
+            secondary: [
+                can(props.userRole, "submit_feedback") && { label: "Edit Technical Feedback", icon: <ClipboardEdit className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onSubmitFeedback, "Technical Interview") },
+                can(props.userRole, "view_interview") && { label: "View Technical Interview", icon: <CalendarDays className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewInterview) },
+                can(props.userRole, "view_profile") && { label: "View Profile", icon: <Eye className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewProfile) },
+                can(props.userRole, "add_note") && { label: "Add Note", icon: <MessageSquarePlus className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onAddNote) },
+                can(props.userRole, "open_resume") && { label: "Open Resume", icon: <FileSearch className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onOpenResume) },
+                can(props.userRole, "view_timeline") && { label: "View Timeline", icon: <History className="h-3.5 w-3.5" />, colorClass: "text-text-secondary", bgHover: "hover:bg-secondary-surface", onClick: () => call(props.onViewTimeline) },
+                can(props.userRole, "remove_candidate") && { label: "Remove Candidate", icon: <XCircle className="h-3.5 w-3.5" />, colorClass: "text-red-400", bgHover: "hover:bg-red-500/10", onClick: () => setConfirm?.("remove") },
+            ].filter(Boolean) as ActionItem[],
+            showReject: can(props.userRole, "reject"),
+        };
+    }
+
  const hasInterview = props.interviewStatus && props.interviewStatus !== "not_scheduled";
  return {
  primary: hasInterview

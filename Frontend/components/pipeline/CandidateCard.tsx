@@ -17,6 +17,7 @@ interface CandidateCardProps {
     priority: "High" | "Medium" | "Low";
     avatar?: string;
     offerStatus?: "not_generated" | "generated" | "sent" | "accepted" | "declined";
+    isHrInterviewPending?: boolean;
   };
   selected?: boolean;
   onToggleSelect?: (candidateId: string) => void;
@@ -97,7 +98,8 @@ export default function CandidateCard({
     Low: "bg-green-500/15 text-green-400 border-green-500/20",
   };
 
-  const accentBorder = STAGE_ACCENT[candidate.stage] || "border-l-gray-700";
+  const isPendingHr = Boolean(candidate.isHrInterviewPending);
+  const accentBorder = isPendingHr ? "border-l-red-500" : (STAGE_ACCENT[candidate.stage] || "border-l-gray-700");
 
   return (
     <motion.div
@@ -109,11 +111,14 @@ export default function CandidateCard({
       {...(isDraggable ? listeners : {})}
       className={`
         group relative rounded-2xl border
-        border-slate-200 dark:border-border
         border-l-[4px] ${accentBorder}
-        bg-white dark:bg-surface p-4
-        shadow-sm hover:shadow-md dark:shadow-black/20
+        p-4 shadow-sm hover:shadow-md dark:shadow-black/20
         transition-all ${isDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}
+        ${
+          isPendingHr
+            ? "border-red-400/90 dark:border-red-500/70 bg-red-50/60 dark:bg-red-950/30 ring-1 ring-red-500/40 shadow-red-500/10"
+            : "border-slate-200 dark:border-border bg-white dark:bg-surface"
+        }
         ${isDragging ? "rotate-2 opacity-70 shadow-2xl ring-2 ring-indigo-500/50" : ""}
         ${selected ? "ring-2 ring-blue-500 bg-blue-500/5" : ""}
       `}
@@ -134,7 +139,13 @@ export default function CandidateCard({
       {/* Top Info */}
       <div className="flex items-start justify-between pr-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-blue-600/20 text-blue-400 border border-blue-500/30 text-sm font-semibold flex items-center justify-center shrink-0">
+          <div
+            className={`w-10 h-10 rounded-full text-sm font-semibold flex items-center justify-center shrink-0 border ${
+              isPendingHr
+                ? "bg-red-500/20 text-red-500 border-red-500/40"
+                : "bg-blue-600/20 text-blue-400 border-blue-500/30"
+            }`}
+          >
             {candidate.name?.charAt(0)?.toUpperCase() || "C"}
           </div>
 
@@ -150,6 +161,17 @@ export default function CandidateCard({
         </div>
       </div>
 
+      {/* Warning pill if HR Interview Scheduling is pending */}
+      {isPendingHr && (
+        <div className="mt-2.5 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-500/15 border border-red-500/30 text-red-600 dark:text-red-400 text-xs font-semibold">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+          </span>
+          <span>HR Interview Scheduling Pending</span>
+        </div>
+      )}
+
       {/* Recruiter Avatars */}
       <div className="mt-2 flex items-center justify-end">
         <RecruiterAvatars recruiters={[]} />
@@ -162,6 +184,7 @@ export default function CandidateCard({
           candidateId={String(candidate.candidate_id || candidate.id)}
           pipelineId={Number(candidate.id) || undefined}
           candidateName={candidate.name}
+          isHrInterviewPending={isPendingHr}
           onMoveToStage={onMoveToStage}
           onViewProfile={onViewProfile}
           onReject={onReject}

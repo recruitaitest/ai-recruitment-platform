@@ -563,10 +563,9 @@ class InterviewService:
             old_stage = pipeline.stage
             if feedback_data.recommendation == "Pass":
                 itype = (interview.interview_type or "").lower()
-                if "technical" in itype:
-                    pipeline.stage = "HR Round"
-                elif "hr" in itype:
+                if "hr" in itype:
                     pipeline.stage = "Offer"
+                # Technical interview pass stays in Technical Interview stage until HR interview is scheduled
             elif feedback_data.recommendation == "Fail":
                 pipeline.stage = "Rejected"
 

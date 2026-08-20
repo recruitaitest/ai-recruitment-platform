@@ -18,6 +18,7 @@ interface Candidate {
   priority: "High" | "Medium" | "Low";
   avatar?: string;
   offerStatus?: "not_generated" | "generated" | "sent" | "accepted" | "declined";
+  isHrInterviewPending?: boolean;
 }
 
 interface PipelineColumnProps {
