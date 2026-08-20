@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
-import { ShieldAlert, AlertCircle, Sparkles, RefreshCw, CheckCircle2, User, Star, Briefcase, Calendar } from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { MessageSquareQuote, FileText, User, Star, Briefcase, Calendar, CheckCircle2, XCircle, Clock, Award, Video, MapPin } from "lucide-react";
 import api from "@/lib/api";
 
 interface InterviewRecord {
@@ -11,13 +11,16 @@ interface InterviewRecord {
   position_id?: number;
   position_title?: string;
   interview_type?: string;
+  interview_mode?: string;
   interview_date?: string;
   interview_time?: string;
   status?: string;
   feedback?: string;
+  notes?: string;
   overall_rating?: number;
   technical_rating?: number;
   communication_rating?: number;
+  problem_solving_rating?: number;
   recommendation?: string;
   interviewer_name?: string;
   panel_role?: string;
@@ -27,14 +30,7 @@ export function AIBiasDetectionWidget() {
   const [interviews, setInterviews] = useState<InterviewRecord[]>([]);
   const [selectedType, setSelectedType] = useState<string>("All Types");
   const [selectedInterviewId, setSelectedInterviewId] = useState<string>("");
-  const [feedbackNote, setFeedbackNote] = useState<string>("");
-  const [flaggedIssues, setFlaggedIssues] = useState<
-    Array<{ word: string; type: string; recommendation: string }>
-  >([]);
-  const [severity, setSeverity] = useState<string>("Clean");
-  const [loading, setLoading] = useState<boolean>(false);
-  const [fetchingInterviews, setFetchingInterviews] = useState<boolean>(true);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const [fetching, setFetching] = useState<boolean>(true);
 
   useEffect(() => {
     fetchCompletedInterviews();
@@ -42,37 +38,25 @@ export function AIBiasDetectionWidget() {
 
   const fetchCompletedInterviews = async () => {
     try {
-      setFetchingInterviews(true);
+      setFetching(true);
       const res = await api.get("/interviews");
       const list: InterviewRecord[] = res.data || [];
       
-      // Filter interviews that are completed or have feedback
+      // Filter interviews that are completed or have feedback/notes
       const completedList = list.filter(
         (i) => i.status?.toLowerCase() === "completed" || (i.feedback && i.feedback.trim().length > 0)
       );
 
-      // If no completed interviews with feedback, include all interviews as fallback
       const validList = completedList.length > 0 ? completedList : list;
       setInterviews(validList);
 
       if (validList.length > 0) {
-        const first = validList[0];
-        setSelectedInterviewId(String(first.id));
-        const initialText = first.feedback || `${first.candidate_name || "Candidate"} demonstrated solid problem solving and technical competencies during the session.`;
-        setFeedbackNote(initialText);
-        handleScanNote(initialText);
-      } else {
-        const defaultText = "Candidate demonstrated solid analytical problem solving and concise system architecture during the interview.";
-        setFeedbackNote(defaultText);
-        handleScanNote(defaultText);
+        setSelectedInterviewId(String(validList[0].id));
       }
     } catch (err) {
-      console.error("Failed to fetch interviews for bias detection", err);
-      const defaultText = "Candidate demonstrates clear domain skills with no subjective bias.";
-      setFeedbackNote(defaultText);
-      handleScanNote(defaultText);
+      console.error("Failed to fetch interviews for feedback analysis", err);
     } finally {
-      setFetchingInterviews(false);
+      setFetching(false);
     }
   };
 
@@ -96,22 +80,9 @@ export function AIBiasDetectionWidget() {
     setSelectedType(type);
     const matching = type === "All Types" ? interviews : interviews.filter((i) => i.interview_type === type);
     if (matching.length > 0) {
-      handleSelectInterview(String(matching[0].id), matching);
+      setSelectedInterviewId(String(matching[0].id));
     } else {
       setSelectedInterviewId("");
-      setFeedbackNote("");
-      setFlaggedIssues([]);
-      setSeverity("Clean");
-    }
-  };
-
-  const handleSelectInterview = (interviewIdStr: string, list = filteredInterviews) => {
-    setSelectedInterviewId(interviewIdStr);
-    const interview = list.find((i) => String(i.id) === interviewIdStr);
-    if (interview) {
-      const text = interview.feedback || `${interview.candidate_name || "Candidate"} cleared the ${interview.interview_type || "interview"} round with solid domain knowledge.`;
-      setFeedbackNote(text);
-      handleScanNote(text);
     }
   };
 
@@ -119,75 +90,67 @@ export function AIBiasDetectionWidget() {
     return interviews.find((i) => String(i.id) === selectedInterviewId);
   }, [interviews, selectedInterviewId]);
 
-  const handleScanNote = async (text: string) => {
-    if (!text || !text.trim()) {
-      setFlaggedIssues([]);
-      setSeverity("Clean");
-      return;
+  const getRecommendationBadge = (rec?: string) => {
+    if (!rec) return null;
+    const lower = rec.toLowerCase();
+    if (lower.includes("strong") || lower.includes("pass") || lower.includes("hire")) {
+      return (
+        <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-xs font-bold flex items-center gap-1">
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+          {rec}
+        </span>
+      );
     }
-    setLoading(true);
-    try {
-      const res = await api.post("/analytics/bias-detection", { note: text });
-      setFlaggedIssues(res.data?.flagged || []);
-      setSeverity(res.data?.severity || "Clean");
-    } catch {
-      const lower = text.toLowerCase();
-      const issues = [];
-      if (lower.includes("aggressive")) {
-        issues.push({ word: "aggressive", type: "Subjective Trait Bias", recommendation: "Rephrase to 'assertive technical communication during problem solving'." });
-      }
-      if (lower.includes("overqualified for her age") || lower.includes("age")) {
-        issues.push({ word: "age / qualification", type: "Age & Gender Bias", recommendation: "Focus purely on relevant domain expertise and years of experience." });
-      }
-      if (lower.includes("culture fit")) {
-        issues.push({ word: "culture fit", type: "Vague Exclusionary Metric", recommendation: "Specify concrete competencies (e.g. agile collaboration, async communication)." });
-      }
-      setFlaggedIssues(issues);
-      setSeverity(issues.length > 0 ? "Medium" : "Clean");
-    } finally {
-      setLoading(false);
+    if (lower.includes("hold")) {
+      return (
+        <span className="px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 text-xs font-bold flex items-center gap-1">
+          <Clock className="w-3.5 h-3.5 text-amber-400" />
+          {rec}
+        </span>
+      );
     }
-  };
-
-  const setTestScenario = (text: string) => {
-    setFeedbackNote(text);
-    handleScanNote(text);
+    return (
+      <span className="px-2.5 py-1 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30 text-xs font-bold flex items-center gap-1">
+        <XCircle className="w-3.5 h-3.5 text-rose-400" />
+        {rec}
+      </span>
+    );
   };
 
   return (
     <div className="rounded-[24px] border border-border bg-surface p-6 shadow-xl space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3 border-b border-border pb-4">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
-            <ShieldAlert className="w-5 h-5" />
+        <div className="flex items-center gap-2.5">
+          <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+            <MessageSquareQuote className="w-5 h-5" />
           </div>
           <div>
             <h2 className="text-lg font-bold text-text-primary">
-              AI Bias Detection in Feedback
+              Interviews Feedback Analysis
             </h2>
             <p className="text-xs text-muted mt-0.5">
-              Scans interviewer feedback notes for gender, age, tone, or subjective bias to ensure objective evaluations
+              Detailed interview evaluations, ratings, feedback, and notes submitted by the hiring panel
             </p>
           </div>
         </div>
-        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/15 text-purple-400 border border-purple-500/30">
-          AI Guardrail
+        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
+          Feedback Evaluation
         </span>
       </div>
 
-      {/* Two Select Dropdowns: Interview Type & Completed Candidate */}
+      {/* Two Select Dropdowns: Interview Round Type & Completed Candidate */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Dropdown 1: Interview Type */}
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
-            <Briefcase className="w-3.5 h-3.5 text-purple-400" />
+            <Briefcase className="w-3.5 h-3.5 text-indigo-400" />
             1. Interview Round Type:
           </label>
           <select
             value={selectedType}
             onChange={(e) => handleTypeChange(e.target.value)}
-            className="w-full px-3 py-2 bg-secondary-surface border border-border rounded-xl text-xs font-semibold text-text-primary outline-none cursor-pointer focus:border-purple-500/50"
+            className="w-full px-3 py-2 bg-secondary-surface border border-border rounded-xl text-xs font-semibold text-text-primary outline-none cursor-pointer focus:border-indigo-500/50"
           >
             {interviewTypes.map((t) => (
               <option key={t} value={t} className="bg-surface text-text-primary py-1">
@@ -200,14 +163,14 @@ export function AIBiasDetectionWidget() {
         {/* Dropdown 2: Completed Candidate */}
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
-            <User className="w-3.5 h-3.5 text-purple-400" />
+            <User className="w-3.5 h-3.5 text-indigo-400" />
             2. Completed Candidate:
           </label>
           <select
             value={selectedInterviewId}
-            onChange={(e) => handleSelectInterview(e.target.value)}
+            onChange={(e) => setSelectedInterviewId(e.target.value)}
             disabled={filteredInterviews.length === 0}
-            className="w-full px-3 py-2 bg-secondary-surface border border-border rounded-xl text-xs font-semibold text-text-primary outline-none cursor-pointer focus:border-purple-500/50 disabled:opacity-50"
+            className="w-full px-3 py-2 bg-secondary-surface border border-border rounded-xl text-xs font-semibold text-text-primary outline-none cursor-pointer focus:border-indigo-500/50 disabled:opacity-50"
           >
             {filteredInterviews.length > 0 ? (
               filteredInterviews.map((i) => {
@@ -226,128 +189,118 @@ export function AIBiasDetectionWidget() {
         </div>
       </div>
 
-      {/* Selected Interview Details Metadata Card */}
-      {selectedInterview && (
-        <div className="p-3.5 rounded-xl bg-secondary-surface/40 border border-border flex items-center justify-between flex-wrap gap-2 text-xs">
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="font-bold text-text-primary">
-              Candidate: <span className="text-purple-400 font-semibold">{selectedInterview.candidate_name || `Candidate #${selectedInterview.candidate_id}`}</span>
-            </span>
-            <span className="text-muted">|</span>
-            <span className="text-muted">
-              Interviewer: <strong className="text-text-primary font-semibold">{selectedInterview.interviewer_name || selectedInterview.panel_role || "Hiring Panel"}</strong>
-            </span>
-            {selectedInterview.interview_date && (
-              <>
-                <span className="text-muted">|</span>
-                <span className="text-muted flex items-center gap-1">
-                  <Calendar className="w-3 h-3 text-purple-400" /> {selectedInterview.interview_date}
-                </span>
-              </>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            {selectedInterview.overall_rating && (
-              <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[11px] font-bold flex items-center gap-1">
-                <Star className="w-3 h-3 fill-amber-400" /> {selectedInterview.overall_rating}/5
-              </span>
-            )}
-            {selectedInterview.recommendation && (
-              <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold">
-                {selectedInterview.recommendation}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Quick Test Scenarios */}
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <span className="text-[11px] font-medium text-muted mr-1">DEI Test Scenarios:</span>
-        <button
-          onClick={() => setTestScenario("Candidate seems overqualified for her age and might be emotional under high delivery pressure.")}
-          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all"
-        >
-          Gender & Age Bias Test
-        </button>
-        <button
-          onClick={() => setTestScenario("Candidate communicates well but might not be a strong culture fit for our energetic young team.")}
-          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition-all"
-        >
-          Culture Fit Exclusion Test
-        </button>
-        <button
-          onClick={() => setTestScenario("Candidate demonstrated clear architectural grasp of distributed microservices, clean code structure, and concise communication.")}
-          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-all"
-        >
-          Clean Objective Feedback
-        </button>
-      </div>
-
-      {/* Note Scanner Box (Shows Interviewer's Feedback) */}
-      <div className="space-y-2">
-        <label className="block text-xs font-bold text-text-primary flex items-center justify-between">
-          <span>Interviewer Feedback Submitted:</span>
-          <button
-            onClick={() => handleScanNote(feedbackNote)}
-            disabled={loading}
-            className="text-[11px] text-purple-400 hover:underline flex items-center gap-1 font-semibold disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
-            {loading ? "Scanning with AI..." : "Rescan with AI"}
-          </button>
-        </label>
-        <textarea
-          value={feedbackNote}
-          onChange={(e) => {
-            setFeedbackNote(e.target.value);
-            if (debounceRef.current) clearTimeout(debounceRef.current);
-            debounceRef.current = setTimeout(() => {
-              handleScanNote(e.target.value);
-            }, 500);
-          }}
-          rows={3}
-          placeholder="Interviewer feedback note will appear here..."
-          className="w-full p-3 bg-secondary-surface/40 border border-border rounded-xl text-xs text-text-primary outline-none focus:ring-1 focus:ring-purple-500/40 resize-none font-mono"
-        />
-      </div>
-
-      {/* Flagged Bias Results */}
-      {flaggedIssues.length > 0 ? (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
-              <AlertCircle className="w-4 h-4" /> {flaggedIssues.length} Bias Signal(s) Flagged
-            </h3>
-            <span className="text-xs text-muted font-semibold">
-              Bias Severity Score: <strong className="text-rose-400">{severity}</strong>
-            </span>
-          </div>
-
-          <div className="space-y-2.5">
-            {flaggedIssues.map((issue, idx) => (
-              <div key={idx} className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs space-y-1">
-                <div className="flex items-center justify-between font-bold">
-                  <span className="text-rose-400 font-mono">&quot;{issue.word}&quot;</span>
-                  <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[10px]">
-                    {issue.type}
-                  </span>
-                </div>
-                <p className="text-text-secondary text-[11px] flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-purple-400 shrink-0" />
-                  <strong className="text-purple-300">Suggested Rewrite:</strong> {issue.recommendation}
-                </p>
+      {/* Selected Interview Details Header Summary */}
+      {selectedInterview ? (
+        <div className="space-y-4">
+          {/* Metadata Card */}
+          <div className="p-4 rounded-2xl bg-secondary-surface/40 border border-border flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-4 flex-wrap text-xs">
+              <div>
+                <span className="text-muted block text-[11px]">Candidate</span>
+                <strong className="text-text-primary font-bold text-sm">
+                  {selectedInterview.candidate_name || `Candidate #${selectedInterview.candidate_id}`}
+                </strong>
               </div>
-            ))}
+              <div className="h-6 w-px bg-border/60 hidden sm:block" />
+              <div>
+                <span className="text-muted block text-[11px]">Interviewer</span>
+                <strong className="text-text-primary font-semibold">
+                  {selectedInterview.interviewer_name || selectedInterview.panel_role || "Hiring Panel"}
+                </strong>
+              </div>
+              <div className="h-6 w-px bg-border/60 hidden sm:block" />
+              <div>
+                <span className="text-muted block text-[11px]">Date & Time</span>
+                <span className="text-text-primary font-medium flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-indigo-400" />
+                  {selectedInterview.interview_date || "N/A"} {selectedInterview.interview_time ? `at ${selectedInterview.interview_time}` : ""}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              {selectedInterview.overall_rating && (
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs font-bold">
+                  <Star className="w-3.5 h-3.5 fill-amber-400" />
+                  {selectedInterview.overall_rating} / 5
+                </div>
+              )}
+              {getRecommendationBadge(selectedInterview.recommendation)}
+            </div>
+          </div>
+
+          {/* Rating Breakdown Grid */}
+          {(selectedInterview.technical_rating || selectedInterview.communication_rating || selectedInterview.problem_solving_rating) && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {selectedInterview.technical_rating && (
+                <div className="p-3 rounded-xl bg-secondary-surface/30 border border-border">
+                  <span className="text-[11px] text-muted block">Technical Score</span>
+                  <div className="flex items-center gap-1 text-sm font-bold text-text-primary mt-0.5">
+                    <Star className="w-3.5 h-3.5 text-indigo-400 fill-indigo-400" />
+                    {selectedInterview.technical_rating} / 5
+                  </div>
+                </div>
+              )}
+              {selectedInterview.communication_rating && (
+                <div className="p-3 rounded-xl bg-secondary-surface/30 border border-border">
+                  <span className="text-[11px] text-muted block">Communication Score</span>
+                  <div className="flex items-center gap-1 text-sm font-bold text-text-primary mt-0.5">
+                    <Star className="w-3.5 h-3.5 text-indigo-400 fill-indigo-400" />
+                    {selectedInterview.communication_rating} / 5
+                  </div>
+                </div>
+              )}
+              {selectedInterview.problem_solving_rating && (
+                <div className="p-3 rounded-xl bg-secondary-surface/30 border border-border">
+                  <span className="text-[11px] text-muted block">Problem Solving</span>
+                  <div className="flex items-center gap-1 text-sm font-bold text-text-primary mt-0.5">
+                    <Star className="w-3.5 h-3.5 text-indigo-400 fill-indigo-400" />
+                    {selectedInterview.problem_solving_rating} / 5
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 1. Interviewer Feedback Section */}
+          <div className="space-y-1.5">
+            <h3 className="text-xs font-bold text-text-primary flex items-center gap-1.5">
+              <MessageSquareQuote className="w-3.5 h-3.5 text-indigo-400" />
+              Interviewer Feedback:
+            </h3>
+            <div className="p-4 rounded-xl bg-secondary-surface/30 border border-border text-xs text-text-primary leading-relaxed whitespace-pre-wrap">
+              {selectedInterview.feedback && selectedInterview.feedback.trim().length > 0 ? (
+                selectedInterview.feedback
+              ) : (
+                <span className="text-muted italic">No feedback submitted for this round yet.</span>
+              )}
+            </div>
+          </div>
+
+          {/* 2. Interviewer Notes Section */}
+          <div className="space-y-1.5">
+            <h3 className="text-xs font-bold text-text-primary flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-purple-400" />
+              Interviewer Notes:
+            </h3>
+            <div className="p-4 rounded-xl bg-secondary-surface/30 border border-border text-xs text-text-primary leading-relaxed whitespace-pre-wrap">
+              {selectedInterview.notes && selectedInterview.notes.trim().length > 0 ? (
+                selectedInterview.notes
+              ) : (
+                <span className="text-muted italic">No additional internal notes recorded for this round.</span>
+              )}
+            </div>
           </div>
         </div>
       ) : (
-        <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2 text-xs text-emerald-400 font-bold">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
-          <span>No biased language detected! Feedback uses objective, competency-focused evaluation metrics.</span>
+        <div className="text-center py-10 rounded-2xl border border-dashed border-border text-muted text-xs space-y-1">
+          <MessageSquareQuote className="w-6 h-6 mx-auto opacity-40 mb-1" />
+          <p className="font-semibold text-text-primary">No completed interviews available for this selection.</p>
+          <p>Complete candidate interview rounds to review feedback and notes.</p>
         </div>
       )}
     </div>
   );
 }
+
+export const InterviewFeedbackAnalysis = AIBiasDetectionWidget;
