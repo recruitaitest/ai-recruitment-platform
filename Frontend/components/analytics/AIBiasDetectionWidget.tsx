@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { MessageSquareQuote, FileText, User, Star, Briefcase, Calendar, CheckCircle2, XCircle, Clock, Award, Video, MapPin } from "lucide-react";
+import { MessageSquare, FileText, User, Star, Briefcase, Calendar, CheckCircle2, XCircle, Clock } from "lucide-react";
 import api from "@/lib/api";
 
 interface InterviewRecord {
@@ -123,7 +123,7 @@ export function AIBiasDetectionWidget() {
       <div className="flex items-center justify-between flex-wrap gap-3 border-b border-border pb-4">
         <div className="flex items-center gap-2.5">
           <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-            <MessageSquareQuote className="w-5 h-5" />
+            <MessageSquare className="w-5 h-5" />
           </div>
           <div>
             <h2 className="text-lg font-bold text-text-primary">
@@ -265,7 +265,7 @@ export function AIBiasDetectionWidget() {
           {/* 1. Interviewer Feedback Section */}
           <div className="space-y-1.5">
             <h3 className="text-xs font-bold text-text-primary flex items-center gap-1.5">
-              <MessageSquareQuote className="w-3.5 h-3.5 text-indigo-400" />
+              <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />
               Interviewer Feedback:
             </h3>
             <div className="p-4 rounded-xl bg-secondary-surface/30 border border-border text-xs text-text-primary leading-relaxed whitespace-pre-wrap">
@@ -294,7 +294,7 @@ export function AIBiasDetectionWidget() {
         </div>
       ) : (
         <div className="text-center py-10 rounded-2xl border border-dashed border-border text-muted text-xs space-y-1">
-          <MessageSquareQuote className="w-6 h-6 mx-auto opacity-40 mb-1" />
+          <MessageSquare className="w-6 h-6 mx-auto opacity-40 mb-1" />
           <p className="font-semibold text-text-primary">No completed interviews available for this selection.</p>
           <p>Complete candidate interview rounds to review feedback and notes.</p>
         </div>
