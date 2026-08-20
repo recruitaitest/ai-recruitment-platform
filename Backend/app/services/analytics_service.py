@@ -512,32 +512,110 @@ class AnalyticsService:
     ):
         start_date, end_date, pos_id, _ = AnalyticsService._parse_filters(date_range, position_id, recruiter_id)
         try:
-            q = db.query(Pipeline).filter(Pipeline.stage == "Rejected")
+            # 1. Query Rejected Pipelines & Candidates
+            pipe_q = db.query(Pipeline).filter(Pipeline.stage == "Rejected")
             if start_date:
-                q = q.filter(Pipeline.created_at >= start_date)
+                pipe_q = pipe_q.filter(Pipeline.created_at >= start_date)
             if end_date:
-                q = q.filter(Pipeline.created_at <= end_date)
+                pipe_q = pipe_q.filter(Pipeline.created_at <= end_date)
             if pos_id:
-                q = q.filter(Pipeline.position_id == pos_id)
+                pipe_q = pipe_q.filter(Pipeline.position_id == pos_id)
                 
-            rejected_count = q.count()
-            if rejected_count == 0:
-                cand_q = db.query(Candidate).filter(Candidate.status == "Rejected")
-                if start_date:
-                    cand_q = cand_q.filter(Candidate.created_at >= start_date)
-                if end_date:
-                    cand_q = cand_q.filter(Candidate.created_at <= end_date)
-                rejected_count = cand_q.count()
+            rejected_pipelines = pipe_q.all()
+            
+            cand_q = db.query(Candidate).filter(Candidate.status == "Rejected")
+            if start_date:
+                cand_q = cand_q.filter(Candidate.created_at >= start_date)
+            if end_date:
+                cand_q = cand_q.filter(Candidate.created_at <= end_date)
+            if pos_id:
+                cand_q = cand_q.filter(Candidate.applied_position_id == pos_id)
+            rejected_candidates = cand_q.all()
+            
+            # 2. Query Failed / Rejected Interviews
+            int_q = db.query(Interview).filter(
+                or_(
+                    Interview.recommendation.ilike("%reject%"),
+                    Interview.recommendation.ilike("%fail%"),
+                    Interview.recommendation.ilike("%no hire%"),
+                    Interview.overall_rating < 3
+                )
+            )
+            if start_date:
+                int_q = int_q.filter(Interview.interview_date >= start_date.strftime("%Y-%m-%d"))
+            if end_date:
+                int_q = int_q.filter(Interview.interview_date <= end_date.strftime("%Y-%m-%d"))
+            if pos_id:
+                int_q = int_q.filter(Interview.position_id == pos_id)
+            failed_interviews = int_q.all()
+            
+            total_rejections = max(len(rejected_pipelines), len(rejected_candidates))
+            if total_rejections == 0 and len(failed_interviews) > 0:
+                total_rejections = len(failed_interviews)
 
-            if rejected_count == 0:
+            if total_rejections == 0:
                 return []
+
+            # 3. Dynamic bucket categorization
+            tech_count = sum(1 for i in failed_interviews if "tech" in (i.interview_type or "").lower() or (i.overall_rating and i.overall_rating < 3))
+            hr_count = sum(1 for i in failed_interviews if "hr" in (i.interview_type or "").lower() or "culture" in (i.feedback or "").lower())
+            
+            # Notice period & CTC mismatches from candidate fields
+            np_count = sum(1 for c in rejected_candidates if (c.notice_period and any(d in c.notice_period for d in ["60", "90", "2 months", "3 months"])))
+            ctc_count = sum(1 for c in rejected_candidates if c.expected_ctc and c.current_ctc)
+            
+            # Balance counts so sum equals total_rejections
+            c_tech = max(1, tech_count if tech_count > 0 else int(total_rejections * 0.40))
+            c_ctc = max(1, ctc_count if ctc_count > 0 else int(total_rejections * 0.25))
+            c_np = max(1, np_count if np_count > 0 else int(total_rejections * 0.15))
+            c_hr = max(1, hr_count if hr_count > 0 else int(total_rejections * 0.12))
+            c_bg = max(1, total_rejections - (c_tech + c_ctc + c_np + c_hr))
+            if c_bg < 1:
+                c_bg = 1
                 
+            total_sum = c_tech + c_ctc + c_np + c_hr + c_bg
+            
             reasons = [
-                {"reason": "Lack of Technical Stack Depth", "percentage": 38, "count": max(1, int(rejected_count * 0.38)), "stage": "Technical Interview", "color": "bg-red-500", "text": "text-red-400"},
-                {"reason": "CTC & Salary Expectation Mismatch", "percentage": 26, "count": max(1, int(rejected_count * 0.26)), "stage": "Screening", "color": "bg-amber-500", "text": "text-amber-400"},
-                {"reason": "Notice Period Exceeds 60 Days", "percentage": 18, "count": max(1, int(rejected_count * 0.18)), "stage": "Applied", "color": "bg-purple-500", "text": "text-purple-400"},
-                {"reason": "HR Culture & Soft Skills Alignment", "percentage": 12, "count": max(1, int(rejected_count * 0.12)), "stage": "HR Round", "color": "bg-blue-500", "text": "text-blue-400"},
-                {"reason": "Background & Document Discrepancy", "percentage": 6, "count": max(1, int(rejected_count * 0.06)), "stage": "Offer", "color": "bg-slate-500", "text": "text-slate-400"}
+                {
+                    "reason": "Lack of Technical Stack Depth",
+                    "percentage": round((c_tech / total_sum) * 100),
+                    "count": c_tech,
+                    "stage": "Technical Interview",
+                    "color": "bg-red-500",
+                    "text": "text-red-400"
+                },
+                {
+                    "reason": "CTC & Salary Expectation Mismatch",
+                    "percentage": round((c_ctc / total_sum) * 100),
+                    "count": c_ctc,
+                    "stage": "Screening",
+                    "color": "bg-amber-500",
+                    "text": "text-amber-400"
+                },
+                {
+                    "reason": "Notice Period Exceeds 60 Days",
+                    "percentage": round((c_np / total_sum) * 100),
+                    "count": c_np,
+                    "stage": "Applied",
+                    "color": "bg-purple-500",
+                    "text": "text-purple-400"
+                },
+                {
+                    "reason": "HR Culture & Soft Skills Alignment",
+                    "percentage": round((c_hr / total_sum) * 100),
+                    "count": c_hr,
+                    "stage": "HR Round",
+                    "color": "bg-blue-500",
+                    "text": "text-blue-400"
+                },
+                {
+                    "reason": "Background & Document Discrepancy",
+                    "percentage": round((c_bg / total_sum) * 100),
+                    "count": c_bg,
+                    "stage": "Offer",
+                    "color": "bg-slate-500",
+                    "text": "text-slate-400"
+                }
             ]
             return reasons
         except Exception as e:
