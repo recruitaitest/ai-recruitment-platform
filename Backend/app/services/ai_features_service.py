@@ -117,10 +117,6 @@ Return JSON matching these exact types:
 def generate_interview_questions(req: QuestionGenerateRequest) -> QuestionGenerateResponse:
     try:
         llm = get_chat_model(temperature=0.3, json_mode=True)
-# --- 1.3 AI Interview Question Generator ---
-def generate_interview_questions(req: QuestionGenerateRequest) -> QuestionGenerateResponse:
-    try:
-        llm = get_chat_model(temperature=0.3, json_mode=True)
         if not llm:
             raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
         structured_llm = llm.with_structured_output(QuestionGenerateResponse)
