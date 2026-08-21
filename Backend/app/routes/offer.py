@@ -169,15 +169,12 @@ def generate_and_save_offer(
         raise HTTPException(status_code=404, detail="Pipeline not found")
 
     # Determine company & location dynamically:
-    # 1. User profile company (if logged-in user has company set in profile)
-    # 2. Explicit company name from request (if provided and custom)
-    # 3. Position company (if configured on position)
-    # 4. Fallback default: "RecruitAI"
+    # 1. Custom template (if uploaded, handled via template)
+    # 2. Recruiter / User Profile: Logged-in recruiter's company set in Profile/User settings.
+    # 3. Default Fallback: "RecruitAI"
     user_company = getattr(current_user, "company", None) if current_user else None
     comp_name = (
         (user_company.strip() if user_company and user_company.strip() else None)
-        or (req.company_name.strip() if req.company_name and req.company_name.strip() and "recruitai" not in req.company_name.lower() else None)
-        or (position.company.strip() if position and getattr(position, "company", None) and position.company.strip() else None)
         or "RecruitAI"
     )
     loc = req.location or getattr(position, "location", None) or getattr(candidate, "location", None) or "Hyderabad, India"
@@ -369,7 +366,7 @@ def preview_offer_pdf(
         pdf_filename = f"Offer_{cand_name.replace(' ', '_')}_{int(time.time())}.pdf"
         fpath = os.path.join(OFFERS_DIR, pdf_filename)
 
-        # Resolve company from creator user profile -> position company -> RecruitAI
+        # Resolve company from creator user profile -> Default RecruitAI
         creator_company = None
         if offer.created_by:
             creator = db.query(User).filter(User.id == offer.created_by).first()
@@ -378,7 +375,6 @@ def preview_offer_pdf(
 
         comp_name = (
             creator_company
-            or (position.company.strip() if position and getattr(position, "company", None) and position.company.strip() else None)
             or "RecruitAI"
         )
 
