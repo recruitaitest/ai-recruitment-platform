@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { X } from "lucide-react";
+import { toast } from "sonner";
 import type { Position } from "@/types/positon";
 import SkillsTagInput from "./SkillsTagInput";
 
