@@ -55,8 +55,9 @@ export default function ViewOfferModal({
 
   if (!open) return null;
 
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
   const pdfUrl = offerId
-    ? `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/offers/${offerId}/preview`
+    ? `${baseUrl}/offers/${offerId}/preview`
     : "";
 
   const handleSendDirect = async () => {

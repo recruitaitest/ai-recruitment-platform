@@ -94,7 +94,8 @@ export default function OfferTemplateSection() {
     }
   };
 
-  const templateUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/offers/template/file`;
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+  const templateUrl = `${baseUrl}/offers/template/file`;
 
   return (
     <div className="rounded-2xl border border-slate-200/80 dark:border-border/60 bg-gradient-to-r from-blue-50/50 via-indigo-50/30 to-purple-50/40 dark:from-surface/80 dark:via-surface dark:to-surface/80 p-5 shadow-sm">
