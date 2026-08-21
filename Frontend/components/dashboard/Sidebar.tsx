@@ -119,7 +119,7 @@ function SidebarInner({
         fetchAISettings()
     }, [])
 
-    const role = user?.role
+    const role = user?.role === 'COMPANY_OWNER' ? 'SUPER_ADMIN' : user?.role
 
     const pendingNavItems: NavItem[] = [
         {
