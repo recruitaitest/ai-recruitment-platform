@@ -68,12 +68,14 @@ def test_ai_connection(
                 return {"success": False, "source": "UI", "message": "No API key provided."}
             client = Groq(api_key=api_key)
             models = client.models.list()
+            chat_models = [m.id for m in models.data if "whisper" not in m.id and "guard" not in m.id]
             latency_ms = int((time.time() - start) * 1000)
             return {
                 "success": True,
                 "source": "UI",
                 "latency_ms": latency_ms,
                 "message": f"Groq API key is valid ({latency_ms}ms). {len(models.data)} models available.",
+                "available_models": chat_models,
             }
 
         elif provider == "Gemini":
