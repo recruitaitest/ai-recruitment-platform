@@ -2,25 +2,51 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, User, Briefcase, DollarSign, Calendar, FileText, CheckCircle2, Clock } from "lucide-react";
-import { getOffer } from "@/services/offerService";
+import {
+  X,
+  User,
+  Briefcase,
+  DollarSign,
+  Calendar,
+  FileText,
+  CheckCircle2,
+  Download,
+  Send,
+  Sparkles,
+  Loader2,
+  FileCheck,
+} from "lucide-react";
+import { getOffer, sendOfferDirectly } from "@/services/offerService";
+import { toast } from "sonner";
 
 interface Props {
   open: boolean;
   onClose: () => void;
   offerId?: number;
+  onOfferSent?: () => void;
+  onEdit?: (offer: any) => void;
 }
 
-export default function ViewOfferModal({ open, onClose, offerId }: Props) {
+export default function ViewOfferModal({
+  open,
+  onClose,
+  offerId,
+  onOfferSent,
+  onEdit,
+}: Props) {
   const [offer, setOffer] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (open && offerId) {
       setLoading(true);
       getOffer(offerId)
         .then((data) => setOffer(data))
-        .catch((err) => console.error("Failed to load offer:", err))
+        .catch((err) => {
+          console.error("Failed to load offer:", err);
+          toast.error("Failed to load offer details.");
+        })
         .finally(() => setLoading(false));
     } else {
       setOffer(null);
@@ -29,124 +55,204 @@ export default function ViewOfferModal({ open, onClose, offerId }: Props) {
 
   if (!open) return null;
 
+  const pdfUrl = offerId
+    ? `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/offers/${offerId}/preview`
+    : "";
+
+  const handleSendDirect = async () => {
+    if (!offerId) return;
+    try {
+      setSending(true);
+      const res = await sendOfferDirectly(offerId);
+      toast.success(res.message || "Offer letter sent successfully to candidate!");
+      if (onOfferSent) onOfferSent();
+      onClose();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.response?.data?.detail || "Failed to send offer letter.");
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-        {/* Backdrop */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-sm overflow-hidden">
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="fixed inset-0 bg-slate-950/40 dark:bg-black/70 backdrop-blur-sm"
-        />
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          initial={{ opacity: 0, scale: 0.96, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 10 }}
+          exit={{ opacity: 0, scale: 0.96, y: 10 }}
           transition={{ duration: 0.2 }}
           className="
-            relative w-full max-w-2xl overflow-hidden rounded-2xl
-            bg-white dark:bg-surface
-            border border-slate-200 dark:border-border
-            shadow-2xl shadow-slate-900/15 dark:shadow-black/60
-            z-10 max-h-[90vh] flex flex-col
+            relative w-full max-w-6xl h-[90vh] flex flex-col
+            rounded-2xl bg-surface border border-border shadow-2xl
+            overflow-hidden
           "
         >
-          {/* Header */}
-          <div className="flex shrink-0 items-center justify-between border-b border-slate-100 dark:border-border px-6 py-5">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-text-primary">
-                Offer Details for {offer?.candidate_name || "Candidate"}
-              </h2>
-              <p className="mt-1 text-xs text-slate-500 dark:text-muted">
-                Candidate offer details and compensation package
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="rounded-full p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-surface-hover dark:hover:text-text-primary transition-colors cursor-pointer"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          {/* Body */}
-          <div className="space-y-5 p-6 overflow-y-auto flex-1">
-            {loading ? (
-              <div className="text-slate-500 dark:text-muted text-sm py-4 text-center">Loading offer details...</div>
-            ) : offer ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-semibold text-text-primary mb-1 flex items-center gap-1">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-indigo-500" /> Status
-                    </label>
-                    <div className="rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border px-4 py-2.5 text-sm font-semibold text-text-primary">
-                      {offer.status || "Draft"}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-text-primary mb-1 flex items-center gap-1">
-                      <Briefcase className="h-3.5 w-3.5 text-indigo-500" /> Employment Type
-                    </label>
-                    <div className="rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border px-4 py-2.5 text-sm font-semibold text-text-primary">
-                      {offer.employment_type || "Full Time"}
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-text-primary mb-1 flex items-center gap-1">
-                    <DollarSign className="h-3.5 w-3.5 text-indigo-500" /> Salary Package
-                  </label>
-                  <div className="rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border px-4 py-2.5 text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                    {offer.salary}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-semibold text-text-primary mb-1 flex items-center gap-1">
-                      <Calendar className="h-3.5 w-3.5 text-indigo-500" /> Joining Date
-                    </label>
-                    <div className="rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border px-4 py-2.5 text-sm text-text-primary">
-                      {offer.joining_date || "-"}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-text-primary mb-1 flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5 text-indigo-500" /> Offer Expiry
-                    </label>
-                    <div className="rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border px-4 py-2.5 text-sm text-text-primary">
-                      {offer.offer_expiry || "-"}
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-text-primary mb-1 flex items-center gap-1">
-                    <FileText className="h-3.5 w-3.5 text-indigo-500" /> Notes / Terms
-                  </label>
-                  <div className="rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border px-4 py-3 text-sm text-text-primary whitespace-pre-wrap">
-                    {offer.notes || "None"}
-                  </div>
-                </div>
+          {/* ── Modal Header ── */}
+          <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4 bg-surface-hover/30">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
+                <FileCheck className="h-5 w-5" />
               </div>
-            ) : (
-              <div className="text-center py-6 text-sm text-slate-500 dark:text-muted">Offer details not found.</div>
-            )}
+              <div>
+                <h2 className="text-base font-bold text-text-primary">
+                  Official Offer Letter — {offer?.candidate_name || "Candidate"}
+                </h2>
+                <p className="text-xs text-text-secondary">
+                  {offer?.position_title || "Position"} · Status:{" "}
+                  <span className="font-semibold text-primary">
+                    {offer?.status || "Draft"}
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            {/* Action Buttons in Header */}
+            <div className="flex items-center gap-2.5">
+              {pdfUrl && (
+                <a
+                  href={pdfUrl}
+                  download={offer?.offer_letter || "Offer_Letter.pdf"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3.5 py-1.5 text-xs font-semibold text-text-primary hover:bg-surface-hover transition"
+                >
+                  <Download className="h-4 w-4" />
+                  Download PDF
+                </a>
+              )}
+
+              {offer?.status === "Draft" && (
+                <button
+                  onClick={handleSendDirect}
+                  disabled={sending}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-primary-hover active:scale-[0.98] transition disabled:opacity-50"
+                >
+                  {sending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4" />
+                      Send to Candidate
+                    </>
+                  )}
+                </button>
+              )}
+
+              <button
+                onClick={onClose}
+                className="rounded-full p-2 text-text-secondary hover:text-text-primary hover:bg-surface-hover transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
-          {/* Footer */}
-          <div className="flex shrink-0 items-center justify-end border-t border-slate-100 dark:border-border px-6 py-4 bg-slate-50/50 dark:bg-surface">
-            <button
-              onClick={onClose}
-              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm transition-colors cursor-pointer"
-            >
-              Close
-            </button>
+          {/* ── Modal Body: Split View (Details Pane + PDF Viewer) ── */}
+          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+            {/* Left Side: Offer Key Metrics (320px) */}
+            <div className="w-full lg:w-80 shrink-0 border-b lg:border-b-0 lg:border-r border-border p-5 overflow-y-auto space-y-4 bg-surface/50">
+              <div className="text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">
+                Offer Parameters
+              </div>
+
+              {loading ? (
+                <div className="text-xs text-text-secondary py-8 text-center">
+                  Loading metrics...
+                </div>
+              ) : offer ? (
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                    <span className="text-[11px] font-semibold text-text-secondary flex items-center gap-1">
+                      <DollarSign className="h-3.5 w-3.5 text-primary" /> Total Annual CTC
+                    </span>
+                    <p className="text-base font-bold text-text-primary">
+                      {offer.salary || "Not Specified"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                    <span className="text-[11px] font-semibold text-text-secondary flex items-center gap-1">
+                      <Briefcase className="h-3.5 w-3.5 text-primary" /> Employment Type
+                    </span>
+                    <p className="text-sm font-medium text-text-primary">
+                      {offer.employment_type || "Full Time"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                    <span className="text-[11px] font-semibold text-text-secondary flex items-center gap-1">
+                      <Calendar className="h-3.5 w-3.5 text-primary" /> Joining Date
+                    </span>
+                    <p className="text-sm font-medium text-text-primary">
+                      {offer.joining_date || "To be confirmed"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                    <span className="text-[11px] font-semibold text-text-secondary flex items-center gap-1">
+                      <Calendar className="h-3.5 w-3.5 text-primary" /> Offer Expiry Deadline
+                    </span>
+                    <p className="text-sm font-medium text-text-primary">
+                      {offer.offer_expiry || "Standard (5 days)"}
+                    </p>
+                  </div>
+
+                  {offer.notes && (
+                    <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                      <span className="text-[11px] font-semibold text-text-secondary">
+                        Internal Notes
+                      </span>
+                      <p className="text-xs text-text-secondary leading-relaxed">
+                        {offer.notes}
+                      </p>
+                    </div>
+                  )}
+
+                  {onEdit && (
+                    <button
+                      onClick={() => {
+                        onClose();
+                        onEdit(offer);
+                      }}
+                      className="w-full rounded-xl border border-border bg-surface px-4 py-2 text-xs font-semibold text-text-primary hover:bg-surface-hover transition"
+                    >
+                      Edit Offer Values
+                    </button>
+                  )}
+                </div>
+              ) : null}
+            </div>
+
+            {/* Right Side: Embedded High-Resolution PDF Viewer */}
+            <div className="flex-1 bg-slate-900/5 dark:bg-black/40 p-3 overflow-hidden flex flex-col">
+              {loading ? (
+                <div className="flex-1 flex items-center justify-center text-sm text-text-secondary">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
+                  Generating & loading offer letter document...
+                </div>
+              ) : pdfUrl ? (
+                <iframe
+                  src={pdfUrl}
+                  title="Offer Letter PDF Preview"
+                  className="w-full h-full rounded-xl border border-border/80 bg-white shadow-inner"
+                />
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-sm text-text-secondary p-8 text-center">
+                  <FileText className="h-12 w-12 text-text-secondary/40 mb-3" />
+                  <p className="font-semibold text-text-primary">
+                    No offer letter document generated yet
+                  </p>
+                  <p className="text-xs mt-1">
+                    Click &quot;Generate Offer&quot; to compile the official corporate PDF document.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </motion.div>
       </div>

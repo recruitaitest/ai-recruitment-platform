@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { X } from "lucide-react";
-import { getOffer, updateOffer } from "@/services/offerService";
+import { getOffer, updateOffer, generateOffer } from "@/services/offerService";
 import { toast } from "sonner";
 
 interface Props {
@@ -52,14 +52,27 @@ export default function EditOfferModal({ open, onClose, offerId, onOfferUpdated 
     if (!offerId) return;
     setSaving(true);
     try {
-      await updateOffer(offerId, {
-        salary,
-        employment_type: employmentType,
-        joining_date: joiningDate,
-        offer_expiry: offerExpiry,
-        notes,
-      });
-      toast.success("Offer updated successfully");
+      if (offer?.candidate_id && offer?.position_id && offer?.pipeline_id) {
+        await generateOffer({
+          candidate_id: offer.candidate_id,
+          position_id: offer.position_id,
+          pipeline_id: offer.pipeline_id,
+          salary,
+          employment_type: employmentType,
+          joining_date: joiningDate,
+          offer_expiry: offerExpiry,
+          notes,
+        });
+      } else {
+        await updateOffer(offerId, {
+          salary,
+          employment_type: employmentType,
+          joining_date: joiningDate,
+          offer_expiry: offerExpiry,
+          notes,
+        });
+      }
+      toast.success("Offer and letter PDF updated successfully");
       onOfferUpdated?.();
       onClose();
     } catch (error) {

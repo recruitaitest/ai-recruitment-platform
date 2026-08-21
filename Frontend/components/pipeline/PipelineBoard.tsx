@@ -458,9 +458,8 @@ export default function PipelineBoard() {
     }
 
     if (newStage === "Offer") {
-      setOfferCandidate(candidate);
-      setOfferModalOpen(true);
       updateCandidateStage(candidate.id, newStage);
+      toast.success(`${candidate.name} moved to Offer stage. You can generate the official offer letter in the Offers page.`);
       return;
     }
 

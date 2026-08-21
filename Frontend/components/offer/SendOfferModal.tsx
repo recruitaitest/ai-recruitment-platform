@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, UploadCloud, File, AlertCircle, Loader2 } from "lucide-react";
+import { X, UploadCloud, File, AlertCircle, Loader2, Send, FileCheck } from "lucide-react";
 import { toast } from "sonner";
+import { sendOfferDirectly, uploadOfferLetter } from "@/services/offerService";
 
 interface SendOfferModalProps {
   open: boolean;
@@ -22,20 +23,22 @@ export default function SendOfferModal({
 }: SendOfferModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [useCustomUpload, setUseCustomUpload] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) {
       setFile(null);
       setIsSending(false);
+      setUseCustomUpload(false);
     }
   }, [open]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selected = e.target.files[0];
-      if (selected.type !== "application/pdf") {
-        toast.error("Please upload a PDF file.");
+      if (selected.type !== "application/pdf" && !selected.name.toLowerCase().endsWith(".pdf")) {
+        toast.error("Please upload a valid PDF file.");
         return;
       }
       setFile(selected);
@@ -43,31 +46,23 @@ export default function SendOfferModal({
   };
 
   const handleSend = async () => {
-    if (!file || !offerId) {
-      toast.error("Please upload the signed offer letter PDF first.");
-      return;
-    }
+    if (!offerId) return;
 
     setIsSending(true);
-    const formData = new FormData();
-    formData.append("file", file);
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/offers/${offerId}/upload-letter`, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to send offer");
+      if (useCustomUpload && file) {
+        await uploadOfferLetter(offerId, file);
+        toast.success("Custom offer letter uploaded and sent to candidate!");
+      } else {
+        const res = await sendOfferDirectly(offerId);
+        toast.success(res.message || "Official offer letter sent to candidate!");
       }
-
-      toast.success("Offer letter uploaded and sent to candidate!");
       onOfferSent();
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error("An error occurred while sending the offer.");
+      toast.error(error?.response?.data?.detail || "An error occurred while sending the offer.");
     } finally {
       setIsSending(false);
     }
@@ -98,13 +93,14 @@ export default function SendOfferModal({
               z-10 flex flex-col
             "
           >
+            {/* Header */}
             <div className="flex shrink-0 items-center justify-between border-b border-slate-100 dark:border-border px-6 py-5">
               <div>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-text-primary">
+                <h2 className="text-lg font-bold text-slate-900 dark:text-text-primary">
                   Send Offer Letter to {candidateName || "Candidate"}
                 </h2>
-                <p className="mt-1 text-xs text-slate-500 dark:text-muted">
-                  Attach signed letter and notify candidate
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-muted">
+                  Dispatch official employment offer via automated email
                 </p>
               </div>
               <button
@@ -117,80 +113,108 @@ export default function SendOfferModal({
             </div>
 
             <div className="p-6 space-y-4">
-              <div className="flex items-start gap-3 rounded-xl border border-indigo-500/20 bg-indigo-500/10 p-4 text-indigo-700 dark:text-indigo-300">
-                <AlertCircle className="h-5 w-5 shrink-0 text-indigo-500 mt-0.5" />
-                <p className="text-xs leading-relaxed">
-                  Please upload the signed offer letter as a PDF. Once uploaded, an email will be automatically sent to the candidate with the attachment, and the offer status will be updated to &quot;Sent&quot;.
+              <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/10 p-3.5 text-primary">
+                <FileCheck className="h-5 w-5 shrink-0 mt-0.5" />
+                <p className="text-xs leading-relaxed text-text-primary">
+                  The generated corporate Offer Letter PDF will be attached to the formal appointment email and sent directly to the candidate&apos;s email address.
                 </p>
               </div>
 
-              <div
-                onClick={() => !isSending && fileInputRef.current?.click()}
-                className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 transition ${
-                  file
-                    ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-500/10"
-                    : "border-slate-200 dark:border-border bg-slate-50/50 dark:bg-surface-hover/40 hover:border-indigo-400 hover:bg-indigo-50/20"
-                } ${isSending ? "opacity-50 pointer-events-none" : ""}`}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="application/pdf"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-
-                {file ? (
-                  <div className="flex flex-col items-center text-center">
-                    <div className="mb-3 rounded-2xl bg-indigo-50 dark:bg-indigo-500/20 p-3 text-indigo-600 dark:text-indigo-400">
-                      <File className="h-8 w-8" />
-                    </div>
-                    <p className="text-sm font-semibold text-slate-900 dark:text-text-primary">{file.name}</p>
-                    <p className="text-xs text-slate-500 dark:text-muted mt-0.5">
-                      {(file.size / 1024 / 1024).toFixed(2)} MB
-                    </p>
-                    <span className="mt-3 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
-                      Change File
+              {/* Option to toggle custom PDF upload */}
+              {!useCustomUpload ? (
+                <div className="rounded-xl border border-border bg-surface-hover/30 p-4 text-center space-y-2">
+                  <p className="text-xs text-text-secondary">
+                    Using system-generated corporate offer letter PDF.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setUseCustomUpload(true)}
+                    className="text-xs font-semibold text-primary hover:underline"
+                  >
+                    Want to upload a custom signed PDF instead?
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-text-primary">
+                      Upload Custom Signed PDF
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUseCustomUpload(false);
+                        setFile(null);
+                      }}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Use generated PDF
+                    </button>
                   </div>
-                ) : (
-                  <div className="flex flex-col items-center text-center">
-                    <div className="mb-3 rounded-2xl bg-slate-100 dark:bg-surface-hover p-3 text-slate-500 dark:text-muted">
-                      <UploadCloud className="h-8 w-8" />
-                    </div>
-                    <p className="text-sm font-semibold text-slate-900 dark:text-text-primary">
-                      Click to upload PDF
-                    </p>
-                    <p className="text-xs text-slate-400 dark:text-muted mt-1">
-                      PDF only (Max 10MB)
-                    </p>
+
+                  <div
+                    onClick={() => !isSending && fileInputRef.current?.click()}
+                    className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 transition ${
+                      file
+                        ? "border-primary bg-primary/10"
+                        : "border-border bg-surface hover:border-primary/50"
+                    } ${isSending ? "opacity-50 pointer-events-none" : ""}`}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+
+                    {file ? (
+                      <div className="flex flex-col items-center text-center">
+                        <File className="h-8 w-8 text-primary mb-2" />
+                        <p className="text-sm font-semibold text-text-primary">{file.name}</p>
+                        <span className="mt-2 text-xs font-semibold text-primary hover:underline">
+                          Change File
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center text-center">
+                        <UploadCloud className="h-7 w-7 text-text-secondary mb-2" />
+                        <p className="text-xs font-semibold text-text-primary">
+                          Click to select custom PDF
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
-            <div className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-100 dark:border-border px-6 py-4 bg-slate-50/50 dark:bg-surface">
+            {/* Footer */}
+            <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border px-6 py-4 bg-surface">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={isSending}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-border bg-white dark:bg-surface text-slate-700 dark:text-text-secondary text-sm font-semibold hover:bg-slate-50 dark:hover:bg-surface-hover transition-colors disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 rounded-xl border border-border bg-surface text-text-secondary text-xs font-semibold hover:bg-surface-hover transition disabled:opacity-50 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleSend}
-                disabled={!file || isSending}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                disabled={isSending || (useCustomUpload && !file)}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover transition shadow-sm disabled:opacity-50 cursor-pointer"
               >
                 {isSending ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Sending...
+                    Sending Email...
                   </>
                 ) : (
-                  "Send Offer"
+                  <>
+                    <Send className="h-3.5 w-3.5" />
+                    Send Offer Letter
+                  </>
                 )}
               </button>
             </div>

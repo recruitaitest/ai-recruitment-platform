@@ -561,13 +561,21 @@ class InterviewService:
 
         if pipeline:
             old_stage = pipeline.stage
-            if feedback_data.recommendation == "Pass":
-                itype = (interview.interview_type or "").lower()
-                if "hr" in itype:
+            rec = (feedback_data.recommendation or "").strip().lower()
+            itype = (interview.interview_type or "").strip().lower()
+            
+            # Check for positive pass/hire recommendation
+            if rec in ["pass", "passed", "hire", "strong hire", "accepted"]:
+                if "hr" in itype or "final" in itype or "culture" in itype or "manager" in itype:
                     pipeline.stage = "Offer"
-                # Technical interview pass stays in Technical Interview stage until HR interview is scheduled
-            elif feedback_data.recommendation == "Fail":
+                    cand = db.query(Candidate).filter(Candidate.id == interview.candidate_id).first()
+                    if cand:
+                        cand.status = "Offer"
+            elif rec in ["fail", "failed", "reject", "rejected"]:
                 pipeline.stage = "Rejected"
+                cand = db.query(Candidate).filter(Candidate.id == interview.candidate_id).first()
+                if cand:
+                    cand.status = "Rejected"
 
             if old_stage != pipeline.stage:
                 history = PipelineStageHistory(

@@ -31,3 +31,4 @@ python-jose
 redis
 celery
 fastapi-mail
+reportlab>=4.0.0

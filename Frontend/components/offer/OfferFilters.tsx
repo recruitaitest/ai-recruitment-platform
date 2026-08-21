@@ -3,14 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { Search } from "lucide-react";
-
-interface Offer {
- id: number;
- candidate_name?: string;
- position_title?: string;
- employment_type: string;
- status: string;
-}
+import { Offer } from "./OfferTable";
 
 interface Props {
  offers: Offer[];

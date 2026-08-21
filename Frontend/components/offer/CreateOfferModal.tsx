@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, User, Briefcase, DollarSign, Calendar, FileText, Sparkles, Coins, Zap } from "lucide-react";
 import { toast } from "sonner";
-import { createOffer } from "@/services/offerService";
+import { createOffer, generateOffer } from "@/services/offerService";
 import AIOfferRiskGauge from "@/components/ai/AIOfferRiskGauge";
 
 interface Props {
@@ -111,24 +111,23 @@ export default function CreateOfferModal({
 
     setLoading(true);
     try {
-      await createOffer({
-        candidate_id: candidateId,
-        position_id: positionId,
+      await generateOffer({
+        candidate_id: candidateId!,
+        position_id: positionId!,
         pipeline_id: pipelineId,
         salary: finalSalaryString,
         employment_type: employmentType,
         joining_date: joiningDate,
         offer_expiry: offerExpiry,
         notes,
-        status: "Draft",
       });
 
-      toast.success("Offer created successfully.");
+      toast.success("Corporate offer letter generated successfully!");
       onOfferCreated?.();
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      toast.error("Failed to create offer.");
+      toast.error(err?.response?.data?.detail || "Failed to generate offer.");
     } finally {
       setLoading(false);
     }
