@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Save, ShieldCheck, Zap, CheckCircle2 } from "lucide-react";
+import { Save, ShieldCheck, Zap, CheckCircle2, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import api from "@/lib/api";
 
 const PROVIDERS = [
@@ -26,10 +27,16 @@ export default function AIPage() {
   });
 
   const [loading, setLoading] = useState(false);
+  const [detectingModel, setDetectingModel] = useState(false);
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<"idle" | "success" | "error">("idle");
   const [saveStatus, setSaveStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [testMessage, setTestMessage] = useState<string>("");
+
+  useEffect(() => {
+    setAvailableModels([]);
+  }, [activeTab]);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -53,6 +60,42 @@ export default function AIPage() {
     fetchSettings();
   }, []);
 
+  const handleAutoSelectModel = async () => {
+    setDetectingModel(true);
+    try {
+      const response = await api.post("/admin/ai-settings/test-connection", {
+        provider: activeTab,
+        config: settings[activeTab] || {},
+      });
+      const data = response.data;
+      if (data.available_models && data.available_models.length > 0) {
+        setAvailableModels(data.available_models);
+        const preferred = [
+          "llama-3.3-70b-versatile",
+          "llama-3.1-8b-instant",
+          "openai/gpt-oss-120b",
+          "qwen/qwen3.6-27b",
+          "groq/compound-mini",
+          "openai/gpt-oss-20b",
+          "llama3",
+          "gemini-1.5-pro",
+          "gpt-4o"
+        ];
+        const selected = preferred.find((p) => data.available_models.includes(p)) || data.available_models[0];
+        updateSetting("modelName", selected);
+        toast.success(`✨ Auto-selected '${selected}' for ${activeTab}!`);
+      } else if (data.success) {
+        toast.success(`Connection verified for ${activeTab}!`);
+      } else {
+        toast.error(data.message || "Failed to detect models. Please check your API key.");
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || err?.message || "Failed to detect available models");
+    } finally {
+      setDetectingModel(false);
+    }
+  };
+
   const handleTestConnection = async () => {
     setLoading(true);
     setConnectionStatus("idle");
@@ -63,6 +106,9 @@ export default function AIPage() {
         config: settings[activeTab] || {},
       });
       const data = response.data;
+      if (data.available_models && data.available_models.length > 0) {
+        setAvailableModels(data.available_models);
+      }
       setConnectionStatus(data.success ? "success" : "error");
       setTestMessage(data.message || (data.success ? "Connected!" : "Failed"));
     } catch (err: any) {
@@ -178,14 +224,58 @@ export default function AIPage() {
               </div>
             )}
 
-            <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700">Model Name</label>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-semibold text-slate-700">Model Name</label>
+                <button
+                  type="button"
+                  onClick={handleAutoSelectModel}
+                  disabled={detectingModel}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50 px-2.5 py-1 rounded-lg transition-colors cursor-pointer border border-indigo-200/60 shadow-2xs"
+                  title="Automatically detect and select the best accessible model for your account"
+                >
+                  {detectingModel ? (
+                    <>
+                      <span className="animate-spin inline-block w-3 h-3 border-2 border-indigo-600 border-t-transparent rounded-full" />
+                      <span>Detecting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Auto-Select Available Model</span>
+                    </>
+                  )}
+                </button>
+              </div>
               <input
                 type="text"
                 value={(settings as any)[activeTab].modelName}
                 onChange={(e) => updateSetting("modelName", e.target.value)}
                 className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
               />
+              {availableModels.length > 0 && (
+                <div className="pt-1 space-y-1.5">
+                  <p className="text-[11px] font-medium text-slate-500">
+                    Available on your account (click to select):
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {availableModels.map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => updateSetting("modelName", m)}
+                        className={`text-xs px-2.5 py-1 rounded-md transition-all font-mono ${
+                          (settings as any)[activeTab].modelName === m
+                            ? "bg-emerald-600 text-white font-bold shadow-2xs"
+                            : "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {activeTab !== "Groq" && activeTab !== "Claude" && (
