@@ -46,7 +46,7 @@ def generate_corporate_offer_pdf(
     employment_type: str = "Full Time",
     joining_date: str = "",
     offer_expiry: str = "",
-    company_name: str = "RecruitAI Technologies Inc.",
+    company_name: str = "RecruitAI",
     location: str = "Hyderabad, India",
     department: str = "Engineering",
     reporting_manager: str = "Director of Engineering",

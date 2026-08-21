@@ -7,10 +7,10 @@ from app.models.user import User
 
 db = SessionLocal()
 
-# 1. Create the COMPANY_OWNER role
-owner_role = db.query(Role).filter(Role.name == "COMPANY_OWNER").first()
+# 1. Create the SUPER_ADMIN role
+owner_role = db.query(Role).filter(Role.name == "SUPER_ADMIN").first()
 if not owner_role:
-    owner_role = Role(name="COMPANY_OWNER", description="Full access", permissions="")
+    owner_role = Role(name="SUPER_ADMIN", description="Full super administrator access", permissions="")
     db.add(owner_role)
     db.commit()
     db.refresh(owner_role)
@@ -25,10 +25,11 @@ permissions_list = [
     "users.view", "users.create", "users.update", "users.delete",
     "roles.view", "roles.create", "roles.update", "roles.delete",
     "settings.view", "settings.manage",
-    "ai_settings.view", "ai_settings.manage"
+    "ai_settings.view", "ai_settings.manage",
+    "offers.view", "offers.create", "offers.update", "offers.delete"
 ]
 
-# 3. Insert permissions and link to COMPANY_OWNER
+# 3. Insert permissions and link to SUPER_ADMIN
 for p_name in set(permissions_list):
     perm = db.query(Permission).filter(Permission.name == p_name).first()
     if not perm:
@@ -46,12 +47,12 @@ for p_name in set(permissions_list):
 
 db.commit()
 
-# 4. Update the first user to be COMPANY_OWNER
+# 4. Update any COMPANY_OWNER or first user to be SUPER_ADMIN
 first_user = db.query(User).first()
 if first_user:
-    first_user.role = "COMPANY_OWNER"
+    first_user.role = "SUPER_ADMIN"
     db.commit()
-    print(f"Updated {first_user.email} to COMPANY_OWNER with full permissions!")
+    print(f"Updated {first_user.email} to SUPER_ADMIN with full permissions!")
 else:
     print("No users found.")
 

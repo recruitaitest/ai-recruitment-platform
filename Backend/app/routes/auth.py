@@ -152,7 +152,7 @@ def signup(
     is_first_user = db.query(User).first() is None
 
     if is_first_user:
-        final_role = "COMPANY_OWNER"
+        final_role = "SUPER_ADMIN"
         final_verified = True
     else:
         final_role = default_user_role
@@ -321,7 +321,7 @@ def google_login(
         is_first_user = db.query(User).first() is None
 
         if is_first_user:
-            final_role = "COMPANY_OWNER"
+            final_role = "SUPER_ADMIN"
         else:
             final_role = default_role
 

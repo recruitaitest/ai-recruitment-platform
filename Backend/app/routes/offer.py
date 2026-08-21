@@ -17,6 +17,7 @@ from app.models.offer import Offer
 from app.models.pipeline import Pipeline
 from app.models.candidate import Candidate
 from app.models.position import Position
+from app.models.user import User
 from app.schemas.offer_schema import (
     OfferCreate,
     OfferUpdate,
@@ -167,8 +168,18 @@ def generate_and_save_offer(
     if not pipeline:
         raise HTTPException(status_code=404, detail="Pipeline not found")
 
-    # Determine company & location
-    comp_name = req.company_name or getattr(position, "company", None) or "RecruitAI Technologies Inc."
+    # Determine company & location dynamically:
+    # 1. User profile company (if logged-in user has company set in profile)
+    # 2. Explicit company name from request (if provided and custom)
+    # 3. Position company (if configured on position)
+    # 4. Fallback default: "RecruitAI"
+    user_company = getattr(current_user, "company", None) if current_user else None
+    comp_name = (
+        (user_company.strip() if user_company and user_company.strip() else None)
+        or (req.company_name.strip() if req.company_name and req.company_name.strip() and "recruitai" not in req.company_name.lower() else None)
+        or (position.company.strip() if position and getattr(position, "company", None) and position.company.strip() else None)
+        or "RecruitAI"
+    )
     loc = req.location or getattr(position, "location", None) or getattr(candidate, "location", None) or "Hyderabad, India"
     dept = req.department or getattr(position, "department", None) or "Engineering"
 
@@ -358,15 +369,28 @@ def preview_offer_pdf(
         pdf_filename = f"Offer_{cand_name.replace(' ', '_')}_{int(time.time())}.pdf"
         fpath = os.path.join(OFFERS_DIR, pdf_filename)
 
+        # Resolve company from creator user profile -> position company -> RecruitAI
+        creator_company = None
+        if offer.created_by:
+            creator = db.query(User).filter(User.id == offer.created_by).first()
+            if creator and creator.company and creator.company.strip():
+                creator_company = creator.company.strip()
+
+        comp_name = (
+            creator_company
+            or (position.company.strip() if position and getattr(position, "company", None) and position.company.strip() else None)
+            or "RecruitAI"
+        )
+
         generate_corporate_offer_pdf(
             candidate_name=cand_name,
             candidate_email=candidate.email if candidate else "",
             position_title=position.title if position else "Position",
-            salary=offer.salary or "₹ 6 LPA",
+            salary=offer.salary or "Rs. 6 LPA",
             employment_type=offer.employment_type or "Full Time",
             joining_date=str(offer.joining_date) if offer.joining_date else "",
             offer_expiry=str(offer.offer_expiry) if offer.offer_expiry else "",
-            company_name="RecruitAI Technologies Inc.",
+            company_name=comp_name,
             location=getattr(position, "location", None) or getattr(candidate, "location", None) or "Hyderabad, India",
             department=getattr(position, "department", None) or "Engineering",
             output_filepath=fpath

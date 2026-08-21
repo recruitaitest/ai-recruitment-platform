@@ -54,8 +54,8 @@ export const hasPermission = (
         localStorage.getItem("user") || "{}"
     );
 
-    // COMPANY_OWNER acts as superuser with all permissions
-    if (user.role === "COMPANY_OWNER") {
+    // SUPER_ADMIN acts as superuser with all permissions
+    if (user.role === "SUPER_ADMIN" || user.role === "COMPANY_OWNER") {
         return true;
     }
 

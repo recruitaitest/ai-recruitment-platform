@@ -229,8 +229,8 @@ export default function PermissionMatrix({ roles, onRefresh, loading }: Permissi
  ? role.permissions.split(",").map((p: string) => p.trim()).filter(Boolean) 
  : [];
  const resolved = getAllUserPermissions(rolePermissions);
- const isCompanyOwner = role.name && role.name.toUpperCase().replace(" ", "_") === "COMPANY_OWNER";
- const hasFullAccess = isCompanyOwner || rolePermissions.some((p: string) => p.startsWith("Full Access"));
+ const isSuperAdmin = role.name && ["SUPER_ADMIN", "SUPER ADMIN", "SUPERADMIN", "COMPANY_OWNER"].includes(role.name.toUpperCase().replace(" ", "_"));
+ const hasFullAccess = isSuperAdmin || rolePermissions.some((p: string) => p.startsWith("Full Access"));
  const isChecked = hasFullAccess || resolved.includes(pInfo.key);
  return (
  <td
