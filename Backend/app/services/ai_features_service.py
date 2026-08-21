@@ -32,7 +32,7 @@ def generate_screening_reasoning(candidate: Candidate, position: Position) -> Sc
     try:
         llm = get_chat_model(temperature=0.1, json_mode=True)
         if not llm:
-            raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+            raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
         structured_llm = llm.with_structured_output(ScreeningScoreResponse)
         
         prompt = f"""
@@ -60,19 +60,19 @@ Provide a comprehensive screening analysis in structured JSON:
         res = structured_llm.invoke(prompt)
         if res:
             return res
-        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+        raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error in LLM screening reasoning: {e}")
-        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+        raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
 
 # --- 1.2 AI Job Description Generator ---
 def generate_job_description(req: JDGenerateRequest) -> JDGenerateResponse:
     try:
         llm = get_chat_model(temperature=0.3, json_mode=True)
         if not llm:
-            raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+            raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
 
         structured_llm = llm.with_structured_output(JDGenerateResponse)
         
@@ -104,12 +104,12 @@ Return JSON matching these exact types:
         res = structured_llm.invoke(prompt)
         if res and res.required_skills:
             return res
-        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+        raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error in JD generation: {e}")
-        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+        raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
 
 
 
@@ -118,7 +118,7 @@ def generate_interview_questions(req: QuestionGenerateRequest) -> QuestionGenera
     try:
         llm = get_chat_model(temperature=0.3, json_mode=True)
         if not llm:
-            raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+            raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
         structured_llm = llm.with_structured_output(QuestionGenerateResponse)
         
         prompt = f"""
@@ -136,19 +136,19 @@ Return JSON with:
         res = structured_llm.invoke(prompt)
         if res:
             return res
-        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+        raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error in question generator: {e}")
-        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+        raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
 
 # --- 1.4 AI Candidate Executive Summary Card ---
 def generate_candidate_summary(candidate: Candidate) -> CandidateSummaryResponse:
     try:
         llm = get_chat_model(temperature=0.2, json_mode=True)
         if not llm:
-            raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+            raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
         structured_llm = llm.with_structured_output(CandidateSummaryResponse)
         
         prompt = f"""
@@ -172,12 +172,12 @@ Return JSON:
         if res:
             res.candidate_id = candidate.id
             return res
-        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+        raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error generating candidate summary: {e}")
-        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+        raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
 
 # --- 1.5 AI Skills Gap Analysis ---
 def generate_skills_gap(candidate: Candidate, position: Position) -> SkillsGapResponse:
@@ -207,7 +207,7 @@ def analyze_interview_feedback(req: FeedbackAnalysisRequest) -> FeedbackAnalysis
     try:
         llm = get_chat_model(temperature=0.1, json_mode=True)
         if not llm:
-            raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+            raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
         structured_llm = llm.with_structured_output(FeedbackAnalysisResponse)
         
         notes_str = "\n---\n".join(req.raw_notes) if req.raw_notes else "No notes provided."
@@ -232,12 +232,12 @@ Return JSON with:
         res = structured_llm.invoke(prompt)
         if res:
             return res
-        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+        raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error in feedback analyzer: {e}")
-        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+        raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
 
 # --- 1.7 Predictive Offer Acceptance Likelihood ---
 def predict_offer_acceptance(req: OfferRiskRequest, db: Session = None) -> OfferRiskResponse:
@@ -304,7 +304,7 @@ def predict_offer_acceptance(req: OfferRiskRequest, db: Session = None) -> Offer
     try:
         llm = get_chat_model(temperature=0.2, json_mode=True)
         if not llm:
-            raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+            raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
 
         structured_llm = llm.with_structured_output(OfferRiskResponse)
         prompt = f"""
@@ -344,12 +344,12 @@ STRICT SCORING GUIDELINES:
         result = structured_llm.invoke(prompt)
         if result and getattr(result, "acceptance_probability_pct", None) is not None:
             return result
-        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+        raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error in LLM Offer Acceptance Prediction: {e}")
-        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+        raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
 
 # --- 1.8 AI-Powered Sourcing Suggestions ---
 def generate_sourcing_suggestions(position: Position) -> SourcingSuggestionsResponse:
@@ -430,7 +430,7 @@ def draft_outreach_email(req: OutreachEmailRequest, candidate: Candidate, positi
     try:
         llm = get_chat_model(temperature=0.4, json_mode=True)
         if not llm:
-            raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+            raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
         structured_llm = llm.with_structured_output(OutreachEmailResponse)
         
         prompt = f"""
@@ -453,19 +453,19 @@ Return JSON with:
         if res:
             res.candidate_id = candidate.id
             return res
-        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+        raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error drafting email: {e}")
-        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+        raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
 
 # --- 1.11 AI Scorecard Auto-Fill from Raw Notes ---
 def autofill_scorecard_from_notes(req: ScorecardAutoFillRequest) -> ScorecardAutoFillResponse:
     try:
         llm = get_chat_model(temperature=0.1, json_mode=True)
         if not llm:
-            raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+            raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
         structured_llm = llm.with_structured_output(ScorecardAutoFillResponse)
         
         prompt = f"""
@@ -484,12 +484,12 @@ Return JSON with:
         res = structured_llm.invoke(prompt)
         if res:
             return res
-        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+        raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error autofilling scorecard: {e}")
-        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+        raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
 
 # --- 1.12 Resume Red Flag Detection ---
 def detect_resume_red_flags(candidate: Candidate) -> RedFlagDetectionResponse:
@@ -1355,7 +1355,7 @@ def draft_rejection_email_service(req: RejectionEmailDraftRequest) -> RejectionE
     try:
         llm = get_chat_model(temperature=0.3, json_mode=True)
         if not llm:
-            raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+            raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
 
         structured_llm = llm.with_structured_output(RejectionEmailDraftResponse)
         prompt = f"""
@@ -1378,12 +1378,12 @@ Requirements:
         result = structured_llm.invoke(prompt)
         if result and getattr(result, "body", None):
             return result
-        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+        raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error drafting AI rejection email: {e}")
-        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+        raise HTTPException(status_code=503, detail="AI Service Unavailable, Consult admin")
 
 
 

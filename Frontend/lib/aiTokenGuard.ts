@@ -60,7 +60,7 @@ export function handleAiApiError(error: any, responseStatus?: number): void {
     errMsg.includes("credit") ||
     errMsg.includes("resource_exhausted")
   ) {
-    toast.error("AI service unavailable, check your AI Settings", {
+    toast.error("AI Service Unavailable, Consult admin", {
       id: "ai-service-error",
       duration: 4000,
     });
@@ -73,12 +73,12 @@ export function handleAiApiError(error: any, responseStatus?: number): void {
     errMsg.includes("failed to fetch") ||
     errMsg.includes("network error")
   ) {
-    toast.error("AI service unavailable, check your AI Settings", {
+    toast.error("AI Service Unavailable, Consult admin", {
       id: "ai-service-error",
       duration: 4000,
     });
   } else if (errMsg) {
-    toast.error(error?.response?.data?.detail || error?.message || error?.detail || "AI service unavailable, check your AI Settings", {
+    toast.error(error?.response?.data?.detail || error?.message || error?.detail || "AI Service Unavailable, Consult admin", {
       id: "ai-service-error",
       duration: 4000,
     });

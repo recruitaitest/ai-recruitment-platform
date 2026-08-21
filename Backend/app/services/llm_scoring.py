@@ -20,7 +20,7 @@ def score_candidate_with_llm(candidate: Candidate, position: Position) -> Candid
         llm = get_chat_model(temperature=0.0, json_mode=True)
         if not llm:
             logging.warning("No LLM provider configured or live. Skipping LLM scoring.")
-            return CandidateScore(score=0.0, reasoning="AI service unavailable, check your AI Settings")
+            return CandidateScore(score=0.0, reasoning="AI Service Unavailable, Consult admin")
         
         structured_llm = llm.with_structured_output(CandidateScore)
         
@@ -47,7 +47,7 @@ Calculate a fair score out of 100. Provide clear reasoning.
         return result
     except Exception as e:
         logging.error(f"Error during LLM scoring: {e}")
-        return CandidateScore(score=0.0, reasoning="AI service unavailable, check your AI Settings")
+        return CandidateScore(score=0.0, reasoning="AI Service Unavailable, Consult admin")
 
 def score_candidate_advanced_search_with_llm(candidate: Candidate, job_title: str, skills: list[str], exp_hint: str, location: str) -> CandidateScore:
     """
@@ -56,7 +56,7 @@ def score_candidate_advanced_search_with_llm(candidate: Candidate, job_title: st
     try:
         llm = get_chat_model(temperature=0.0, json_mode=True)
         if not llm:
-            return CandidateScore(score=0.0, reasoning="AI service unavailable, check your AI Settings")
+            return CandidateScore(score=0.0, reasoning="AI Service Unavailable, Consult admin")
         
         structured_llm = llm.with_structured_output(CandidateScore)
         
@@ -84,5 +84,5 @@ Calculate a fair score out of 100. Provide clear reasoning.
         return structured_llm.invoke(prompt)
     except Exception as e:
         logging.error(f"Error during search scoring: {e}")
-        return CandidateScore(score=0.0, reasoning="AI service unavailable, check your AI Settings")
+        return CandidateScore(score=0.0, reasoning="AI Service Unavailable, Consult admin")
 

@@ -38,7 +38,7 @@ api.interceptors.response.use(
       (error.config?.url && error.config.url.includes("/api/ai/") && error.response?.status >= 500);
 
     if (isAiError) {
-      toast.error("AI service unavailable, check your AI Settings", {
+      toast.error("AI Service Unavailable, Consult admin", {
         id: "ai-service-error",
         duration: 4000,
       });
