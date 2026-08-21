@@ -39,7 +39,8 @@ api.interceptors.response.use(
 
     if (isAiError) {
       toast.error("AI service unavailable, check your AI Settings", {
-        duration: 5000,
+        id: "ai-service-error",
+        duration: 4000,
       });
     }
     return Promise.reject(error);

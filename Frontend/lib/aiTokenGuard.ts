@@ -61,7 +61,8 @@ export function handleAiApiError(error: any, responseStatus?: number): void {
     errMsg.includes("resource_exhausted")
   ) {
     toast.error("AI service unavailable, check your AI Settings", {
-      duration: 5000,
+      id: "ai-service-error",
+      duration: 4000,
     });
   } else if (
     status === 503 ||
@@ -73,9 +74,13 @@ export function handleAiApiError(error: any, responseStatus?: number): void {
     errMsg.includes("network error")
   ) {
     toast.error("AI service unavailable, check your AI Settings", {
-      duration: 5000,
+      id: "ai-service-error",
+      duration: 4000,
     });
   } else if (errMsg) {
-    toast.error(error?.response?.data?.detail || error?.message || error?.detail || "AI service unavailable, check your AI Settings");
+    toast.error(error?.response?.data?.detail || error?.message || error?.detail || "AI service unavailable, check your AI Settings", {
+      id: "ai-service-error",
+      duration: 4000,
+    });
   }
 }
