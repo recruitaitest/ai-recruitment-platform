@@ -53,7 +53,7 @@ def generate_corporate_offer_pdf(
 ) -> str:
     """
     Generates a high-quality, professional Corporate Offer Letter PDF.
-    Returns the absolute path to the generated PDF.
+    Ensures headings and paragraphs are never orphaned across page boundaries.
     """
     if not output_filepath:
         upload_dir = "uploads/offers"
@@ -66,10 +66,10 @@ def generate_corporate_offer_pdf(
     doc = SimpleDocTemplate(
         output_filepath,
         pagesize=letter,
-        leftMargin=40,
-        rightMargin=40,
-        topMargin=40,
-        bottomMargin=40,
+        leftMargin=36,
+        rightMargin=36,
+        topMargin=32,
+        bottomMargin=32,
     )
 
     styles = getSampleStyleSheet()
@@ -85,8 +85,8 @@ def generate_corporate_offer_pdf(
         "CompanyHeader",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=18,
-        leading=22,
+        fontSize=17,
+        leading=21,
         textColor=primary_color,
         alignment=TA_LEFT,
     )
@@ -95,8 +95,8 @@ def generate_corporate_offer_pdf(
         "CompanySubHeader",
         parent=styles["Normal"],
         fontName="Helvetica",
-        fontSize=9,
-        leading=12,
+        fontSize=8.5,
+        leading=11,
         textColor=muted_text,
         alignment=TA_LEFT,
     )
@@ -105,8 +105,8 @@ def generate_corporate_offer_pdf(
         "RefDateStyle",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=9,
-        leading=13,
+        fontSize=8.5,
+        leading=12,
         textColor=primary_color,
         alignment=TA_RIGHT,
     )
@@ -125,50 +125,53 @@ def generate_corporate_offer_pdf(
         "OfferDocTitle",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=13,
-        leading=17,
+        fontSize=12,
+        leading=15,
         textColor=primary_color,
         alignment=TA_CENTER,
-        spaceAfter=10,
+        spaceAfter=6,
+        keepWithNext=True,
     )
 
     body_style = ParagraphStyle(
         "OfferBody",
         parent=styles["Normal"],
         fontName="Helvetica",
-        fontSize=9.5,
-        leading=14,
+        fontSize=9,
+        leading=13,
         textColor=dark_text,
         alignment=TA_JUSTIFY,
-        spaceAfter=8,
+        spaceAfter=6,
     )
 
     bold_body_style = ParagraphStyle(
         "OfferBoldBody",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=9.5,
-        leading=14,
+        fontSize=9,
+        leading=13,
         textColor=dark_text,
     )
 
+    # Crucial: keepWithNext=True ensures this heading never appears isolated at the bottom of a page
     section_header_style = ParagraphStyle(
         "SectionHeader",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=10.5,
-        leading=14,
+        fontSize=10,
+        leading=13,
         textColor=primary_color,
-        spaceBefore=8,
-        spaceAfter=4,
+        spaceBefore=6,
+        spaceAfter=3,
+        keepWithNext=True,
     )
 
     table_cell_style = ParagraphStyle(
         "TableCell",
         parent=styles["Normal"],
         fontName="Helvetica",
-        fontSize=9,
-        leading=12,
+        fontSize=8.5,
+        leading=11,
         textColor=dark_text,
     )
 
@@ -176,8 +179,8 @@ def generate_corporate_offer_pdf(
         "TableCellBold",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=9,
-        leading=12,
+        fontSize=8.5,
+        leading=11,
         textColor=primary_color,
     )
 
@@ -198,46 +201,45 @@ def generate_corporate_offer_pdf(
         ]
     ]
 
-    header_table = Table(header_table_data, colWidths=[330, 202])
+    header_table = Table(header_table_data, colWidths=[340, 200])
     header_table.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ('PADDING', (0, 0), (-1, -1), 0),
-        ('BOTTOMPADDING', (0, 1), (-1, 1), 6),
+        ('BOTTOMPADDING', (0, 1), (-1, 1), 4),
     ]))
     story.append(header_table)
-    story.append(HRFlowable(width="100%", thickness=1.5, color=primary_color, spaceBefore=4, spaceAfter=12))
+    story.append(HRFlowable(width="100%", thickness=1.2, color=primary_color, spaceBefore=3, spaceAfter=8))
 
-    # ─── 2. Recipient Block ───────────────────────────────────────────────────
+    # ─── 2. Recipient & Title Block ───────────────────────────────────────────
     recip_data = [
         [Paragraph(f"<b>To:</b> {candidate_name}", bold_body_style)],
         [Paragraph(f"<b>Email:</b> {candidate_email}", body_style)],
         [Paragraph(f"<b>Location:</b> {location}", body_style)],
     ]
-    recip_table = Table(recip_data, colWidths=[532])
+    recip_table = Table(recip_data, colWidths=[540])
     recip_table.setStyle(TableStyle([
         ('PADDING', (0, 0), (-1, -1), 1),
-        ('BOTTOMPADDING', (0, -1), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, -1), (-1, -1), 4),
     ]))
-    story.append(recip_table)
+    
+    opening_block = [
+        recip_table,
+        Paragraph("<b>FORMAL LETTER OF APPOINTMENT & EMPLOYMENT OFFER</b>", doc_title_style),
+        Paragraph(f"Dear <b>{candidate_name}</b>,", body_style),
+        Paragraph(
+            f"Following your recent interview and evaluation process, we are pleased to extend to you a formal offer of "
+            f"employment for the position of <b>{position_title}</b> at <b>{company_name}</b>. "
+            f"We were impressed with your technical capabilities, background, and professional achievements, and we are confident "
+            f"that your contributions will play a vital role in our ongoing innovation and business success.",
+            body_style
+        ),
+    ]
+    story.append(KeepTogether(opening_block))
 
-    # ─── 3. Document Title ────────────────────────────────────────────────────
-    story.append(Paragraph("<b>FORMAL LETTER OF APPOINTMENT & EMPLOYMENT OFFER</b>", doc_title_style))
-
-    # ─── 4. Salutation & Opening ──────────────────────────────────────────────
-    story.append(Paragraph(f"Dear <b>{candidate_name}</b>,", body_style))
-    story.append(Paragraph(
-        f"Following your recent interview and evaluation process, we are pleased to extend to you a formal offer of "
-        f"employment for the position of <b>{position_title}</b> at <b>{company_name}</b>. "
-        f"We were impressed with your technical capabilities, background, and professional achievements, and we are confident "
-        f"that your contributions will play a vital role in our ongoing innovation and business success.",
-        body_style
-    ))
-
-    # ─── 5. Appointment & Position Terms ──────────────────────────────────────
+    # ─── 3. Appointment & Position Terms ──────────────────────────────────────
     effective_joining = joining_date if joining_date else (datetime.now() + timedelta(days=14)).strftime("%B %d, %Y")
     effective_expiry = offer_expiry if offer_expiry else (datetime.now() + timedelta(days=5)).strftime("%B %d, %Y")
 
-    story.append(Paragraph("1. Position Details & Commencement", section_header_style))
     pos_data = [
         [Paragraph("<b>Job Title / Role:</b>", table_cell_bold), Paragraph(position_title, table_cell_style)],
         [Paragraph("<b>Department / Unit:</b>", table_cell_bold), Paragraph(department, table_cell_style)],
@@ -246,26 +248,23 @@ def generate_corporate_offer_pdf(
         [Paragraph("<b>Date of Joining:</b>", table_cell_bold), Paragraph(effective_joining, table_cell_style)],
         [Paragraph("<b>Reporting Authority:</b>", table_cell_bold), Paragraph(reporting_manager, table_cell_style)],
     ]
-    pos_table = Table(pos_data, colWidths=[160, 372])
+    pos_table = Table(pos_data, colWidths=[160, 380])
     pos_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, -1), table_bg),
         ('BOX', (0, 0), (-1, -1), 0.5, border_color),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
-        ('PADDING', (0, 0), (-1, -1), 4.5),
+        ('PADDING', (0, 0), (-1, -1), 3.5),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
     ]))
-    story.append(pos_table)
-    story.append(Spacer(1, 8))
 
-    # ─── 6. Compensation & Benefits Structure ─────────────────────────────────
-    story.append(Paragraph("2. Compensation & Benefits Structure", section_header_style))
-    story.append(Paragraph(
-        f"You will be eligible for a Total Annual Cost-to-Company (CTC) of <b>{format_currency_amount(salary)}</b>, "
-        f"payable in accordance with the standard monthly payroll schedule and applicable statutory deductions.",
-        body_style
-    ))
+    section1_block = [
+        Paragraph("1. Position Details & Commencement", section_header_style),
+        pos_table,
+        Spacer(1, 4),
+    ]
+    story.append(KeepTogether(section1_block))
 
-    # Structured Compensation Breakdown Table
+    # ─── 4. Compensation & Benefits Structure ─────────────────────────────────
     comp_data = [
         [
             Paragraph("<b>Component</b>", table_cell_bold),
@@ -293,41 +292,45 @@ def generate_corporate_offer_pdf(
             Paragraph(f"<b>{format_currency_amount(salary)}</b>", table_cell_bold),
         ],
     ]
-    comp_table = Table(comp_data, colWidths=[150, 242, 140])
+    comp_table = Table(comp_data, colWidths=[150, 250, 140])
     comp_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#e0e7ff")),
         ('BACKGROUND', (0, 1), (-1, -2), table_bg),
         ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor("#eff6ff")),
         ('BOX', (0, 0), (-1, -1), 0.5, border_color),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
-        ('PADDING', (0, 0), (-1, -1), 5),
+        ('PADDING', (0, 0), (-1, -1), 4),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
     ]))
-    story.append(comp_table)
-    story.append(Spacer(1, 8))
 
-    # ─── 7. Standard Terms, Probation & Confidentiality ────────────────────────
-    story.append(Paragraph("3. Terms of Employment & Conditions", section_header_style))
-    story.append(Paragraph(
-        "<b>Probation Period:</b> You will be on probation for a period of three (3) months from your date of joining. "
-        "Upon successful completion, your employment will be confirmed in writing.<br/>"
-        "<b>Confidentiality & IP:</b> You will be required to execute the company's standard Non-Disclosure Agreement (NDA) "
-        "and Proprietary Information & Inventions Agreement upon onboarding.<br/>"
-        "<b>Background Verification:</b> This offer is contingent upon the satisfactory completion of background reference checks.",
-        body_style
-    ))
+    section2_block = [
+        Paragraph("2. Compensation & Benefits Structure", section_header_style),
+        Paragraph(
+            f"You will be eligible for a Total Annual Cost-to-Company (CTC) of <b>{format_currency_amount(salary)}</b>, "
+            f"payable in accordance with the standard monthly payroll schedule and applicable statutory deductions.",
+            body_style
+        ),
+        comp_table,
+        Spacer(1, 4),
+    ]
+    story.append(KeepTogether(section2_block))
 
-    # ─── 8. Offer Validity & Acceptance Deadline ──────────────────────────────
-    story.append(Paragraph("4. Acceptance of Offer & Next Steps", section_header_style))
-    story.append(Paragraph(
-        f"This offer is valid until <b>{effective_expiry}</b>. Please sign and return a duplicate copy of this letter "
-        f"to confirm your acceptance of the terms outlined herein. Upon receipt, our onboarding team will reach out "
-        f"with pre-joining documentation guidelines.",
-        body_style
-    ))
-    story.append(Spacer(1, 10))
+    # ─── 5. Terms, Probation & Conditions ─────────────────────────────────────
+    section3_block = [
+        Paragraph("3. Terms of Employment & Conditions", section_header_style),
+        Paragraph(
+            "<b>Probation Period:</b> You will be on probation for a period of three (3) months from your date of joining. "
+            "Upon successful completion, your employment will be confirmed in writing.<br/>"
+            "<b>Confidentiality & IP:</b> You will be required to execute the company's standard Non-Disclosure Agreement (NDA) "
+            "and Proprietary Information & Inventions Agreement upon onboarding.<br/>"
+            "<b>Background Verification:</b> This offer is contingent upon the satisfactory completion of background reference checks.",
+            body_style
+        ),
+        Spacer(1, 4),
+    ]
+    story.append(KeepTogether(section3_block))
 
-    # ─── 9. Signature Block ───────────────────────────────────────────────────
+    # ─── 6. Acceptance & Signature Block (Kept strictly together) ──────────────
     sig_data = [
         [
             Paragraph(f"<b>For {company_name}</b>", bold_body_style),
@@ -338,12 +341,25 @@ def generate_corporate_offer_pdf(
             Paragraph(f"<br/><br/>____________________________________<br/><b>{candidate_name}</b><br/>Date: ________________________", body_style),
         ]
     ]
-    sig_table = Table(sig_data, colWidths=[266, 266])
+    sig_table = Table(sig_data, colWidths=[270, 270])
     sig_table.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ('PADDING', (0, 0), (-1, -1), 2),
     ]))
-    story.append(KeepTogether(sig_table))
+
+    section4_and_signatures = [
+        Paragraph("4. Acceptance of Offer & Next Steps", section_header_style),
+        Paragraph(
+            f"This offer is valid until <b>{effective_expiry}</b>. Please sign and return a duplicate copy of this letter "
+            f"to confirm your acceptance of the terms outlined herein. Upon receipt, our onboarding team will reach out "
+            f"with pre-joining documentation guidelines.",
+            body_style
+        ),
+        Spacer(1, 8),
+        sig_table,
+    ]
+    # This guarantees Section 4 heading, text, and signatures stay united as a single block
+    story.append(KeepTogether(section4_and_signatures))
 
     # Build PDF
     doc.build(story)
