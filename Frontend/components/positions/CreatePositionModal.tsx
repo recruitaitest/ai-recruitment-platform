@@ -14,7 +14,13 @@ interface Props {
   onCreate: (position: Position) => void;
 }
 
-const EXP_OPTIONS = ["0", "1", "2", "3", "4", "5", "7", "10", "12", "15+"];
+const EXP_OPTIONS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "12", "15", "20+"];
+
+const parseExp = (val: string): number => {
+  if (!val) return 0;
+  if (val.includes("+")) return parseInt(val) || 999;
+  return parseInt(val) || 0;
+};
 
 export default function CreatePositionModal({
   open,
@@ -43,10 +49,21 @@ export default function CreatePositionModal({
 
   const handleMinExpChange = (val: string) => {
     setMinExp(val);
-    const minVal = parseInt(val) || 0;
-    const maxVal = parseInt(maxExp) || 0;
-    if (maxVal < minVal && maxExp !== "15+") {
-      setMaxExp((minVal + 1).toString());
+    const minVal = parseExp(val);
+    const maxVal = parseExp(maxExp);
+    if (maxVal < minVal) {
+      const nextValid = EXP_OPTIONS.find((opt) => parseExp(opt) >= minVal) || val;
+      setMaxExp(nextValid);
+    }
+  };
+
+  const handleMaxExpChange = (val: string) => {
+    const minVal = parseExp(minExp);
+    const maxVal = parseExp(val);
+    if (maxVal < minVal) {
+      setMaxExp(minExp);
+    } else {
+      setMaxExp(val);
     }
   };
 
@@ -106,6 +123,11 @@ export default function CreatePositionModal({
   const handleCreate = async () => {
     if (!title || !location) {
       toast.error("Position Title and Location are required.");
+      return;
+    }
+
+    if (parseExp(maxExp) < parseExp(minExp)) {
+      toast.error("Max Experience cannot be less than Min Experience.");
       return;
     }
 
@@ -294,7 +316,7 @@ export default function CreatePositionModal({
               <select
                 value={minExp}
                 onChange={(e) => handleMinExpChange(e.target.value)}
-                className="w-full rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border text-text-primary px-3 py-3 text-xs font-medium outline-none"
+                className="w-full rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border text-text-primary px-3 py-3 text-xs font-medium outline-none cursor-pointer"
               >
                 {EXP_OPTIONS.map((opt) => (
                   <option key={`min-${opt}`} value={opt}>
@@ -304,10 +326,10 @@ export default function CreatePositionModal({
               </select>
               <select
                 value={maxExp}
-                onChange={(e) => setMaxExp(e.target.value)}
-                className="w-full rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border text-text-primary px-3 py-3 text-xs font-medium outline-none"
+                onChange={(e) => handleMaxExpChange(e.target.value)}
+                className="w-full rounded-xl bg-surface-hover/60 dark:bg-surface-hover/40 border border-border text-text-primary px-3 py-3 text-xs font-medium outline-none cursor-pointer"
               >
-                {EXP_OPTIONS.map((opt) => (
+                {EXP_OPTIONS.filter((opt) => parseExp(opt) >= parseExp(minExp)).map((opt) => (
                   <option key={`max-${opt}`} value={opt}>
                     Max: {opt} Yrs
                   </option>
