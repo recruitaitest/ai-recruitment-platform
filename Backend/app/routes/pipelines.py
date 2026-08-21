@@ -49,16 +49,29 @@ def create_pipeline(
             detail="Position not found"
         )
 
-    existing_pipeline = db.query(Pipeline).filter(
+    # Check if candidate is already in any active pipeline stage or Hired
+    active_pipeline = db.query(Pipeline).filter(
         Pipeline.candidate_id == pipeline.candidate_id,
-        Pipeline.position_id == pipeline.position_id
+        Pipeline.stage != "Rejected"
     ).first()
 
-    if existing_pipeline:
-        raise HTTPException(
-            status_code=409,
-            detail="Candidate is already in the pipeline for this position"
-        )
+    if active_pipeline:
+        pos_title = ""
+        if active_pipeline.position_id:
+            pos = db.query(Position).filter(Position.id == active_pipeline.position_id).first()
+            if pos:
+                pos_title = f" for '{pos.title}'"
+        
+        if active_pipeline.stage == "Hired":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Candidate is already Hired{pos_title} and cannot be added to a new pipeline."
+            )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Candidate is already in active pipeline stage '{active_pipeline.stage}'{pos_title}. Candidates can only be added to a new pipeline if they are not in an active pipeline or are in 'Rejected' stage."
+            )
 
     new_pipeline = Pipeline(
         candidate_id=pipeline.candidate_id,

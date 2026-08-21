@@ -43,11 +43,23 @@ type ExperienceItem = {
 };
 type ActivityItem = { emoji?: string; type: string; detail: string; date: string };
 type InterviewItem = {
-    round: string;
-    status: string;
-    interviewer: string;
-    date: string;
-    feedback: string;
+    id?: number | string;
+    round?: string;
+    interview_type?: string;
+    type?: string;
+    status?: string;
+    interviewer?: string;
+    interview_date?: string;
+    interview_time?: string;
+    date?: string;
+    time?: string;
+    feedback?: string;
+    interview_mode?: string;
+    meeting_link?: string;
+    overall_rating?: number;
+    recommendation?: string;
+    position_title?: string;
+    completed_at?: string;
 };
 type ScheduledInterviewItem = {
     id: string | number;
@@ -89,6 +101,9 @@ type Candidate = {
     notes?: Note[];
     resume_path?: string;
     resumeUrl?: string | null;
+    raw?: any;
+    contact_email?: string;
+    experience_years?: number;
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -101,7 +116,6 @@ const TABS = [
     { label: "Resume", icon: "ti-file-text" },
     { label: "Notes", icon: "ti-notes" },
     { label: "Interviews", icon: "ti-calendar" },
-    { label: "Versions", icon: "ti-history" },
     { label: "Collaboration", icon: "ti-users" },
 ] as const;
 
@@ -640,69 +654,160 @@ function NotesTab({
 
 // Tab 7 — Interviews
 function InterviewsTab({ interviews, scheduled }: { interviews: InterviewItem[]; scheduled: ScheduledInterviewItem[] }) {
+    const allInterviews = [...(interviews || [])];
+    
+    // Helper to get type styling
+    const getTypeBadge = (type?: string) => {
+        const t = (type || "General Interview").toLowerCase();
+        if (t.includes("technical")) return { color: "#3b82f6", bg: "rgba(59,130,246,0.12)", border: "rgba(59,130,246,0.25)", icon: "ti-code" };
+        if (t.includes("hr")) return { color: "#10b981", bg: "rgba(16,185,129,0.12)", border: "rgba(16,185,129,0.25)", icon: "ti-users" };
+        if (t.includes("system") || t.includes("design") || t.includes("architecture")) return { color: "#8b5cf6", bg: "rgba(139,92,246,0.12)", border: "rgba(139,92,246,0.25)", icon: "ti-cpu" };
+        if (t.includes("screening")) return { color: "#f59e0b", bg: "rgba(245,158,11,0.12)", border: "rgba(245,158,11,0.25)", icon: "ti-filter" };
+        if (t.includes("manager") || t.includes("leadership")) return { color: "#ec4899", bg: "rgba(236,72,153,0.12)", border: "rgba(236,72,153,0.25)", icon: "ti-crown" };
+        return { color: "#6366f1", bg: "rgba(99,102,241,0.12)", border: "rgba(99,102,241,0.25)", icon: "ti-microphone" };
+    };
+
+    const getStatusBadge = (status?: string) => {
+        const s = (status || "Scheduled").toLowerCase();
+        if (s === "passed" || s === "completed") return { color: "#10b981", bg: "rgba(16,185,129,0.12)", border: "rgba(16,185,129,0.25)" };
+        if (s === "failed" || s === "rejected") return { color: "#ef4444", bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.25)" };
+        if (s === "cancelled") return { color: "#64748b", bg: "rgba(100,116,139,0.12)", border: "rgba(100,116,139,0.25)" };
+        return { color: "#f59e0b", bg: "rgba(245,158,11,0.12)", border: "rgba(245,158,11,0.25)" };
+    };
+
+    const getRecBadge = (rec?: string) => {
+        const r = (rec || "").toLowerCase();
+        if (r.includes("strong hire")) return { color: "#059669", bg: "rgba(5,150,105,0.15)", text: "Strong Hire", icon: "✨" };
+        if (r.includes("hire")) return { color: "#10b981", bg: "rgba(16,185,129,0.12)", text: "Hire", icon: "👍" };
+        if (r.includes("hold")) return { color: "#f59e0b", bg: "rgba(245,158,11,0.12)", text: "Hold", icon: "⏸️" };
+        if (r.includes("reject")) return { color: "#ef4444", bg: "rgba(239,68,68,0.12)", text: "Reject", icon: "❌" };
+        return null;
+    };
+
     return (
-        <div>
-            {!!scheduled.length && (
-                <div style={{ ...S.card, background: "linear-gradient(135deg,rgba(78,127,255,0.05),rgba(139,92,246,0.05))", border: "1px solid rgba(78,127,255,0.14)" }}>
-                    <div style={S.cardTitle}><i className="ti ti-calendar-event" style={{ fontSize: 16 }} />Upcoming Interviews</div>
-                    {scheduled.map((intv, i) => (
-                        <div key={i} style={{ padding: "14px 16px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.025)", display: "flex", gap: 14, alignItems: "flex-start", marginBottom: 8 }}>
-                            <div style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0, background: "rgba(78,127,255,0.12)", border: "1px solid rgba(78,127,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <i className="ti ti-calendar" style={{ fontSize: 18, color: "#4e7fff" }} />
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <div style={{ fontWeight: 600, marginBottom: 6 }}>{intv.position}</div>
-                                <div style={{ fontSize: "0.76rem", color: "var(--text-muted)" }}>
-                                    {intv.date} · {intv.time} · {intv.interviewer} · {intv.location}
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {/* Upcoming / Scheduled Section */}
+            {!!scheduled?.length && (
+                <div style={{ ...S.card, background: "linear-gradient(135deg,rgba(78,127,255,0.06),rgba(139,92,246,0.06))", border: "1px solid rgba(78,127,255,0.2)" }}>
+                    <div style={{ ...S.cardTitle, color: "#4e7fff" }}>
+                        <i className="ti ti-calendar-event" style={{ fontSize: 18 }} />
+                        Upcoming Scheduled Interviews ({scheduled.length})
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        {scheduled.map((intv, i) => {
+                            const badge = getTypeBadge(intv.type || "Interview");
+                            return (
+                                <div key={i} style={{ padding: "14px 16px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", display: "flex", gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}>
+                                    <div style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0, background: badge.bg, border: `1px solid ${badge.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                        <i className={`ti ${badge.icon}`} style={{ fontSize: 20, color: badge.color }} />
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: 200 }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
+                                            <span style={{ fontWeight: 600, fontSize: "0.95rem" }}>{intv.type || "Interview Round"}</span>
+                                            <span style={{ fontSize: "0.72rem", padding: "2px 8px", borderRadius: 999, fontWeight: 600, color: badge.color, background: badge.bg, border: `1px solid ${badge.border}` }}>
+                                                {intv.position}
+                                            </span>
+                                        </div>
+                                        <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", display: "flex", gap: 14, flexWrap: "wrap" }}>
+                                            <span>📅 {intv.date} · ⏰ {intv.time}</span>
+                                            <span>👤 {intv.interviewer}</span>
+                                            {intv.location && <span>📍 {intv.location}</span>}
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                    ))}
+                            );
+                        })}
+                    </div>
                 </div>
             )}
 
+            {/* In-depth Interview History & Assessments */}
             <div style={S.card}>
-                <div style={S.cardTitle}><i className="ti ti-microphone-2" style={{ fontSize: 16 }} />Interview History</div>
-                {!interviews.length
-                    ? <EmptyState icon="ti-microphone-off" message="No interviews conducted yet." />
-                    : interviews.map((intv, i) => {
-                        const color = intv.status === "Passed" ? "#10b981" : intv.status === "Scheduled" ? "#f59e0b" : "#4e7fff";
-                        return (
-                            <div key={i} style={{ padding: "16px 0", borderBottom: i < interviews.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-                                    <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>{intv.round}</span>
-                                    <span style={{ fontSize: "0.68rem", padding: "2px 9px", borderRadius: 999, fontFamily: "monospace", color, background: `${color}1a`, border: `1px solid ${color}40` }}>{intv.status}</span>
-                                </div>
-                                <div style={{ fontSize: "0.78rem", color: "var(--text-muted-dark)", marginBottom: 8 }}>{intv.interviewer} · {intv.date}</div>
-                                <p style={{ margin: 0, fontSize: "0.84rem", color: "var(--text-muted)", lineHeight: 1.7 }}>{intv.feedback}</p>
-                            </div>
-                        );
-                    })}
-            </div>
-        </div>
-    );
-}
-
-// Tab 8 — Versions
-function VersionsTab({ versions }: { versions: ResumeVersionItem[] }) {
-    if (!versions.length) return (
-        <div style={S.card}><EmptyState icon="ti-versions" message="No resume versions saved yet." /></div>
-    );
-    return (
-        <div style={S.card}>
-            <div style={S.cardTitle}><i className="ti ti-versions" style={{ fontSize: 16 }} />Resume Version History</div>
-            {versions.map((ver, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 0", borderBottom: i < versions.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 8, background: "var(--bg-icon)", border: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <i className="ti ti-file-zip" style={{ fontSize: 16, color: "#8b5cf6" }} />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: "0.85rem" }}>{ver.version}</div>
-                        <div style={{ fontSize: "0.74rem", color: "var(--text-muted-dark)" }}>{ver.date} · {ver.label}</div>
-                    </div>
-                    <a href={ver.url || "#"} download={!!ver.url} style={{ ...btn("outline"), textDecoration: "none", fontSize: "0.75rem", padding: "5px 12px", pointerEvents: ver.url ? "auto" : "none", opacity: ver.url ? 1 : 0.5 }}>↓</a>
+                <div style={S.cardTitle}>
+                    <i className="ti ti-timeline" style={{ fontSize: 18 }} />
+                    Interview Evaluations & Rounds History
                 </div>
-            ))}
+                {!allInterviews.length ? (
+                    <EmptyState icon="ti-microphone-off" message="No interviews conducted or feedback recorded yet." />
+                ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                        {allInterviews.map((intv, i) => {
+                            const roundName = intv.interview_type || intv.round || intv.type || "Interview Round";
+                            const typeBadge = getTypeBadge(roundName);
+                            const statusBadge = getStatusBadge(intv.status);
+                            const rec = getRecBadge(intv.recommendation);
+                            const dateStr = intv.interview_date || intv.date || intv.completed_at || "Date not specified";
+                            const timeStr = intv.interview_time || intv.time || "";
+
+                            return (
+                                <div key={i} style={{ padding: "18px 20px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)", display: "flex", flexDirection: "column", gap: 12 }}>
+                                    {/* Top row: Round Type, Status, Recommendation */}
+                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                                            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.78rem", fontWeight: 700, padding: "4px 12px", borderRadius: 8, color: typeBadge.color, background: typeBadge.bg, border: `1px solid ${typeBadge.border}` }}>
+                                                <i className={`ti ${typeBadge.icon}`} style={{ fontSize: 15 }} />
+                                                {roundName}
+                                            </span>
+
+                                            {intv.position_title && (
+                                                <span style={{ fontSize: "0.75rem", color: "var(--text-muted-dark)" }}>
+                                                    for <strong style={{ color: "var(--text-root)" }}>{intv.position_title}</strong>
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                            {intv.overall_rating && (
+                                                <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "3px 8px", borderRadius: 6, background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}>
+                                                    ⭐ {intv.overall_rating} / 5
+                                                </span>
+                                            )}
+
+                                            {rec && (
+                                                <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "3px 9px", borderRadius: 6, color: rec.color, background: rec.bg, border: `1px solid ${rec.color}40` }}>
+                                                    {rec.icon} {rec.text}
+                                                </span>
+                                            )}
+
+                                            <span style={{ fontSize: "0.72rem", padding: "3px 10px", borderRadius: 999, fontFamily: "monospace", fontWeight: 600, color: statusBadge.color, background: statusBadge.bg, border: `1px solid ${statusBadge.border}` }}>
+                                                {intv.status || "Completed"}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Middle row: Mode, Date, Interviewer, Link */}
+                                    <div style={{ fontSize: "0.78rem", color: "var(--text-muted-dark)", display: "flex", gap: 16, flexWrap: "wrap", borderBottom: "1px solid rgba(255,255,255,0.04)", paddingBottom: 10 }}>
+                                        <span>📅 {dateStr}{timeStr ? ` · ⏰ ${timeStr}` : ""}</span>
+                                        {intv.interviewer && <span>👤 Interviewer: <strong style={{ color: "var(--text-muted)" }}>{intv.interviewer}</strong></span>}
+                                        {intv.interview_mode && <span>💻 Format: {intv.interview_mode}</span>}
+                                        {intv.meeting_link && (
+                                            <a href={intv.meeting_link} target="_blank" rel="noreferrer" style={{ color: "#4e7fff", textDecoration: "none" }}>
+                                                🔗 Meeting Link
+                                            </a>
+                                        )}
+                                    </div>
+
+                                    {/* Bottom row: Detailed Notes & Feedback */}
+                                    {intv.feedback ? (
+                                        <div style={{ background: "rgba(0,0,0,0.15)", borderRadius: 10, padding: "12px 14px", border: "1px solid rgba(255,255,255,0.04)" }}>
+                                            <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--text-muted-dark)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>
+                                                Interviewer Feedback & Observations:
+                                            </div>
+                                            <p style={{ margin: 0, fontSize: "0.84rem", color: "var(--text-root)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                                                {intv.feedback}
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div style={{ fontSize: "0.78rem", color: "var(--text-muted-dark)", fontStyle: "italic" }}>
+                                            No detailed evaluation notes entered for this round.
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
@@ -995,8 +1100,7 @@ export default function CandidateProfilePage({ candidate: raw }: { candidate?: C
                     {tab === 4 && <ResumeTab candidate={c} />}
                     {tab === 5 && <NotesTab notes={notes} recruiter={c.recruiter} onAdd={() => setNoteModal(true)} />}
                     {tab === 6 && <InterviewsTab interviews={c.interviews} scheduled={c.scheduledInterviews} />}
-                    {tab === 7 && <VersionsTab versions={c.resumeVersions} />}
-                    {tab === 8 && (
+                    {tab === 7 && (
                         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
                             <CandidateCommunicationHub candidateId={Number(c.id) || 145} />
                             <div style={{ padding: "16px", borderRadius: "12px", background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.09)" }}>

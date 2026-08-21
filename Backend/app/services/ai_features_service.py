@@ -154,7 +154,7 @@ def generate_candidate_summary(candidate: Candidate) -> CandidateSummaryResponse
         prompt = f"""
 Create a concise 3-bullet executive summary card for a hiring manager reviewing this candidate:
 Name: {candidate.full_name}
-Title/Headline: {candidate.title or candidate.current_company or 'Candidate'}
+Title/Headline: {getattr(candidate, 'current_designation', '') or getattr(candidate, 'company', '') or 'Candidate'}
 Skills: {candidate.skills}
 Experience: {candidate.experience} years
 Summary: {candidate.summary or 'N/A'}
@@ -437,7 +437,7 @@ def draft_outreach_email(req: OutreachEmailRequest, candidate: Candidate, positi
 Draft a personalized recruiter email for a candidate:
 Email Type: {req.email_type}
 Candidate Name: {candidate.full_name}
-Candidate Current Role/Skills: {candidate.skills or candidate.title or 'Professional'}
+Candidate Current Role/Skills: {getattr(candidate, 'current_designation', '') or candidate.skills or 'Professional'}
 Position Title: {position.title if position else 'Open Opportunity'}
 Company Name: {position.company if position else 'Our Team'}
 Tone: {req.tone}
