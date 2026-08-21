@@ -93,17 +93,33 @@ def get_chat_model(
             return None
             
         from langchain_groq import ChatGroq
+        from groq import Groq
+        
         valid_model = model_name or "llama-3.3-70b-versatile"
-        # Auto-map deprecated / sunset / invalid Groq model names to currently active Groq models
-        deprecated_or_invalid = [
-            "llama3-70b-8192", "llama3-8b-8192", "llama-3.1-70b-versatile",
-            "llama-3.1-8b-instant", "llama3-8b", "llama3-70b", "llama-3.1-8b"
-        ]
-        if valid_model in deprecated_or_invalid:
-            valid_model = "llama-3.3-70b-versatile"
+        # Auto-verify against available models for this specific API key
+        try:
+            client = Groq(api_key=api_key)
+            avail = [m.id for m in client.models.list().data]
+            if valid_model not in avail:
+                preferred_order = [
+                    "llama-3.3-70b-versatile",
+                    "llama-3.1-8b-instant",
+                    "openai/gpt-oss-120b",
+                    "qwen/qwen3.6-27b",
+                    "groq/compound-mini",
+                    "openai/gpt-oss-20b"
+                ]
+                chosen = next((m for m in preferred_order if m in avail), None)
+                if chosen:
+                    valid_model = chosen
+                elif avail:
+                    chat_models = [m for m in avail if "whisper" not in m and "guard" not in m]
+                    valid_model = chat_models[0] if chat_models else avail[0]
+                print(f"  -> Auto-selected accessible Groq model: '{valid_model}'")
+        except Exception as e:
+            print(f"  -> Groq models check warning: {e}")
+
         kwargs = {"model": valid_model, "temperature": temperature, "api_key": api_key}
-        if json_mode:
-            kwargs["model_kwargs"] = {"response_format": {"type": "json_object"}}
         return ChatGroq(**kwargs)
 
     elif provider == "Gemini":
