@@ -1,6 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
-import { Briefcase, MapPin, Clock } from "lucide-react";
+import { MapPin, Clock } from "lucide-react";
 import { useSemanticSearchStore } from "@/store/semanticSearchStore";
 import ShortlistModal from "./ShortlistModal";
 import { useState } from "react";
@@ -76,27 +76,18 @@ export default function CandidateCard({
                             </h3>
 
                             <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-
-                                <div className="flex items-center gap-1">
-                                    <Briefcase className="h-4 w-4" />
-                                    {candidate.status || "Applied"}
-                                </div>
-
                                 <div className="flex items-center gap-1">
                                     <MapPin className="h-4 w-4" />
                                     {candidate.location || "N/A"}
                                 </div>
 
-                                {(searchType === "jd" ||
-                                    searchType === "position" ||
-                                    searchType === "advanced") &&
-                                    candidate.experience != null && (
-                                        <div className="flex items-center gap-1">
-                                            <Clock className="h-4 w-4" />
-                                            {candidate.experience}{" "}
-                                            {candidate.experience === 1 ? "yr" : "yrs"}
-                                        </div>
-                                    )}
+                                {candidate.experience != null && (
+                                    <div className="flex items-center gap-1">
+                                        <Clock className="h-4 w-4" />
+                                        {candidate.experience}{" "}
+                                        {candidate.experience === 1 ? "yr" : "yrs"}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
