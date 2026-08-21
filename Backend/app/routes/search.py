@@ -381,7 +381,8 @@ def _compute_advanced_score(
             job_title=request.query or "Any",
             skills=request.skills or [],
             exp_hint=exp_hint or "Any",
-            location=request.location or "Any"
+            location=request.location or "Any",
+            job_description=request.job_description
         )
         
         if llm_result.score == 0.0 and ("RESOURCE_EXHAUSTED" in llm_result.reasoning or "failed" in llm_result.reasoning.lower()):

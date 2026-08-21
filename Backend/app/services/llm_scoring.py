@@ -14,7 +14,8 @@ class CandidateScore(BaseModel):
 def score_candidate_with_llm(candidate: Candidate, position: Position) -> CandidateScore:
     """
     Scores a candidate against a position using active LLM.
-    Returns a structured score (0-100) and reasoning.
+    Deeply compares the candidate's actual parsed Resume against the Position's Job Description.
+    Returns a structured score (0-100) and recruiter reasoning.
     """
     try:
         llm = get_chat_model(temperature=0.0, json_mode=True)
@@ -23,24 +24,42 @@ def score_candidate_with_llm(candidate: Candidate, position: Position) -> Candid
             return CandidateScore(score=0.0, reasoning="AI Service Unavailable, Consult admin")
         
         structured_llm = llm.with_structured_output(CandidateScore)
+
+        # Extract full resume context (parsed text, work history, projects, accomplishments)
+        cand_resume = (candidate.resume_text or "").strip()
+        if not cand_resume and candidate.summary:
+            cand_resume = f"Professional Summary: {candidate.summary}"
+        elif not cand_resume:
+            cand_resume = f"Skills: {candidate.skills or 'N/A'}\nExperience: {candidate.experience or 0} years\nEducation: {candidate.education or 'N/A'}"
+        
+        # Limit to 4500 chars to fit within token limits while preserving full context
+        if len(cand_resume) > 4500:
+            cand_resume = cand_resume[:4500] + "... [truncated]"
         
         prompt = f"""
-You are an expert ATS (Applicant Tracking System) recruiter. 
-Your task is to score a candidate against a specific job position based on the required conditions.
+You are an expert ATS (Applicant Tracking System) recruiter and hiring manager.
+Your task is to deeply compare the candidate's actual Resume with the target Position's Job Description (JD) to evaluate their true job fit.
 
---- POSITION CONDITIONS ---
-Job Title: {position.title}
-Required Skills: {position.required_skills}
-Job Description: {position.description}
+=== TARGET POSITION & JOB DESCRIPTION ===
+Title: {position.title}
+Required Skills: {position.required_skills or 'N/A'}
+Job Description & Responsibilities:
+{position.description or 'No explicit JD text provided.'}
 
---- CANDIDATE DETAILS ---
+=== CANDIDATE PROFILE & RESUME ===
 Name: {candidate.full_name}
-Extracted Skills: {candidate.skills}
-Total Experience: {candidate.experience} years
-Education: {candidate.education}
+Extracted Skills: {candidate.skills or 'N/A'}
+Total Experience: {candidate.experience or 0} years
+Education: {candidate.education or 'N/A'}
 
-Please evaluate the candidate strictly based on how well they meet the position's required conditions (skills, experience, etc.).
-Calculate a fair score out of 100. Provide clear reasoning.
+--- FULL PARSED RESUME TEXT & WORK HISTORY ---
+{cand_resume}
+
+=== EVALUATION INSTRUCTIONS ===
+1. Compare the candidate's real-world project history, responsibilities, tools, and achievements directly against the Job Description.
+2. Evaluate domain suitability, depth of technical experience, and practical qualification for this specific role.
+3. Calculate an accurate match score (0-100) based strictly on this Resume-to-JD alignment.
+4. Provide a clear, 2-3 sentence recruiter reasoning explaining why this score was given, citing specific matches or gaps.
 """
         
         result = structured_llm.invoke(prompt)
@@ -49,9 +68,17 @@ Calculate a fair score out of 100. Provide clear reasoning.
         logging.error(f"Error during LLM scoring: {e}")
         return CandidateScore(score=0.0, reasoning="AI Service Unavailable, Consult admin")
 
-def score_candidate_advanced_search_with_llm(candidate: Candidate, job_title: str, skills: list[str], exp_hint: str, location: str) -> CandidateScore:
+def score_candidate_advanced_search_with_llm(
+    candidate: Candidate,
+    job_title: str,
+    skills: list[str],
+    exp_hint: str,
+    location: str,
+    job_description: Optional[str] = None
+) -> CandidateScore:
     """
-    Scores a candidate against a generic search query using active LLM.
+    Scores a candidate against search filters and optional Job Description using active LLM.
+    Deeply incorporates the candidate's parsed Resume text.
     """
     try:
         llm = get_chat_model(temperature=0.0, json_mode=True)
@@ -62,24 +89,40 @@ def score_candidate_advanced_search_with_llm(candidate: Candidate, job_title: st
         
         skills_str = ", ".join(skills) if skills else "None specified"
         
-        prompt = f"""
-You are an expert ATS (Applicant Tracking System) recruiter. 
-Your task is to score a candidate based on how well they fit the search filters.
+        cand_resume = (candidate.resume_text or "").strip()
+        if not cand_resume and candidate.summary:
+            cand_resume = f"Professional Summary: {candidate.summary}"
+        elif not cand_resume:
+            cand_resume = f"Skills: {candidate.skills or 'N/A'}\nExperience: {candidate.experience or 0} years"
 
---- SEARCH FILTERS ---
+        if len(cand_resume) > 4500:
+            cand_resume = cand_resume[:4500] + "... [truncated]"
+
+        jd_section = f"\nTarget Job Description:\n{job_description}\n" if job_description else ""
+
+        prompt = f"""
+You are an expert ATS (Applicant Tracking System) recruiter.
+Evaluate how well the candidate's resume and qualifications match the target position and search criteria.
+
+=== SEARCH CRITERIA & ROLE REQUIREMENTS ===
 Job Title / Role: {job_title}
 Required Skills: {skills_str}
 Experience Needed: {exp_hint}
 Location: {location}
-
---- CANDIDATE DETAILS ---
+{jd_section}
+=== CANDIDATE PROFILE ===
 Name: {candidate.full_name}
-Extracted Skills: {candidate.skills}
-Total Experience: {candidate.experience} years
-Location: {candidate.location}
+Skills: {candidate.skills or 'N/A'}
+Total Experience: {candidate.experience or 0} years
+Location: {candidate.location or 'N/A'}
 
-Please evaluate the candidate strictly based on how well they meet the search filters.
-Calculate a fair score out of 100. Provide clear reasoning.
+--- FULL PARSED RESUME TEXT ---
+{cand_resume}
+
+=== EVALUATION INSTRUCTIONS ===
+1. Analyze how well the candidate's practical experience, projects, and skills in their resume match the target role requirements.
+2. Calculate a fair score out of 100 based on this comparison.
+3. Provide concise recruiter reasoning (2-3 sentences).
 """
         return structured_llm.invoke(prompt)
     except Exception as e:
