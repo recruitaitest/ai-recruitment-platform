@@ -110,9 +110,6 @@ export default function OfferTable({
                       <div className="font-semibold text-text-primary">
                         {offer.candidate_name ?? "—"}
                       </div>
-                      <div className="text-xs text-text-secondary">
-                        Pipeline #{offer.pipeline_id}
-                      </div>
                     </td>
 
                     {/* Position */}
