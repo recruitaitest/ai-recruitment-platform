@@ -21,7 +21,7 @@ export default function AIPage() {
     Claude: { apiKey: "", modelName: "claude-3-5-sonnet-20240620", embeddingModelName: "" },
     OpenAI: { apiKey: "", modelName: "gpt-4o", embeddingModelName: "text-embedding-3-small" },
     Ollama: { serverUrl: "http://localhost:11434", modelName: "llama3", embeddingModelName: "nomic-embed-text:latest" },
-    Groq: { apiKey: "", modelName: "llama3-70b-8192", embeddingModelName: "" },
+    Groq: { apiKey: "", modelName: "llama-3.3-70b-versatile", embeddingModelName: "" },
     "Hugging Face": { apiKey: "", modelName: "mistralai/Mixtral-8x7B-Instruct-v0.1", embeddingModelName: "BAAI/bge-large-en-v1.5" },
   });
 

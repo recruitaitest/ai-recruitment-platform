@@ -94,7 +94,12 @@ def get_chat_model(
             
         from langchain_groq import ChatGroq
         valid_model = model_name or "llama-3.3-70b-versatile"
-        if valid_model in ["llama3-70b-8192", "llama3-8b-8192", "llama-3.1-70b-versatile"]:
+        # Auto-map deprecated / sunset / invalid Groq model names to currently active Groq models
+        deprecated_or_invalid = [
+            "llama3-70b-8192", "llama3-8b-8192", "llama-3.1-70b-versatile",
+            "llama-3.1-8b-instant", "llama3-8b", "llama3-70b", "llama-3.1-8b"
+        ]
+        if valid_model in deprecated_or_invalid:
             valid_model = "llama-3.3-70b-versatile"
         kwargs = {"model": valid_model, "temperature": temperature, "api_key": api_key}
         if json_mode:
