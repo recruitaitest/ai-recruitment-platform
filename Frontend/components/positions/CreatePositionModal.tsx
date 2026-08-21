@@ -93,9 +93,9 @@ export default function CreatePositionModal({
         }
         toast.success("AI generated JD & skills directly!");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("AI Generation error:", err);
-      toast.error("Failed to generate AI JD.");
+      // Handled by api interceptor / aiTokenGuard with "AI service unavailable, check your AI Settings"
     } finally {
       setGeneratingAI(false);
     }

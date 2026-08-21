@@ -3,6 +3,7 @@ import re
 import json
 import logging
 from typing import List, Optional, Dict, Any
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.services.llm_factory import get_chat_model
 from app.models.candidate import Candidate
@@ -30,6 +31,8 @@ logger = logging.getLogger(__name__)
 def generate_screening_reasoning(candidate: Candidate, position: Position) -> ScreeningScoreResponse:
     try:
         llm = get_chat_model(temperature=0.1, json_mode=True)
+        if not llm:
+            raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
         structured_llm = llm.with_structured_output(ScreeningScoreResponse)
         
         prompt = f"""
@@ -54,39 +57,22 @@ Provide a comprehensive screening analysis in structured JSON:
 - matched_skills & missing_skills
 - recommendation: 1-sentence actionable hiring recommendation
 """
-        return structured_llm.invoke(prompt)
+        res = structured_llm.invoke(prompt)
+        if res:
+            return res
+        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in LLM screening reasoning: {e}")
-        # Deterministic fallback
-        c_skills = [s.strip().lower() for s in (candidate.skills or "").split(",") if s.strip()]
-        p_skills = [s.strip().lower() for s in (position.required_skills or "").split(",") if s.strip()]
-        matched = [s for s in p_skills if any(s in cs for cs in c_skills)]
-        missing = [s for s in p_skills if s not in matched]
-        
-        ratio = (len(matched) / len(p_skills)) if p_skills else 0.5
-        exp_score = min(((candidate.experience or 0) / 5.0) * 100, 100)
-        final_score = round((ratio * 60) + (exp_score * 0.4), 1)
-        
-        fit = "High Fit" if final_score >= 75 else "Medium Fit" if final_score >= 50 else "Low Fit"
-        return ScreeningScoreResponse(
-            score=final_score,
-            reasoning=f"Candidate has {len(matched)} of {len(p_skills)} required skills and {candidate.experience or 0} years of experience.",
-            fit_level=fit,
-            category_scores=[
-                CategoryScore(category="Technical Skills", score=round(ratio * 100, 1), reasoning=f"Matched {len(matched)} skills."),
-                CategoryScore(category="Experience", score=round(exp_score, 1), reasoning=f"{candidate.experience or 0} years of relevant experience.")
-            ],
-            matched_skills=matched,
-            missing_skills=missing,
-            recommendation="Proceed to initial recruiter screening call." if final_score >= 60 else "Review candidate secondary skills before moving forward."
-        )
+        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
 
 # --- 1.2 AI Job Description Generator ---
 def generate_job_description(req: JDGenerateRequest) -> JDGenerateResponse:
     try:
         llm = get_chat_model(temperature=0.3, json_mode=True)
         if not llm:
-            raise ValueError("No live LLM model available")
+            raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
 
         structured_llm = llm.with_structured_output(JDGenerateResponse)
         
@@ -118,44 +104,25 @@ Return JSON matching these exact types:
         res = structured_llm.invoke(prompt)
         if res and res.required_skills:
             return res
-        raise ValueError("Invalid LLM response")
+        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in JD generation: {e}")
-        title = req.title or "Software Engineer"
-        lower_title = title.lower()
-        
-        # Smart role-based default technical skills dictionary
-        if "backend" in lower_title or "back-end" in lower_title or "server" in lower_title:
-            default_skills = ["Python", "Node.js", "Java", "PostgreSQL", "REST API", "Docker", "Redis", "Microservices"]
-        elif "frontend" in lower_title or "front-end" in lower_title or "ui" in lower_title:
-            default_skills = ["React", "TypeScript", "JavaScript", "HTML5", "CSS3", "Next.js", "Tailwind CSS", "Redux"]
-        elif "fullstack" in lower_title or "full-stack" in lower_title:
-            default_skills = ["Python", "React", "TypeScript", "Node.js", "PostgreSQL", "Docker", "REST API", "AWS"]
-        elif "devops" in lower_title or "cloud" in lower_title or "infrastructure" in lower_title:
-            default_skills = ["AWS", "Docker", "Kubernetes", "CI/CD", "Terraform", "Linux", "Python", "Bash"]
-        elif "data" in lower_title or "machine learning" in lower_title or "ai" in lower_title:
-            default_skills = ["Python", "SQL", "Pandas", "PySpark", "Machine Learning", "Airflow", "PostgreSQL", "Docker"]
-        else:
-            default_skills = ["Software Development", "Problem Solving", "Git", "REST API", "Agile", "Code Review"]
+        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
 
-        custom_bullets = [s.strip() for s in (req.key_bullets or "").split(",") if s.strip() and s.strip().lower() != lower_title]
-        final_skills = custom_bullets if custom_bullets else default_skills
-
-        return JDGenerateResponse(
-            title=title,
-            summary=f"We are seeking an experienced {title} ({req.seniority}) to join our team in {req.location}.",
-            description_markdown=f"# {title}\n\n**Location:** {req.location} | **Seniority:** {req.seniority}\n\n### About the Role\nWe are looking for a skilled {title} to build high-performance services and scale our engineering infrastructure.\n\n### Key Responsibilities\n- Design and implement scalable, secure backend systems.\n- Write clean, maintainable, and well-tested code.\n- Collaborate across technical and product teams to deliver core features.\n\n### Requirements\n- Proven experience as a {title}.\n- Strong technical proficiency in: {', '.join(final_skills)}.\n- Solid understanding of database architecture and API design.",
-            responsibilities=[f"Lead design and execution of {title} projects", "Write clean, maintainable, and testable code", "Collaborate with cross-functional product teams"],
-            requirements=[f"{req.seniority} experience as {title}", f"Proficiency in {', '.join(final_skills[:4])}", "Strong communication and technical problem solving"],
-            preferred_qualifications=["Degree in Computer Science or equivalent", "Experience with modern cloud platforms (AWS/Azure)"],
-            required_skills=final_skills
-        )
 
 
 # --- 1.3 AI Interview Question Generator ---
 def generate_interview_questions(req: QuestionGenerateRequest) -> QuestionGenerateResponse:
     try:
         llm = get_chat_model(temperature=0.3, json_mode=True)
+# --- 1.3 AI Interview Question Generator ---
+def generate_interview_questions(req: QuestionGenerateRequest) -> QuestionGenerateResponse:
+    try:
+        llm = get_chat_model(temperature=0.3, json_mode=True)
+        if not llm:
+            raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
         structured_llm = llm.with_structured_output(QuestionGenerateResponse)
         
         prompt = f"""
@@ -170,48 +137,22 @@ Return JSON with:
 - round_type
 - questions: list of 5 objects (id, question, category, difficulty ["Easy", "Medium", "Hard"], evaluation_criteria, expected_signal, sample_answer_bullets)
 """
-        return structured_llm.invoke(prompt)
+        res = structured_llm.invoke(prompt)
+        if res:
+            return res
+        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in question generator: {e}")
-        skills_str = ", ".join(req.required_skills) if req.required_skills else req.position_title
-        return QuestionGenerateResponse(
-            position_title=req.position_title,
-            round_type=req.round_type,
-            questions=[
-                InterviewQuestion(
-                    id=1,
-                    question=f"Can you explain your experience working with {skills_str} in your previous role?",
-                    category="Technical Skills",
-                    difficulty="Medium",
-                    evaluation_criteria="Depth of practical hands-on experience and real-world application.",
-                    expected_signal="Clear architectural explanation, mentions edge cases and trade-offs.",
-                    sample_answer_bullets=["Discussed project architecture", "Mentioned optimization techniques"]
-                ),
-                InterviewQuestion(
-                    id=2,
-                    question="Describe a complex technical challenge you faced recently and how you resolved it.",
-                    category="Problem Solving",
-                    difficulty="Hard",
-                    evaluation_criteria="Structured troubleshooting, analytical thinking, and ownership.",
-                    expected_signal="STAR method response (Situation, Task, Action, Result).",
-                    sample_answer_bullets=["Identified root cause", "Collaborated with team", "Implemented prevention measures"]
-                ),
-                InterviewQuestion(
-                    id=3,
-                    question="How do you prioritize technical debt versus tight product feature deadlines?",
-                    category="Behavioral & Delivery",
-                    difficulty="Medium",
-                    evaluation_criteria="Pragmatism, business alignment, and communication with stakeholders.",
-                    expected_signal="Balances code quality with business velocity.",
-                    sample_answer_bullets=["Tracks tech debt backlog", "Communicates impact to product managers"]
-                )
-            ]
-        )
+        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
 
 # --- 1.4 AI Candidate Executive Summary Card ---
 def generate_candidate_summary(candidate: Candidate) -> CandidateSummaryResponse:
     try:
         llm = get_chat_model(temperature=0.2, json_mode=True)
+        if not llm:
+            raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
         structured_llm = llm.with_structured_output(CandidateSummaryResponse)
         
         prompt = f"""
@@ -232,22 +173,15 @@ Return JSON:
 - suggested_followups (2 specific questions to ask)
 """
         res = structured_llm.invoke(prompt)
-        res.candidate_id = candidate.id
-        return res
+        if res:
+            res.candidate_id = candidate.id
+            return res
+        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error generating candidate summary: {e}")
-        return CandidateSummaryResponse(
-            candidate_id=candidate.id,
-            executive_summary=f"{candidate.full_name} is a professional with {candidate.experience or 0} years of experience skilled in {candidate.skills or 'various technologies'}.",
-            highlights=[
-                f"{candidate.experience or 0}+ years of hands-on industry experience",
-                f"Proficient in key tech stack: {candidate.skills or 'N/A'}",
-                f"Located in {candidate.location or 'Flexible'}"
-            ],
-            top_strengths=["Strong core domain knowledge", "Proven project execution", "Adaptable skill set"],
-            potential_concerns=["Verify exact depth in senior leadership", "Check notice period availability"],
-            suggested_followups=["Ask about recent high-impact project leadership", "Verify hands-on experience with core tech stack"]
-        )
+        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
 
 # --- 1.5 AI Skills Gap Analysis ---
 def generate_skills_gap(candidate: Candidate, position: Position) -> SkillsGapResponse:
@@ -276,6 +210,8 @@ def generate_skills_gap(candidate: Candidate, position: Position) -> SkillsGapRe
 def analyze_interview_feedback(req: FeedbackAnalysisRequest) -> FeedbackAnalysisResponse:
     try:
         llm = get_chat_model(temperature=0.1, json_mode=True)
+        if not llm:
+            raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
         structured_llm = llm.with_structured_output(FeedbackAnalysisResponse)
         
         notes_str = "\n---\n".join(req.raw_notes) if req.raw_notes else "No notes provided."
@@ -297,27 +233,23 @@ Return JSON with:
 - key_signals (key quotes or observations)
 - summary_paragraph (2-3 sentences overview for hiring manager)
 """
-        return structured_llm.invoke(prompt)
+        res = structured_llm.invoke(prompt)
+        if res:
+            return res
+        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in feedback analyzer: {e}")
-        return FeedbackAnalysisResponse(
-            consensus_recommendation="Hire",
-            sentiment_score=0.75,
-            pros=["Strong communication skills", "Demonstrated clear technical domain understanding"],
-            cons=["May need slight onboarding time for specialized internal tools"],
-            key_signals=["Panelists noted solid problem-solving approach during technical round"],
-            summary_paragraph="Overall feedback across interviewers is positive. Candidate meets essential technical and cultural criteria."
-        )
+        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
 
 # --- 1.7 Predictive Offer Acceptance Likelihood ---
 def predict_offer_acceptance(req: OfferRiskRequest, db: Session = None) -> OfferRiskResponse:
-    # 1. Fetch contextual candidate & position details if available
     cand_info = ""
     pos_info = ""
     interview_info = ""
     exp_years = 3.0
     cand_expected = 0.0
-    cand_current = 0.0
     cand_notice = req.notice_period_days or 30
     
     if db:
@@ -327,24 +259,16 @@ def predict_offer_acceptance(req: OfferRiskRequest, db: Session = None) -> Offer
                 if cand:
                     exp_years = float(cand.experience or 3.0)
                     cand_info = f"Name: {cand.name}, Skills: {cand.skills}, Experience: {cand.experience} years, Current Location: {cand.location}"
-                    
-                    # Parse current/expected CTC from candidate profile if present
                     if cand.expected_ctc:
                         m = re.findall(r"[\d.]+", str(cand.expected_ctc))
                         if m:
                             val = float(m[0])
                             cand_expected = val * 100000 if val < 100 else val
-                    if cand.current_ctc:
-                        m = re.findall(r"[\d.]+", str(cand.current_ctc))
-                        if m:
-                            val = float(m[0])
-                            cand_current = val * 100000 if val < 100 else val
                     if cand.notice_period:
                         m = re.findall(r"\d+", str(cand.notice_period))
                         if m:
                             cand_notice = int(m[0])
 
-                    # Fetch interview signals
                     from app.models.interview import Interview
                     interviews = db.query(Interview).filter(Interview.candidate_id == req.candidate_id).all()
                     if interviews:
@@ -362,16 +286,12 @@ def predict_offer_acceptance(req: OfferRiskRequest, db: Session = None) -> Offer
         except Exception as err:
             logger.warning(f"Failed to fetch enriched context for offer risk prediction: {err}")
 
-    # Fallback to request strings if DB query didn't populate
     if not cand_info and req.candidate_name:
         cand_info = f"Name: {req.candidate_name}"
     if not pos_info and req.position_title:
         pos_info = f"Role: {req.position_title}"
 
     offered = float(req.offered_ctc or 0.0)
-    
-    # Calculate baseline market benchmark based on candidate experience
-    # (e.g. 0-1y: 5L, 3y: 10L, 5y: 18L, 8y: 28L, 10y+: 40L+)
     if exp_years <= 1:
         market_benchmark = 550000.0
     elif exp_years <= 3:
@@ -385,12 +305,13 @@ def predict_offer_acceptance(req: OfferRiskRequest, db: Session = None) -> Offer
 
     expected = float(req.expected_ctc or cand_expected or market_benchmark)
 
-    # 2. Try LLM Structured Prediction with Active AI
     try:
         llm = get_chat_model(temperature=0.2, json_mode=True)
-        if llm:
-            structured_llm = llm.with_structured_output(OfferRiskResponse)
-            prompt = f"""
+        if not llm:
+            raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+
+        structured_llm = llm.with_structured_output(OfferRiskResponse)
+        prompt = f"""
 You are an expert Talent Acquisition & Executive Compensation Risk Analyst.
 Analyze this job offer and accurately calculate the candidate's offer acceptance probability (15% to 95%), risk level, key risk factors, positive alignment signals, and strategic recommendations to close the candidate.
 
@@ -424,75 +345,15 @@ STRICT SCORING GUIDELINES:
 3. Provide 2-3 actionable Strategic Advice points (e.g. sign-on bonus, fast-track career roadmap, early joining buyout).
 4. If offered < expected, provide suggested_ctc_adjustment.
 """
-            result = structured_llm.invoke(prompt)
-            if result and getattr(result, "acceptance_probability_pct", None) is not None:
-                return result
+        result = structured_llm.invoke(prompt)
+        if result and getattr(result, "acceptance_probability_pct", None) is not None:
+            return result
+        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in LLM Offer Acceptance Prediction: {e}")
-
-    # 3. Dynamic High-Accuracy Fallback Engine
-    risk_factors = []
-    positive_signals = []
-    advice = []
-    suggested_ctc = 0.0
-    
-    benchmark_target = max(expected, market_benchmark)
-    ratio = (offered / benchmark_target) if benchmark_target > 0 else 1.0
-
-    if ratio < 0.6:
-        final_prob = max(15.0, round(ratio * 40, 1))
-        risk_level = "High"
-        risk_factors.append(f"Offered CTC (₹{offered:,.0f}) is severely below market standard (₹{market_benchmark:,.0f}) for {exp_years:.0f} years experience.")
-        risk_factors.append("Extreme risk of candidate decline, counter-offer matching, or ghosting.")
-        advice.append(f"Substantially increase package towards ₹{market_benchmark:,.0f} to avoid guaranteed candidate drop-off.")
-        advice.append("Consider restructuring package with equity or guaranteed performance incentives.")
-        suggested_ctc = round(market_benchmark, -4)
-    elif ratio < 0.85:
-        final_prob = max(38.0, round(40 + (ratio - 0.6) * 90, 1))
-        risk_level = "High"
-        risk_factors.append(f"Offered CTC is ~{round((1-ratio)*100)}% below candidate target and competitive industry bandwidth.")
-        risk_factors.append(f"Candidate's {cand_notice}-day notice period leaves them open to multiple competing market offers.")
-        advice.append(f"Offer a joining buyout bonus of ₹{round((expected - offered) * 0.5, -3):,.0f} to bridge the compensation gap.")
-        advice.append("Schedule a 1-on-1 impact call with the hiring manager to highlight career progression.")
-        suggested_ctc = round(expected, -4)
-    elif ratio < 1.15:
-        final_prob = max(68.0, round(70 + (ratio - 0.85) * 50, 1))
-        risk_level = "Medium"
-        positive_signals.append(f"Offered compensation is well-aligned with industry standard for {exp_years:.0f} years experience.")
-        if ratio >= 1.0:
-            positive_signals.append("Compensation meets candidate baseline expectations.")
-        else:
-            risk_factors.append("Minor gap between proposed package and top market competing offers.")
-        advice.append("Maintain weekly check-ins during the notice period to keep candidate engaged.")
-        advice.append("Share team welcome notes and project roadmap prior to day 1.")
-    elif ratio < 1.4:
-        final_prob = min(92.0, round(86 + (ratio - 1.15) * 25, 1))
-        risk_level = "Low"
-        positive_signals.append(f"Highly competitive compensation (~{round((ratio-1)*100)}% above baseline market benchmark).")
-        positive_signals.append("Strong closing position against existing employer counter-offers.")
-        advice.append("Send welcome kit and formal offer letter promptly to finalize signing.")
-    else:
-        final_prob = 95.0
-        risk_level = "Low"
-        positive_signals.append("Top-percentile compensation offer provides overwhelming closing leverage.")
-        positive_signals.append("Candidate acceptance probability is maximized.")
-        advice.append("Fast-track onboarding and schedule leadership meet-and-greet.")
-
-    if cand_notice > 60 and risk_level != "Low":
-        risk_factors.append(f"Long notice period ({cand_notice} days) increases drop-off risk before day 1.")
-        advice.append("Offer a joining bonus to negotiate early release.")
-
-    if interview_info:
-        positive_signals.append("Strong technical & culture alignment verified in interview rounds.")
-
-    return OfferRiskResponse(
-        acceptance_probability_pct=final_prob,
-        risk_level=risk_level,
-        risk_factors=risk_factors or ["Standard market counter-offer competition"],
-        positive_signals=positive_signals or ["Role compensation aligns with market bandwidth"],
-        strategic_advice=advice or ["Maintain regular weekly touchpoints during candidate notice period"],
-        suggested_ctc_adjustment=suggested_ctc
-    )
+        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
 
 # --- 1.8 AI-Powered Sourcing Suggestions ---
 def generate_sourcing_suggestions(position: Position) -> SourcingSuggestionsResponse:
@@ -572,6 +433,8 @@ def detect_semantic_duplicates(candidate: Candidate, candidates_list: List[Candi
 def draft_outreach_email(req: OutreachEmailRequest, candidate: Candidate, position: Optional[Position]) -> OutreachEmailResponse:
     try:
         llm = get_chat_model(temperature=0.4, json_mode=True)
+        if not llm:
+            raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
         structured_llm = llm.with_structured_output(OutreachEmailResponse)
         
         prompt = f"""
@@ -591,23 +454,22 @@ Return JSON with:
 - body_plain_text (clean plain text version)
 """
         res = structured_llm.invoke(prompt)
-        res.candidate_id = candidate.id
-        return res
+        if res:
+            res.candidate_id = candidate.id
+            return res
+        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error drafting email: {e}")
-        subj = f"Exciting Opportunity: {position.title if position else 'Career Opportunity'} for {candidate.full_name}"
-        body = f"Hi {candidate.full_name},\n\nI came across your profile and was thoroughly impressed by your background in {candidate.skills or 'your domain'}.\n\nWe are currently hiring for a {position.title if position else 'Key Role'} at {position.company if position else 'our company'} and believe your experience would be a great fit.\n\nWould you be open for a quick 10-minute introductory call this week?\n\nBest regards,\n[Recruiter Name]"
-        return OutreachEmailResponse(
-            candidate_id=candidate.id,
-            subject=subj,
-            body_markdown=body,
-            body_plain_text=body
-        )
+        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
 
 # --- 1.11 AI Scorecard Auto-Fill from Raw Notes ---
 def autofill_scorecard_from_notes(req: ScorecardAutoFillRequest) -> ScorecardAutoFillResponse:
     try:
         llm = get_chat_model(temperature=0.1, json_mode=True)
+        if not llm:
+            raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
         structured_llm = llm.with_structured_output(ScorecardAutoFillResponse)
         
         prompt = f"""
@@ -623,18 +485,15 @@ Return JSON with:
 - overall_recommendation ("Strong Hire", "Hire", "Hold", "Reject")
 - summary (2-sentence summary)
 """
-        return structured_llm.invoke(prompt)
+        res = structured_llm.invoke(prompt)
+        if res:
+            return res
+        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error autofilling scorecard: {e}")
-        ratings = [
-            CompetencyRating(competency=comp, rating=4, justification="Demonstrated satisfactory understanding based on notes.", key_quote="Candidate answered core questions effectively.")
-            for comp in req.competencies
-        ]
-        return ScorecardAutoFillResponse(
-            ratings=ratings,
-            overall_recommendation="Hire",
-            summary="Extracted structured evaluation from raw notes. Overall impression is positive."
-        )
+        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
 
 # --- 1.12 Resume Red Flag Detection ---
 def detect_resume_red_flags(candidate: Candidate) -> RedFlagDetectionResponse:
@@ -1497,29 +1356,10 @@ def process_recruiter_chat(
 # --- 1.15 AI Candidate Rejection Email Generator ---
 def draft_rejection_email_service(req: RejectionEmailDraftRequest) -> RejectionEmailDraftResponse:
     company = req.company_name or "Our Organization"
-    default_subject = f"Update regarding your application for {req.position_title} at {company}"
-    default_body = f"""Dear {req.candidate_name},
-
-Thank you very much for your time, effort, and interest in the {req.position_title} position at {company}. We truly enjoyed learning about your professional journey.
-
-After thorough evaluation by our hiring team, we have decided not to move forward with your application for this specific role at this time. 
-
-Reason & Context:
-{req.rejection_reason}
-
-Please know that our talent acquisition team keeps your profile active in our talent network. Should an opportunity open that better matches your background and specialized skillset, we will gladly reach out.
-
-We wish you every success in your ongoing job search and future professional endeavors.
-
-Warm regards,
-
-Recruiting & Talent Acquisition Team
-{company}"""
-
     try:
         llm = get_chat_model(temperature=0.3, json_mode=True)
         if not llm:
-            return RejectionEmailDraftResponse(subject=default_subject, body=default_body)
+            raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
 
         structured_llm = llm.with_structured_output(RejectionEmailDraftResponse)
         prompt = f"""
@@ -1542,9 +1382,12 @@ Requirements:
         result = structured_llm.invoke(prompt)
         if result and getattr(result, "body", None):
             return result
-        return RejectionEmailDraftResponse(subject=default_subject, body=default_body)
+        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error drafting AI rejection email: {e}")
-        return RejectionEmailDraftResponse(subject=default_subject, body=default_body)
+        raise HTTPException(status_code=503, detail="AI service unavailable, check your AI Settings")
+
 
 

@@ -13,18 +13,14 @@ class CandidateScore(BaseModel):
 
 def score_candidate_with_llm(candidate: Candidate, position: Position) -> CandidateScore:
     """
-    Scores a candidate against a position using Groq AI.
+    Scores a candidate against a position using active LLM.
     Returns a structured score (0-100) and reasoning.
     """
-    api_key = os.getenv("GROQ_API_KEY")
-    use_ollama = os.getenv("USE_OLLAMA", "false").lower() == "true"
-    ollama_url = os.getenv("OLLAMA_BASE_URL")
-    if not api_key and not (use_ollama and ollama_url):
-        logging.warning("No LLM credentials found. Skipping LLM scoring.")
-        return CandidateScore(score=0.0, reasoning="API Key or Ollama URL not found.")
-        
     try:
         llm = get_chat_model(temperature=0.0, json_mode=True)
+        if not llm:
+            logging.warning("No LLM provider configured or live. Skipping LLM scoring.")
+            return CandidateScore(score=0.0, reasoning="AI service unavailable, check your AI Settings")
         
         structured_llm = llm.with_structured_output(CandidateScore)
         
@@ -50,21 +46,17 @@ Calculate a fair score out of 100. Provide clear reasoning.
         result = structured_llm.invoke(prompt)
         return result
     except Exception as e:
-        logging.error(f"Error during Groq scoring: {e}")
-        return CandidateScore(score=0.0, reasoning=f"Scoring failed due to an error: {str(e)}")
+        logging.error(f"Error during LLM scoring: {e}")
+        return CandidateScore(score=0.0, reasoning="AI service unavailable, check your AI Settings")
 
 def score_candidate_advanced_search_with_llm(candidate: Candidate, job_title: str, skills: list[str], exp_hint: str, location: str) -> CandidateScore:
     """
-    Scores a candidate against a generic search query using Groq AI.
+    Scores a candidate against a generic search query using active LLM.
     """
-    api_key = os.getenv("GROQ_API_KEY")
-    use_ollama = os.getenv("USE_OLLAMA", "false").lower() == "true"
-    ollama_url = os.getenv("OLLAMA_BASE_URL")
-    if not api_key and not (use_ollama and ollama_url):
-        return CandidateScore(score=0.0, reasoning="API Key or Ollama URL not found.")
-        
     try:
         llm = get_chat_model(temperature=0.0, json_mode=True)
+        if not llm:
+            return CandidateScore(score=0.0, reasoning="AI service unavailable, check your AI Settings")
         
         structured_llm = llm.with_structured_output(CandidateScore)
         
@@ -91,5 +83,6 @@ Calculate a fair score out of 100. Provide clear reasoning.
 """
         return structured_llm.invoke(prompt)
     except Exception as e:
-        logging.error(f"Error during Groq search scoring: {e}")
-        return CandidateScore(score=0.0, reasoning=f"Scoring failed due to an error: {str(e)}")
+        logging.error(f"Error during search scoring: {e}")
+        return CandidateScore(score=0.0, reasoning="AI service unavailable, check your AI Settings")
+

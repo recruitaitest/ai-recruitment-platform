@@ -60,7 +60,7 @@ export function handleAiApiError(error: any, responseStatus?: number): void {
     errMsg.includes("credit") ||
     errMsg.includes("resource_exhausted")
   ) {
-    toast.error("⚠️ AI Agent is not responding: Out of tokens or quota limit reached. Please check your AI settings.", {
+    toast.error("AI service unavailable, check your AI Settings", {
       duration: 5000,
     });
   } else if (
@@ -72,10 +72,10 @@ export function handleAiApiError(error: any, responseStatus?: number): void {
     errMsg.includes("failed to fetch") ||
     errMsg.includes("network error")
   ) {
-    toast.error("⚠️ AI Agent is not responding. Please check your AI provider configuration in Settings.", {
+    toast.error("AI service unavailable, check your AI Settings", {
       duration: 5000,
     });
   } else if (errMsg) {
-    toast.error(error?.response?.data?.detail || error?.message || error?.detail || "AI action failed. Please try again.");
+    toast.error(error?.response?.data?.detail || error?.message || error?.detail || "AI service unavailable, check your AI Settings");
   }
 }

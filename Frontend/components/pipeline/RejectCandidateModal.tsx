@@ -94,11 +94,11 @@ export default function RejectCandidateModal({
         if (data.body) setEmailBody(data.body);
         toast.success("✨ AI Rejection Email drafted successfully!");
       } else {
-        generateDefaultEmail(candidateName, positionTitle, effectiveReason);
+        toast.error("AI service unavailable, check your AI Settings");
       }
     } catch (err) {
       console.warn("Failed to draft AI rejection email:", err);
-      generateDefaultEmail(candidateName, positionTitle, effectiveReason);
+      toast.error("AI service unavailable, check your AI Settings");
     } finally {
       setIsDraftingEmail(false);
     }
