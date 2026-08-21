@@ -16,7 +16,7 @@ import {
   Loader2,
   FileCheck,
 } from "lucide-react";
-import { getOffer, sendOfferDirectly } from "@/services/offerService";
+import { getOffer, sendOfferDirectly, fetchOfferPreviewBlob, downloadOfferPdf } from "@/services/offerService";
 import { toast } from "sonner";
 
 interface Props {
@@ -35,12 +35,18 @@ export default function ViewOfferModal({
   onEdit,
 }: Props) {
   const [offer, setOffer] = useState<any>(null);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
+    let currentBlob = "";
+
     if (open && offerId) {
       setLoading(true);
+      setPdfLoading(true);
+
       getOffer(offerId)
         .then((data) => setOffer(data))
         .catch((err) => {
@@ -48,17 +54,35 @@ export default function ViewOfferModal({
           toast.error("Failed to load offer details.");
         })
         .finally(() => setLoading(false));
+
+      fetchOfferPreviewBlob(offerId)
+        .then((blobUrl) => {
+          currentBlob = blobUrl;
+          setPdfBlobUrl(blobUrl);
+        })
+        .catch((err) => {
+          console.error("Failed to load PDF preview blob:", err);
+          toast.error("Failed to render PDF preview.");
+        })
+        .finally(() => setPdfLoading(false));
     } else {
       setOffer(null);
+      setPdfBlobUrl("");
     }
+
+    return () => {
+      if (currentBlob) {
+        URL.revokeObjectURL(currentBlob);
+      }
+    };
   }, [open, offerId]);
 
   if (!open) return null;
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-  const pdfUrl = offerId
-    ? `${baseUrl}/offers/${offerId}/preview`
-    : "";
+  const handleDownload = () => {
+    if (!offerId) return;
+    downloadOfferPdf(offerId, offer?.offer_letter || `Offer_${offerId}.pdf`);
+  };
 
   const handleSendDirect = async () => {
     if (!offerId) return;
@@ -111,24 +135,20 @@ export default function ViewOfferModal({
 
             {/* Action Buttons in Header */}
             <div className="flex items-center gap-2.5">
-              {pdfUrl && (
-                <a
-                  href={pdfUrl}
-                  download={offer?.offer_letter || "Offer_Letter.pdf"}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3.5 py-1.5 text-xs font-semibold text-text-primary hover:bg-surface-hover transition"
-                >
-                  <Download className="h-4 w-4" />
-                  Download PDF
-                </a>
-              )}
+              <button
+                type="button"
+                onClick={handleDownload}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3.5 py-1.5 text-xs font-semibold text-text-primary hover:bg-surface-hover transition cursor-pointer"
+              >
+                <Download className="h-4 w-4" />
+                Download PDF
+              </button>
 
               {offer?.status === "Draft" && (
                 <button
                   onClick={handleSendDirect}
                   disabled={sending}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-primary-hover active:scale-[0.98] transition disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-primary-hover active:scale-[0.98] transition disabled:opacity-50 cursor-pointer"
                 >
                   {sending ? (
                     <>
@@ -146,7 +166,7 @@ export default function ViewOfferModal({
 
               <button
                 onClick={onClose}
-                className="rounded-full p-2 text-text-secondary hover:text-text-primary hover:bg-surface-hover transition"
+                className="rounded-full p-2 text-text-secondary hover:text-text-primary hover:bg-surface-hover transition cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -220,7 +240,7 @@ export default function ViewOfferModal({
                         onClose();
                         onEdit(offer);
                       }}
-                      className="w-full rounded-xl border border-border bg-surface px-4 py-2 text-xs font-semibold text-text-primary hover:bg-surface-hover transition"
+                      className="w-full rounded-xl border border-border bg-surface px-4 py-2 text-xs font-semibold text-text-primary hover:bg-surface-hover transition cursor-pointer"
                     >
                       Edit Offer Values
                     </button>
@@ -231,14 +251,14 @@ export default function ViewOfferModal({
 
             {/* Right Side: Embedded High-Resolution PDF Viewer */}
             <div className="flex-1 bg-slate-900/5 dark:bg-black/40 p-3 overflow-hidden flex flex-col">
-              {loading ? (
+              {pdfLoading ? (
                 <div className="flex-1 flex items-center justify-center text-sm text-text-secondary">
                   <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
                   Generating & loading offer letter document...
                 </div>
-              ) : pdfUrl ? (
+              ) : pdfBlobUrl ? (
                 <iframe
-                  src={pdfUrl}
+                  src={pdfBlobUrl}
                   title="Offer Letter PDF Preview"
                   className="w-full h-full rounded-xl border border-border/80 bg-white shadow-inner"
                 />

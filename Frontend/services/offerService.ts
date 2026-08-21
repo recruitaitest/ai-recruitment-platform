@@ -93,3 +93,26 @@ export const deleteOfferTemplate = async () => {
     const response = await api.delete("/offers/template");
     return response.data;
 };
+
+export const fetchOfferPreviewBlob = async (offerId: number): Promise<string> => {
+    const response = await api.get(`/offers/${offerId}/preview`, {
+        responseType: "blob",
+    });
+    const blob = new Blob([response.data], { type: "application/pdf" });
+    return URL.createObjectURL(blob);
+};
+
+export const downloadOfferPdf = async (offerId: number, filename?: string) => {
+    const response = await api.get(`/offers/${offerId}/download`, {
+        responseType: "blob",
+    });
+    const blob = new Blob([response.data], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename || `Offer_${offerId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+};
