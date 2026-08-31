@@ -555,35 +555,82 @@ function EducationTab({ education }: { education: string }) {
 
 // Tab 4 — Resume
 function ResumeTab({ candidate }: { candidate: Candidate }) {
-    const url = resolveResume(candidate);
     const isDocx = isDocxResume(candidate);
-    const [iframeError, setIframeError] = React.useState(false);
-    React.useEffect(() => { setIframeError(false); }, [candidate?.id]);
+    const [blobUrl, setBlobUrl] = React.useState<string | null>(null);
+    const [loading, setLoading] = React.useState(false);
+    const [fetchError, setFetchError] = React.useState(false);
+
+    React.useEffect(() => {
+        let activeBlob: string | null = null;
+        setFetchError(false);
+
+        if (candidate?.id && candidate?.resume_path) {
+            setLoading(true);
+            api.get(`/candidates/${candidate.id}/resume`, { responseType: "blob" })
+                .then((res) => {
+                    const mime = isDocx
+                        ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        : "application/pdf";
+                    const b = new Blob([res.data], { type: mime });
+                    const url = URL.createObjectURL(b);
+                    activeBlob = url;
+                    setBlobUrl(url);
+                })
+                .catch((err) => {
+                    console.error("Failed to fetch resume blob:", err);
+                    setFetchError(true);
+                })
+                .finally(() => setLoading(false));
+        } else {
+            setBlobUrl(null);
+            setLoading(false);
+        }
+
+        return () => {
+            if (activeBlob) {
+                URL.revokeObjectURL(activeBlob);
+            }
+        };
+    }, [candidate?.id, candidate?.resume_path, isDocx]);
+
+    const handleDownload = () => {
+        if (!blobUrl && !candidate?.id) return;
+        if (blobUrl) {
+            const a = document.createElement("a");
+            a.href = blobUrl;
+            a.download = `${candidate.name || (candidate as any).full_name || "Candidate"}_resume.${isDocx ? "docx" : "pdf"}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } else {
+            window.open(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/candidates/${candidate.id}/resume`, "_blank");
+        }
+    };
 
     const previewContent = () => {
-        if (!url) return <EmptyState icon="ti-file-off" message="No resume uploaded for this candidate." />;
+        if (!candidate?.resume_path) return <EmptyState icon="ti-file-off" message="No resume uploaded for this candidate." />;
+        if (loading) return (
+            <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                <i className="ti ti-loader animate-spin" style={{ fontSize: 32, display: 'block', marginBottom: 12, color: 'var(--primary, #6366f1)' }} />
+                <p style={{ margin: 0, fontSize: "0.85rem" }}>Loading candidate resume...</p>
+            </div>
+        );
+        if (fetchError) return <EmptyState icon="ti-cloud-off" message="Resume file not available. It may have been uploaded to a different storage." />;
         if (isDocx) return (
             <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
                 <i className="ti ti-file-word" style={{ fontSize: 48, display: 'block', marginBottom: 16, color: '#4f86f7' }} />
-                <p style={{ marginBottom: 12 }}>DOCX files cannot be previewed in the browser.</p>
-                <a href={url} target="_blank" rel="noreferrer" style={{
-                    ...btn('primary'), textDecoration: 'none', fontSize: '0.85rem', padding: '8px 20px'
-                }}>⬇ Download Resume</a>
+                <p style={{ marginBottom: 12 }}>DOCX files cannot be previewed directly in the browser.</p>
+                <button onClick={handleDownload} style={{
+                    ...btn('primary'), textDecoration: 'none', fontSize: '0.85rem', padding: '8px 20px', cursor: 'pointer'
+                }}>⬇ Download Resume</button>
             </div>
         );
-        if (iframeError) return <EmptyState icon="ti-cloud-off" message="Resume file not available. It may have been uploaded to a different storage." />;
+        if (!blobUrl) return <EmptyState icon="ti-file-off" message="No resume available." />;
         return (
             <iframe
-                src={url}
+                src={blobUrl}
                 title="Resume Preview"
                 style={{ width: "100%", height: "100%", border: "none" }}
-                onLoad={(e) => {
-                    try {
-                        const doc = (e.target as HTMLIFrameElement).contentDocument;
-                        const body = doc?.body?.innerText?.trim();
-                        if (body && body.startsWith('{')) setIframeError(true);
-                    } catch { /* cross-origin, assume OK */ }
-                }}
             />
         );
     };
@@ -595,10 +642,10 @@ function ResumeTab({ candidate }: { candidate: Candidate }) {
                     <div style={S.cardTitle}><i className="ti ti-file-text" style={{ fontSize: 16 }} />Resume Preview</div>
                     <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--text-muted)" }}>Embedded resume viewer</p>
                 </div>
-                {url && (
-                    <a href={url} target="_blank" rel="noreferrer" style={{
-                        ...btn("outline"), textDecoration: "none", fontSize: "0.8rem", padding: "7px 14px"
-                    }}>↓ Download</a>
+                {candidate?.resume_path && (
+                    <button onClick={handleDownload} style={{
+                        ...btn("outline"), textDecoration: "none", fontSize: "0.8rem", padding: "7px 14px", cursor: 'pointer'
+                    }}>↓ Download</button>
                 )}
             </div>
             <div style={{

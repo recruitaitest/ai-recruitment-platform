@@ -169,13 +169,16 @@ def get_red_flags(candidate_id: int, db: Session = Depends(get_db)):
 def get_salary_benchmark(role_title: str, location: Optional[str] = "India", experience_years: Optional[float] = 3.0):
     return fetch_salary_benchmark(role_title, location or "India", experience_years)
 
+from app.utils.dependencies import get_current_user
+
 # 1.14 Dual-Mode AI Chatbot Endpoints
 @router.post("/recruiter-chat", response_model=AIChatResponse)
 def post_recruiter_chat(
     req: AIChatRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
-    return process_recruiter_chat(req.message, req.conversation_history or [], db)
+    return process_recruiter_chat(req.message, req.conversation_history or [], db, current_user)
 
 @router.post("/careers-chat", response_model=AIChatResponse)
 def post_careers_chat(req: AIChatRequest, db: Session = Depends(get_db)):

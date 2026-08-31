@@ -724,9 +724,12 @@ def process_recruiter_chat(
     # 0. RBAC / Permission Resolution
     from app.models.user import User
     from app.models.role import Role
+    from app.models.permission import Permission
+    from app.models.role_permission import RolePermission
     from app.models.pipeline import Pipeline
     from app.models.interview import Interview
     from app.models.email_message import EmailMessage
+    from app.auth.permissions import get_all_user_permissions
 
     user_obj = None
     user_role_str = "Recruiter"
@@ -736,6 +739,13 @@ def process_recruiter_chat(
         if isinstance(current_user, User):
             user_obj = current_user
         elif isinstance(current_user, dict):
+            user_role_str = current_user.get("role") or "Recruiter"
+            if "permissions" in current_user and current_user["permissions"]:
+                raw_perms = current_user["permissions"]
+                if isinstance(raw_perms, list):
+                    user_permissions = {p.strip().lower() for p in raw_perms if p}
+                elif isinstance(raw_perms, str):
+                    user_permissions = {p.strip().lower() for p in raw_perms.split(",") if p.strip()}
             uid = current_user.get("user_id") or current_user.get("id")
             email = current_user.get("email") or current_user.get("sub")
             if uid and str(uid).isdigit():
@@ -743,21 +753,51 @@ def process_recruiter_chat(
             elif email:
                 user_obj = db.query(User).filter(User.email == email).first()
 
-    if user_obj:
-        user_role_str = user_obj.role or "Recruiter"
+    if user_obj and db:
+        user_role_str = user_obj.role or user_role_str
         role_record = db.query(Role).filter(Role.name.ilike(user_role_str)).first()
-        if role_record and role_record.permissions:
-            user_permissions = {p.strip().lower() for p in role_record.permissions.split(",") if p.strip()}
+        if role_record:
+            perm_rows = (
+                db.query(Permission.name)
+                .join(RolePermission, Permission.id == RolePermission.permission_id)
+                .filter(RolePermission.role_id == role_record.id)
+                .all()
+            )
+            direct_perms = [r[0].strip() for r in perm_rows if r[0]]
+            if role_record.permissions:
+                direct_perms.extend([p.strip() for p in role_record.permissions.split(",") if p.strip()])
 
-    # Superuser check (COMPANY_OWNER and ADMIN have full access to everything)
-    is_super = user_role_str.upper() in ["COMPANY_OWNER", "ADMIN", "SUPERADMIN"] or "all" in user_permissions or "*" in user_permissions
+            resolved = get_all_user_permissions(direct_perms)
+            user_permissions.update({p.strip().lower() for p in resolved})
 
-    can_view_positions = is_super or "positions.view" in user_permissions or "positions.create" in user_permissions or "positions.update" in user_permissions
-    can_view_candidates = is_super or "candidates.view" in user_permissions or "candidates.create" in user_permissions or "candidates.update" in user_permissions
-    can_view_pipeline = is_super or "pipelines.view" in user_permissions or "pipelines.manage" in user_permissions
-    can_view_interviews = is_super or "interviews.view" in user_permissions or "interviews.create" in user_permissions or "interviews.update" in user_permissions
+    # Superuser check (SUPER_ADMIN, COMPANY_OWNER, ADMIN, ADMINISTRATOR, OWNER have full access to everything)
+    super_roles = {
+        "SUPER_ADMIN",
+        "SUPER ADMIN",
+        "SUPERADMIN",
+        "COMPANY_OWNER",
+        "COMPANY OWNER",
+        "ADMIN",
+        "ADMINISTRATOR",
+        "OWNER",
+    }
+    norm_role = (user_role_str or "").strip().upper().replace(" ", "_")
+    is_super = (
+        norm_role in super_roles
+        or "all" in user_permissions
+        or "*" in user_permissions
+        or "full access" in user_permissions
+    )
 
-    # Fast RBAC Access Guard: If user specifically asks about a restricted module, reject immediately
+    # Standard Recruiter fallback (if no explicit restriction, recruiters have full operational ATS access)
+    is_standard_recruiter = norm_role in {"RECRUITER", "HIRING_LEAD", "TALENT_ACQUISITION"} and not user_permissions
+
+    can_view_positions = is_super or is_standard_recruiter or "positions.view" in user_permissions or "positions.create" in user_permissions or "positions.update" in user_permissions
+    can_view_candidates = is_super or is_standard_recruiter or "candidates.view" in user_permissions or "candidates.create" in user_permissions or "candidates.update" in user_permissions
+    can_view_pipeline = is_super or is_standard_recruiter or "pipelines.view" in user_permissions or "pipelines.manage" in user_permissions
+    can_view_interviews = is_super or is_standard_recruiter or "interviews.view" in user_permissions or "interviews.create" in user_permissions or "interviews.update" in user_permissions
+
+    # Fast RBAC Access Guard: If user specifically asks about a restricted module they lack permission for, reject
     if any(k in lower_msg for k in ["position", "positions", "open job", "available job", "open role", "requisition"]) and not can_view_positions:
         return {
             "response": "🔒 **Access Restricted**: You do not have permission to view or manage Job Positions on this platform. Please contact your organization administrator to request the `positions.view` permission.",
