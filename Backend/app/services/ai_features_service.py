@@ -789,39 +789,45 @@ def process_recruiter_chat(
         or "full access" in user_permissions
     )
 
-    # Standard Recruiter fallback (if no explicit restriction, recruiters have full operational ATS access)
-    is_standard_recruiter = norm_role in {"RECRUITER", "HIRING_LEAD", "TALENT_ACQUISITION"} and not user_permissions
+    # Strict RBAC: Non-super users only have access if explicitly granted in RolePermission / Permission table
+    can_view_positions = is_super or "positions.view" in user_permissions or "positions.manage" in user_permissions or "positions.create" in user_permissions or "positions.update" in user_permissions
+    can_view_candidates = is_super or "candidates.view" in user_permissions or "candidates.manage" in user_permissions or "candidates.create" in user_permissions or "candidates.update" in user_permissions
+    can_view_pipeline = is_super or "pipelines.view" in user_permissions or "pipelines.manage" in user_permissions
+    can_view_interviews = is_super or "interviews.view" in user_permissions or "interviews.create" in user_permissions or "interviews.update" in user_permissions
+    can_view_offers = is_super or "offers.view" in user_permissions or "offers.create" in user_permissions
 
-    can_view_positions = is_super or is_standard_recruiter or "positions.view" in user_permissions or "positions.create" in user_permissions or "positions.update" in user_permissions
-    can_view_candidates = is_super or is_standard_recruiter or "candidates.view" in user_permissions or "candidates.create" in user_permissions or "candidates.update" in user_permissions
-    can_view_pipeline = is_super or is_standard_recruiter or "pipelines.view" in user_permissions or "pipelines.manage" in user_permissions
-    can_view_interviews = is_super or is_standard_recruiter or "interviews.view" in user_permissions or "interviews.create" in user_permissions or "interviews.update" in user_permissions
-
-    # Fast RBAC Access Guard: If user specifically asks about a restricted module they lack permission for, reject
-    if any(k in lower_msg for k in ["position", "positions", "open job", "available job", "open role", "requisition"]) and not can_view_positions:
+    # Fast RBAC Access Guard: If user specifically asks about a restricted module they lack permission for, reject immediately
+    if any(k in lower_msg for k in ["position", "positions", "open job", "available job", "open role", "requisition", "job opening", "job openings", "jobs", "role", "vacancies", "vacancy", "openings"]) and not can_view_positions:
         return {
             "response": "🔒 **Access Restricted**: You do not have permission to view or manage Job Positions on this platform. Please contact your organization administrator to request the `positions.view` permission.",
             "portal_type": "recruiter",
             "is_refusal": True
         }
 
-    if any(k in lower_msg for k in ["candidate", "candidates", "resume", "directory", "who applied"]) and not can_view_candidates:
+    if any(k in lower_msg for k in ["candidate", "candidates", "resume", "resumes", "applicant", "applicants", "directory", "who applied", "profiles", "talent pool"]) and not can_view_candidates:
         return {
             "response": "🔒 **Access Restricted**: You do not have permission to view Candidate profiles or resume data. Please contact your organization administrator to request the `candidates.view` permission.",
             "portal_type": "recruiter",
             "is_refusal": True
         }
 
-    if any(k in lower_msg for k in ["pipeline", "screening stage", "technical interview stage", "hr round stage", "stages breakdown"]) and not can_view_pipeline:
+    if any(k in lower_msg for k in ["pipeline", "screening stage", "technical interview stage", "hr round stage", "stages breakdown", "kanban", "board", "applied stage", "offer stage", "hired stage", "rejected stage"]) and not can_view_pipeline:
         return {
             "response": "🔒 **Access Restricted**: You do not have permission to access the Recruitment Pipeline board (`pipelines.view`). Please contact your organization administrator.",
             "portal_type": "recruiter",
             "is_refusal": True
         }
 
-    if any(k in lower_msg for k in ["scheduled interview", "upcoming interview", "interviews scheduled", "interview list", "scorecard"]) and not can_view_interviews:
+    if any(k in lower_msg for k in ["scheduled interview", "upcoming interview", "interviews scheduled", "interview list", "scorecard", "interview slots", "interview calendar", "who has interview"]) and not can_view_interviews:
         return {
             "response": "🔒 **Access Restricted**: You do not have permission to view Scheduled Interviews (`interviews.view`). Please contact your organization administrator.",
+            "portal_type": "recruiter",
+            "is_refusal": True
+        }
+
+    if any(k in lower_msg for k in ["offer letter", "release offer", "salary offered", "offer status", "offer acceptance", "offer risk"]) and not can_view_offers:
+        return {
+            "response": "🔒 **Access Restricted**: You do not have permission to view Offer Management (`offers.view`). Please contact your organization administrator.",
             "portal_type": "recruiter",
             "is_refusal": True
         }
