@@ -8,15 +8,21 @@ host = os.getenv("OPENSEARCH_HOST", "localhost")
 port = int(os.getenv("OPENSEARCH_PORT", 9200))
 auth = (os.getenv("OPENSEARCH_USER", "admin"), os.getenv("OPENSEARCH_PASS", "admin"))
 
-# Determine if we should use SSL. Localhost typically doesn't use SSL for OpenSearch.
-is_local = host == "localhost" or host == "127.0.0.1"
+# Determine if we should use SSL. Local and docker internal networks (opensearch) do not use SSL.
+use_ssl_env = os.getenv("OPENSEARCH_USE_SSL", "").lower()
+if use_ssl_env:
+    use_ssl = use_ssl_env == "true"
+else:
+    use_ssl = host not in ["localhost", "127.0.0.1", "opensearch", "ai-recruitment-platform-opensearch-1"]
 
 opensearch_client = OpenSearch(
     hosts=[{'host': host, 'port': port}],
     http_auth=auth,
-    use_ssl=not is_local,
-    verify_certs=not is_local,
-    ssl_show_warn=False
+    use_ssl=use_ssl,
+    verify_certs=use_ssl,
+    ssl_show_warn=False,
+    timeout=5,
+    max_retries=1
 )
 
 INDEX_NAME = "candidates"
