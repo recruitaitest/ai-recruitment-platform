@@ -2,7 +2,7 @@ import os
 
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient
-from qdrant_client.models import PointStruct
+from qdrant_client.models import PointStruct, VectorParams, Distance
 
 from app.services.embedding_service import generate_embedding
 
@@ -12,6 +12,23 @@ client = QdrantClient(
     url=os.getenv("QDRANT_URL"),
     api_key=os.getenv("QDRANT_API_KEY")
 )
+
+_collection_verified = False
+
+def ensure_collection_exists(vector_size: int = 768):
+    global _collection_verified
+    if _collection_verified:
+        return
+    try:
+        collections = [c.name for c in client.get_collections().collections]
+        if "candidates" not in collections:
+            client.create_collection(
+                collection_name="candidates",
+                vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE)
+            )
+        _collection_verified = True
+    except Exception as e:
+        print(f"Notice verifying Qdrant collection: {e}")
 
 
 def index_candidate(candidate):
@@ -40,6 +57,7 @@ def index_candidate(candidate):
         """
 
         embedding = generate_embedding(candidate_text)
+        ensure_collection_exists(len(embedding) if embedding else 768)
 
         client.upsert(
             collection_name="candidates",

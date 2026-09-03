@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   frontend:
+    restart: unless-stopped
     build:
       context: ./Frontend
       args:
@@ -16,6 +17,7 @@ services:
       - api
 
   api:
+    restart: unless-stopped
     build:
       context: ./Backend
     ports:
@@ -49,6 +51,7 @@ services:
       - minio
 
   worker:
+    restart: unless-stopped
     build:
       context: ./Backend
     command: celery -A app.celery_app worker --loglevel=info
@@ -83,6 +86,7 @@ services:
       - ./Backend:/app
 
   db:
+    restart: unless-stopped
     image: postgres:15-alpine
     environment:
       - POSTGRES_USER=user
@@ -94,29 +98,35 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   redis:
+    restart: unless-stopped
     image: redis:alpine
     ports:
       - "6379:6379"
 
   opensearch:
+    restart: unless-stopped
     image: opensearchproject/opensearch:latest
     environment:
       - discovery.type=single-node
       - DISABLE_SECURITY_PLUGIN=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
     ports:
       - "9200:9200"
 
   qdrant:
+    restart: unless-stopped
     image: qdrant/qdrant:latest
     ports:
       - "6333:6333"
 
   prometheus:
+    restart: unless-stopped
     image: prom/prometheus:latest
     ports:
       - "9090:9090"
 
   grafana:
+    restart: unless-stopped
     image: grafana/grafana:latest
     ports:
       - "3001:3000" # Mapped to 3001 to avoid conflicting with Frontend on 3000
@@ -124,6 +134,7 @@ services:
       - prometheus
 
   minio:
+    restart: unless-stopped
     image: minio/minio:latest
     command: server /data --console-address ":9001"
     ports:

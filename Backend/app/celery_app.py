@@ -19,6 +19,20 @@ celery_app = Celery(
 )
 
 celery_app.conf.update(
+    broker_connection_retry_on_startup=True,
+    broker_connection_max_retries=None,  # Automatically reconnect if Redis restarts or drops
+    broker_transport_options={
+        "visibility_timeout": 3600,
+        "retry_on_timeout": True,
+        "socket_keepalive": True,
+        "socket_timeout": 30,
+        "socket_connect_timeout": 30,
+        "health_check_interval": 15,
+    },
+    result_backend_transport_options={
+        "retry_on_timeout": True,
+        "socket_keepalive": True,
+    },
     task_serializer="json",
     accept_content=["json"],
     result_serializer="json",
