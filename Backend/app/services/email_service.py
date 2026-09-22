@@ -151,7 +151,7 @@ class EmailService:
             company = "RecruitAI"
 
         subject = f"Application Received: {position_title} at {company}"
-        tracking_url = f"http://ai-recruitment-platform.centralindia.cloudapp.azure.com/portal/candidate/{to_email}"
+        tracking_url = f"https://ai-recruitment-platform.centralindia.cloudapp.azure.com/portal/candidate/{to_email}"
         html_content = f"""
         <html>
             <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px;">

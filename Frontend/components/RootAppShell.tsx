@@ -69,9 +69,10 @@ export function RootAppShell({ children }: RootAppShellProps) {
   }, []);
 
   const isCareersRoute = pathname.startsWith('/careers')
+  const isPortalRoute = pathname.startsWith('/portal')
   const isPublicAuthRoute = PUBLIC_ROUTES.has(pathname)
 
-  if (isCareersRoute) {
+  if (isCareersRoute || isPortalRoute) {
     return (
       <>
         {children}
